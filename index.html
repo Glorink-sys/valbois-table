@@ -49,6 +49,7 @@ body{
 h1,h2,h3{font-family:'Cinzel',serif;color:var(--gold-strong);margin:0;}
 h1{font-size:1.3rem;letter-spacing:.04em;text-transform:uppercase;}
 h2{font-size:.9rem;letter-spacing:.03em;text-transform:uppercase;margin-bottom:8px;}
+h3.sub{font-size:.76rem;letter-spacing:.03em;text-transform:uppercase;color:var(--gold-strong);margin:14px 0 6px;}
 .topbar{
   display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;
   margin-bottom:14px;
@@ -75,7 +76,7 @@ h2{font-size:.9rem;letter-spacing:.03em;text-transform:uppercase;margin-bottom:8
 .tab-btn.active{color:var(--gold-strong);border-bottom-color:var(--panel);background:var(--parchment-alt);}
 .panel{
   background:var(--parchment-alt);border:1px solid var(--parchment-line);border-radius:0 8px 8px 8px;
-  padding:16px;
+  padding:16px;width:100%;
 }
 .panel[hidden]{display:none;}
 .field-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
@@ -83,14 +84,29 @@ input[type=text],input[type=url],input[type=number]{
   font-family:inherit;font-size:.85rem;padding:7px 10px;border-radius:6px;
   border:1px solid var(--parchment-line);background:var(--panel);color:var(--ink);
 }
+input[type=color]{width:38px;height:34px;padding:2px;border-radius:6px;border:1px solid var(--parchment-line);background:var(--panel);cursor:pointer;}
 button{
   font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.03em;text-transform:uppercase;
   padding:8px 14px;border-radius:6px;border:1px solid var(--gold-strong);
   background:var(--gold-strong);color:#fff;cursor:pointer;
 }
 button.ghost{background:transparent;color:var(--gold-strong);}
+button.danger{background:transparent;color:var(--warn);border-color:var(--warn);}
 button:disabled{opacity:.5;cursor:not-allowed;}
-.board-wrap{overflow:auto;border:1px solid var(--parchment-line);border-radius:6px;background:var(--panel);max-height:70vh;}
+
+.game-layout{display:grid;grid-template-columns:220px minmax(0,1fr) 220px;gap:16px;align-items:start;}
+@media (max-width:960px){
+  .game-layout{grid-template-columns:1fr;}
+  .side-panel{order:2;}
+  .center-panel{order:1;}
+}
+.side-panel{
+  background:var(--parchment-alt);border:1px solid var(--parchment-line);border-radius:8px;
+  padding:14px;min-height:140px;
+}
+.center-panel{display:flex;flex-direction:column;align-items:center;min-width:0;width:100%;}
+
+.board-wrap{overflow:auto;border:1px solid var(--parchment-line);border-radius:6px;background:var(--panel);max-height:70vh;max-width:100%;}
 #board{
   position:relative;
   width:960px;max-width:none;
@@ -105,16 +121,25 @@ button:disabled{opacity:.5;cursor:not-allowed;}
 .token{
   position:absolute;border-radius:50%;display:flex;align-items:center;justify-content:center;
   font-size:.68rem;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5);
-  cursor:grab;border:2px solid rgba(255,255,255,.7);user-select:none;
+  cursor:grab;border:2px solid rgba(255,255,255,.75);user-select:none;box-sizing:border-box;
+  box-shadow:0 3px 6px rgba(0,0,0,.45);
   transition:left .12s ease, top .12s ease;
 }
 .token:active{cursor:grabbing;transition:none;}
-.token.locked{cursor:not-allowed;opacity:.85;}
+.token.selected{outline:2px solid var(--gold);outline-offset:2px;}
+.move-badge{
+  position:absolute;transform:translate(-50%,-130%);
+  background:rgba(20,15,8,.85);color:#f5efdc;font-family:'Cinzel',serif;
+  font-size:.72rem;padding:3px 9px;border-radius:999px;white-space:nowrap;
+  pointer-events:none;z-index:5;border:1px solid var(--gold);
+}
+.move-badge[hidden]{display:none;}
 .legend{display:flex;gap:12px;margin-top:10px;font-size:.76rem;color:var(--ink-soft);flex-wrap:wrap;}
 .legend span{display:inline-flex;align-items:center;gap:6px;}
 .legend i{width:10px;height:10px;border-radius:50%;display:inline-block;}
+
 .mood-grid{
-  display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:12px;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:8px;
 }
 .mood-card{
   border:2px solid transparent;border-radius:6px;overflow:hidden;cursor:pointer;background:var(--panel);
@@ -126,7 +151,21 @@ button:disabled{opacity:.5;cursor:not-allowed;}
   position:absolute;bottom:0;left:0;right:0;padding:4px 6px;font-size:.7rem;
   background:rgba(0,0,0,.55);color:#fff;
 }
+.mood-card .card-del{
+  position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);color:#fff;border:none;
+  border-radius:50%;width:20px;height:20px;font-size:.7rem;line-height:1;padding:0;cursor:pointer;
+}
 .mood-empty{font-size:.82rem;color:var(--ink-soft);}
+
+.token-template-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+.token-template-card{
+  display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--parchment-line);
+  border-radius:999px;padding:5px 6px 5px 6px;cursor:pointer;font-size:.78rem;color:var(--ink);
+}
+.token-template-card .swatch{width:16px;height:16px;border-radius:50%;flex:none;border:1px solid rgba(0,0,0,.2);}
+.token-template-card .del{background:none;border:none;color:var(--ink-soft);font-size:.72rem;padding:0 4px;cursor:pointer;}
+.token-template-card .del:hover{color:var(--warn);}
+
 #ambiance-overlay{
   position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;
   z-index:50;
@@ -160,34 +199,60 @@ button:disabled{opacity:.5;cursor:not-allowed;}
   <button class="tab-btn" data-tab="mood">Cartes d'ambiance</button>
 </div>
 
-<div class="panel" id="panel-map">
-  <div id="mj-map-controls" hidden>
-    <div class="field-row">
-      <input type="url" id="f-map-url" placeholder="URL de l'image de fond (carte)" style="min-width:280px;flex:1;">
-      <button id="btn-set-map">Appliquer la carte</button>
-    </div>
-    <div class="field-row">
-      <label style="font-size:.8rem;">Colonnes <input type="number" id="f-cols" min="4" max="30" value="12" style="width:64px;"></label>
-      <label style="font-size:.8rem;">Lignes <input type="number" id="f-rows" min="4" max="30" value="8" style="width:64px;"></label>
-      <button class="ghost" id="btn-set-grid">Appliquer la grille</button>
-      <button class="ghost" id="btn-add-token">Ajouter un pion</button>
-    </div>
-  </div>
-  <div class="board-wrap"><div id="board"></div></div>
-  <div class="legend" id="legend"></div>
-</div>
+<div class="game-layout">
+  <aside class="side-panel" id="panel-left">
+    <h2>Personnage</h2>
+    <p class="hint">La fiche de ton personnage s'affichera ici — intégration avec l'outil de création prévue dans une prochaine version.</p>
+  </aside>
 
-<div class="panel" id="panel-mood" hidden>
-  <div id="mj-mood-controls" hidden>
-    <p class="hint">Colle l'adresse d'une image déjà hébergée en ligne (Imgur, Discord, Google Drive en partage public...) — la page ne stocke pas les images elle-même.</p>
-    <div class="field-row">
-      <input type="url" id="f-mood-url" placeholder="URL de l'image" style="min-width:220px;flex:1;">
-      <input type="text" id="f-mood-name" placeholder="Nom (ex. Taverne du Corbeau)" style="min-width:160px;">
-      <button id="btn-add-mood">Ajouter à la galerie</button>
+  <main class="center-panel">
+    <div class="panel" id="panel-map">
+      <div id="mj-map-controls" hidden>
+        <div class="field-row">
+          <input type="url" id="f-map-url" placeholder="URL de l'image de fond (carte)" style="min-width:240px;flex:1;">
+          <input type="text" id="f-map-name" placeholder="Nom (ex. Auberge du Corbeau)" style="min-width:140px;">
+          <button id="btn-set-map">Appliquer et enregistrer</button>
+        </div>
+        <div class="field-row">
+          <label style="font-size:.8rem;">Colonnes <input type="number" id="f-cols" min="4" max="30" value="12" style="width:64px;"></label>
+          <button class="ghost" id="btn-set-grid">Appliquer la grille</button>
+          <button class="ghost" id="btn-reset-map">Réinitialiser la carte</button>
+        </div>
+        <p class="hint" style="margin:0 0 4px;">Le nombre de lignes s'ajuste automatiquement à la forme de l'image pour qu'elle ne soit jamais déformée ou coupée.</p>
+
+        <h3 class="sub">Bibliothèque de cartes</h3>
+        <div id="map-list"><p class="mood-empty">Aucune carte enregistrée pour l'instant.</p></div>
+
+        <h3 class="sub">Bibliothèque de pions</h3>
+        <div class="field-row">
+          <input type="text" id="f-token-name" placeholder="Nom du pion (ex. Gobelin)" style="min-width:140px;">
+          <input type="color" id="f-token-color" value="#3f6b7c">
+          <button id="btn-save-token-template">Enregistrer comme modèle</button>
+        </div>
+        <div id="token-template-list" class="token-template-grid"></div>
+      </div>
+      <div class="board-wrap"><div id="board"><div class="move-badge" id="move-badge" hidden></div></div></div>
+      <div class="legend" id="legend"></div>
     </div>
-  </div>
-  <h2>Galerie</h2>
-  <div id="mood-list"><p class="mood-empty">Aucune carte d'ambiance pour l'instant.</p></div>
+
+    <div class="panel" id="panel-mood" hidden>
+      <div id="mj-mood-controls" hidden>
+        <p class="hint">Colle l'adresse d'une image déjà hébergée en ligne (Imgur, Discord, Google Drive en partage public, ou ton propre dépôt GitHub) — la page ne stocke pas les images elle-même.</p>
+        <div class="field-row">
+          <input type="url" id="f-mood-url" placeholder="URL de l'image" style="min-width:220px;flex:1;">
+          <input type="text" id="f-mood-name" placeholder="Nom (ex. Taverne du Corbeau)" style="min-width:160px;">
+          <button id="btn-add-mood">Ajouter à la galerie</button>
+        </div>
+      </div>
+      <h2>Galerie</h2>
+      <div id="mood-list"><p class="mood-empty">Aucune carte d'ambiance pour l'instant.</p></div>
+    </div>
+  </main>
+
+  <aside class="side-panel" id="panel-right">
+    <h2>Sélection</h2>
+    <div id="selection-info"><p class="hint">Clique ou déplace un pion pour voir ses informations ici.</p></div>
+  </aside>
 </div>
 
 <div id="ambiance-overlay" hidden>
@@ -199,7 +264,7 @@ button:disabled{opacity:.5;cursor:not-allowed;}
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
 import {
   getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot,
-  collection, addDoc, deleteDoc, deleteField
+  collection, addDoc, deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -225,12 +290,17 @@ const DEFAULT_TOKENS = {
 const boardRef = doc(db, "state", "board");
 const sceneRef = doc(db, "state", "scene");
 const moodsCol = collection(db, "moods");
+const mapsCol = collection(db, "maps");
+const tokenTemplatesCol = collection(db, "tokenTemplates");
 
 let boardData = { tokens: JSON.parse(JSON.stringify(DEFAULT_TOKENS)), mapUrl:"", cols:12, rows:8 };
 let sceneData = { active:"map", activeMoodId:null };
 let moods = [];
+let maps = [];
+let tokenTemplates = [];
 let isMJ = false;
 let dragging = null;
+let selectedTokenId = null;
 
 const board = document.getElementById("board");
 const dotDb = document.getElementById("dot-db");
@@ -240,6 +310,9 @@ const mjMapControls = document.getElementById("mj-map-controls");
 const mjMoodControls = document.getElementById("mj-mood-controls");
 const legend = document.getElementById("legend");
 const moodList = document.getElementById("mood-list");
+const mapList = document.getElementById("map-list");
+const tokenTemplateList = document.getElementById("token-template-list");
+const selectionInfo = document.getElementById("selection-info");
 const overlay = document.getElementById("ambiance-overlay");
 const overlayImg = document.getElementById("ambiance-img");
 
@@ -272,25 +345,45 @@ function cellSize(){
   return { w: board.clientWidth / boardData.cols, h: board.clientHeight / boardData.rows };
 }
 
+// Loads an image just to read its natural width/height (browser cache makes repeat loads instant).
+function loadImageSize(url){
+  return new Promise((resolve) => {
+    if(!url){ resolve(null); return; }
+    const img = new Image();
+    img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
+
 function renderBoard(){
   board.style.setProperty("--cols", boardData.cols);
   board.style.setProperty("--rows", boardData.rows);
+  // Grid lines are listed FIRST (top layer) so they stay visible drawn over the map image,
+  // which is listed last (bottom layer) — the opposite order would hide the grid behind it.
+  const gridLines = "linear-gradient(rgba(255,255,255,.55) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.55) 1px, transparent 1px)";
+  const plainGrid = "linear-gradient(var(--parchment-line) 1px, transparent 1px), linear-gradient(90deg, var(--parchment-line) 1px, transparent 1px)";
   board.style.backgroundImage = boardData.mapUrl
-    ? "url('" + boardData.mapUrl.replace(/'/g,"") + "'), linear-gradient(var(--parchment-line) 1px, transparent 1px), linear-gradient(90deg, var(--parchment-line) 1px, transparent 1px)"
-    : "linear-gradient(var(--parchment-line) 1px, transparent 1px), linear-gradient(90deg, var(--parchment-line) 1px, transparent 1px)";
-  board.style.backgroundSize = boardData.mapUrl ? "cover, calc(100% / " + boardData.cols + ") calc(100% / " + boardData.rows + "), calc(100% / " + boardData.cols + ") calc(100% / " + boardData.rows + ")" : "calc(100% / " + boardData.cols + ") calc(100% / " + boardData.rows + ")";
+    ? gridLines + ", url('" + boardData.mapUrl.replace(/'/g,"") + "')"
+    : plainGrid;
+  const cellBg = "calc(100% / " + boardData.cols + ") calc(100% / " + boardData.rows + ")";
+  // "100% 100%" for the map layer: the board's aspect-ratio is kept in sync with the image's
+  // own proportions whenever the map or the grid density changes, so stretching to fill
+  // never crops or distorts it.
+  board.style.backgroundSize = boardData.mapUrl ? cellBg + ", " + cellBg + ", 100% 100%" : cellBg;
 
   board.querySelectorAll(".token").forEach(el => el.remove());
   const { w, h } = cellSize();
+  const pad = Math.max(2, Math.min(w, h) * 0.1);
   legend.innerHTML = "";
   Object.keys(boardData.tokens).forEach(id => {
     const t = boardData.tokens[id];
     const el = document.createElement("div");
-    el.className = "token" + (isMJ ? "" : "");
-    el.style.width = (w - 6) + "px";
-    el.style.height = (h - 6) + "px";
-    el.style.left = (t.x * w) + "px";
-    el.style.top = (t.y * h) + "px";
+    el.className = "token" + (id === selectedTokenId ? " selected" : "");
+    el.style.width = (w - pad*2) + "px";
+    el.style.height = (h - pad*2) + "px";
+    el.style.left = (t.x * w + pad) + "px";
+    el.style.top = (t.y * h + pad) + "px";
     el.style.background = t.color;
     el.textContent = t.label;
     el.dataset.id = id;
@@ -301,11 +394,34 @@ function renderBoard(){
     li.innerHTML = '<i style="background:' + t.color + '"></i>' + t.label;
     legend.appendChild(li);
   });
+
+  if(selectedTokenId && boardData.tokens[selectedTokenId]) renderSelection(selectedTokenId);
 }
+
+function renderSelection(id){
+  const t = boardData.tokens[id];
+  if(!t){
+    selectionInfo.innerHTML = '<p class="hint">Clique ou déplace un pion pour voir ses informations ici.</p>';
+    return;
+  }
+  selectionInfo.innerHTML =
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'+
+    '<span style="width:20px;height:20px;border-radius:50%;background:' + t.color + ';display:inline-block;flex:none;border:1px solid rgba(0,0,0,.2);"></span>'+
+    '<strong style="font-family:\'Cinzel\',serif;">' + t.label + '</strong></div>'+
+    '<p class="hint" style="margin-bottom:4px;">Case : colonne ' + (t.x+1) + ', ligne ' + (t.y+1) + '.</p>'+
+    '<p class="hint">La fiche complète (PV, capacités...) s\'affichera ici une fois reliée à l\'outil de création de personnage.</p>';
+}
+
+const METERS_PER_CELL = 1.5;
+const moveBadge = document.getElementById("move-badge");
 
 function onPointerDown(e){
   const id = e.currentTarget.dataset.id;
-  dragging = { id, el: e.currentTarget };
+  const t = boardData.tokens[id];
+  selectedTokenId = id;
+  document.querySelectorAll(".token").forEach(el => el.classList.toggle("selected", el.dataset.id === id));
+  renderSelection(id);
+  dragging = { id, el: e.currentTarget, startCol: t.x, startRow: t.y, col: t.x, row: t.y };
   e.currentTarget.setPointerCapture(e.pointerId);
   e.currentTarget.addEventListener("pointermove", onPointerMove);
   e.currentTarget.addEventListener("pointerup", onPointerUp);
@@ -318,9 +434,17 @@ function onPointerMove(e){
   let row = Math.round((e.clientY - rect.top - h/2) / h);
   col = Math.max(0, Math.min(boardData.cols-1, col));
   row = Math.max(0, Math.min(boardData.rows-1, row));
-  dragging.el.style.left = (col * w) + "px";
-  dragging.el.style.top = (row * h) + "px";
+  const pad = Math.max(2, Math.min(w, h) * 0.1);
+  dragging.el.style.left = (col * w + pad) + "px";
+  dragging.el.style.top = (row * h + pad) + "px";
   dragging.col = col; dragging.row = row;
+
+  const cells = Math.max(Math.abs(col - dragging.startCol), Math.abs(row - dragging.startRow));
+  const meters = cells * METERS_PER_CELL;
+  moveBadge.textContent = cells === 0 ? "0 m" : cells + (cells>1?" cases · ":" case · ") + meters.toString().replace(".", ",") + " m";
+  moveBadge.style.left = (col * w + pad + (w - pad*2)/2) + "px";
+  moveBadge.style.top = (row * h) + "px";
+  moveBadge.hidden = false;
 }
 async function onPointerUp(e){
   if(!dragging) return;
@@ -328,36 +452,122 @@ async function onPointerUp(e){
   dragging.el.removeEventListener("pointermove", onPointerMove);
   dragging.el.removeEventListener("pointerup", onPointerUp);
   dragging = null;
+  moveBadge.hidden = true;
   if(col == null || row == null) return;
   boardData.tokens[id].x = col;
   boardData.tokens[id].y = row;
+  renderSelection(id);
   try{
     await updateDoc(boardRef, { ["tokens." + id + ".x"]: col, ["tokens." + id + ".y"]: row });
   }catch(err){ console.error(err); }
 }
 
+async function applyMap(url, cols){
+  const size = await loadImageSize(url);
+  if(!size) return false;
+  const finalCols = Math.max(4, Math.min(30, cols || boardData.cols || 12));
+  const finalRows = Math.max(4, Math.min(30, Math.round(finalCols * (size.h / size.w))));
+  boardData.mapUrl = url;
+  boardData.cols = finalCols;
+  boardData.rows = finalRows;
+  document.getElementById("f-cols").value = finalCols;
+  renderBoard();
+  try{ await updateDoc(boardRef, { mapUrl: url, cols: finalCols, rows: finalRows }); }catch(e){ console.error(e); }
+  return true;
+}
+
 document.getElementById("btn-set-map").addEventListener("click", async () => {
   const url = document.getElementById("f-map-url").value.trim();
-  boardData.mapUrl = url;
-  renderBoard();
-  try{ await updateDoc(boardRef, { mapUrl: url }); }catch(e){ console.error(e); }
+  const name = document.getElementById("f-map-name").value.trim();
+  const setBtn = document.getElementById("btn-set-map");
+  if(!url) return;
+  setBtn.disabled = true;
+  const ok = await applyMap(url, Number(document.getElementById("f-cols").value));
+  setBtn.disabled = false;
+  if(!ok){ alert("Impossible de charger cette image — vérifie l'adresse."); return; }
+  try{ await addDoc(mapsCol, { url, name, addedAt: Date.now() }); }catch(e){ console.error(e); }
+  document.getElementById("f-map-name").value = "";
 });
+
 document.getElementById("btn-set-grid").addEventListener("click", async () => {
   const cols = Math.max(4, Math.min(30, Number(document.getElementById("f-cols").value) || 12));
-  const rows = Math.max(4, Math.min(30, Number(document.getElementById("f-rows").value) || 8));
-  boardData.cols = cols; boardData.rows = rows;
-  renderBoard();
-  try{ await updateDoc(boardRef, { cols, rows }); }catch(e){ console.error(e); }
+  if(boardData.mapUrl){
+    await applyMap(boardData.mapUrl, cols);
+  }else{
+    boardData.cols = cols;
+    renderBoard();
+    try{ await updateDoc(boardRef, { cols }); }catch(e){ console.error(e); }
+  }
 });
-document.getElementById("btn-add-token").addEventListener("click", async () => {
-  const name = prompt("Nom du pion :", "Nouveau pion");
+
+document.getElementById("btn-reset-map").addEventListener("click", async () => {
+  if(!confirm("Réinitialiser la carte tactique ? L'image de fond sera retirée et les pions remis à leur position de départ.")) return;
+  boardData = { tokens: JSON.parse(JSON.stringify(DEFAULT_TOKENS)), mapUrl:"", cols:12, rows:8 };
+  document.getElementById("f-map-url").value = "";
+  document.getElementById("f-cols").value = 12;
+  selectedTokenId = null;
+  renderBoard();
+  renderSelection(null);
+  try{ await setDoc(boardRef, boardData); }catch(e){ console.error(e); }
+});
+
+function renderMapLibrary(){
+  if(!maps.length){
+    mapList.innerHTML = '<p class="mood-empty">Aucune carte enregistrée pour l\'instant.</p>';
+    return;
+  }
+  mapList.innerHTML = "";
+  const grid = document.createElement("div");
+  grid.className = "mood-grid";
+  maps.forEach(m => {
+    const card = document.createElement("div");
+    card.className = "mood-card" + (boardData.mapUrl === m.url ? " active" : "");
+    card.innerHTML = '<img src="' + m.url.replace(/"/g,"") + '" alt="' + (m.name||"") + '">' +
+      '<span class="mood-name">' + (m.name||"Sans nom") + '</span>' +
+      '<button type="button" class="card-del" title="Retirer de la bibliothèque">✕</button>';
+    card.querySelector("img").addEventListener("click", async () => {
+      await applyMap(m.url, boardData.cols);
+    });
+    card.querySelector(".card-del").addEventListener("click", async (ev) => {
+      ev.stopPropagation();
+      try{ await deleteDoc(doc(db, "maps", m.id)); }catch(e){ console.error(e); }
+    });
+    grid.appendChild(card);
+  });
+  mapList.appendChild(grid);
+}
+
+document.getElementById("btn-save-token-template").addEventListener("click", async () => {
+  const name = document.getElementById("f-token-name").value.trim();
+  const color = document.getElementById("f-token-color").value;
   if(!name) return;
-  const id = "tok" + Date.now();
-  const color = "#" + Math.floor(Math.random()*0xffffff).toString(16).padStart(6,"0");
-  boardData.tokens[id] = { label: name, color, x:0, y:0 };
-  renderBoard();
-  try{ await updateDoc(boardRef, { ["tokens." + id]: boardData.tokens[id] }); }catch(e){ console.error(e); }
+  try{
+    await addDoc(tokenTemplatesCol, { name, color, addedAt: Date.now() });
+    document.getElementById("f-token-name").value = "";
+  }catch(e){ console.error(e); }
 });
+
+function renderTokenTemplates(){
+  tokenTemplateList.innerHTML = "";
+  tokenTemplates.forEach(tpl => {
+    const card = document.createElement("div");
+    card.className = "token-template-card";
+    card.innerHTML = '<span class="swatch" style="background:' + tpl.color + '"></span>' +
+      '<span>' + tpl.name + '</span>' +
+      '<button type="button" class="del" title="Supprimer ce modèle">✕</button>';
+    card.addEventListener("click", async () => {
+      const id = "tok" + Date.now();
+      boardData.tokens[id] = { label: tpl.name, color: tpl.color, x:0, y:0 };
+      renderBoard();
+      try{ await updateDoc(boardRef, { ["tokens." + id]: boardData.tokens[id] }); }catch(e){ console.error(e); }
+    });
+    card.querySelector(".del").addEventListener("click", async (ev) => {
+      ev.stopPropagation();
+      try{ await deleteDoc(doc(db, "tokenTemplates", tpl.id)); }catch(e){ console.error(e); }
+    });
+    tokenTemplateList.appendChild(card);
+  });
+}
 
 function renderMoods(){
   if(!moods.length){
@@ -370,8 +580,14 @@ function renderMoods(){
   moods.forEach(m => {
     const card = document.createElement("div");
     card.className = "mood-card" + (sceneData.active === "mood" && sceneData.activeMoodId === m.id ? " active" : "");
-    card.innerHTML = '<img src="' + m.url.replace(/"/g,"") + '" alt="' + (m.name||"") + '"><span class="mood-name">' + (m.name||"Sans nom") + '</span>';
-    card.addEventListener("click", () => setActiveMood(m.id));
+    card.innerHTML = '<img src="' + m.url.replace(/"/g,"") + '" alt="' + (m.name||"") + '"><span class="mood-name">' + (m.name||"Sans nom") + '</span>' +
+      (isMJ ? '<button type="button" class="card-del" title="Retirer de la galerie">✕</button>' : '');
+    card.querySelector("img").addEventListener("click", () => setActiveMood(m.id));
+    const delBtn = card.querySelector(".card-del");
+    if(delBtn) delBtn.addEventListener("click", async (ev) => {
+      ev.stopPropagation();
+      try{ await deleteDoc(doc(db, "moods", m.id)); }catch(e){ console.error(e); }
+    });
     grid.appendChild(card);
   });
   moodList.appendChild(grid);
@@ -436,7 +652,12 @@ async function init(){
     boardData.mapUrl = d.mapUrl || "";
     boardData.cols = d.cols || 12;
     boardData.rows = d.rows || 8;
+    if(document.getElementById("f-cols")) document.getElementById("f-cols").value = boardData.cols;
+    if(document.getElementById("f-map-url") && !document.activeElement.isSameNode(document.getElementById("f-map-url"))){
+      document.getElementById("f-map-url").value = boardData.mapUrl;
+    }
     renderBoard();
+    renderMapLibrary();
   }, (err) => {
     dotDb.className = "dot warn";
     txtDb.textContent = "Connexion interrompue";
@@ -453,6 +674,16 @@ async function init(){
     moods = snap.docs.map(d => ({ id:d.id, ...d.data() }));
     renderMoods();
     renderOverlay();
+  });
+
+  onSnapshot(mapsCol, (snap) => {
+    maps = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    renderMapLibrary();
+  });
+
+  onSnapshot(tokenTemplatesCol, (snap) => {
+    tokenTemplates = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    renderTokenTemplates();
   });
 }
 
