@@ -551,6 +551,10 @@ function renderBoard(){
     el.style.top = (t.y * h + pad) + "px";
     if(t.image){
       el.style.backgroundImage = "url('" + t.image.replace(/'/g,"") + "')";
+      // Stretch to exactly fill the token circle — a cropping "cover" fit would zoom into
+      // empty/transparent margins on a cut-out PNG instead of showing the whole artwork.
+      el.style.backgroundSize = "100% 100%";
+      el.style.backgroundPosition = "center";
       el.style.border = "2px solid " + t.color;
     }else{
       el.style.background = t.color;
@@ -562,7 +566,7 @@ function renderBoard(){
     board.appendChild(el);
 
     const li = document.createElement("span");
-    const swatchStyle = t.image ? ("background-image:url('"+t.image.replace(/'/g,"")+"')") : ("background:"+t.color);
+    const swatchStyle = t.image ? ("background-image:url('"+t.image.replace(/'/g,"")+"');background-size:100% 100%;") : ("background:"+t.color);
     li.innerHTML = '<i style="' + swatchStyle + '"></i>' + t.label;
     legend.appendChild(li);
   });
@@ -762,7 +766,7 @@ function renderTokenTemplates(){
   tokenTemplates.forEach(tpl => {
     const card = document.createElement("div");
     card.className = "token-template-card";
-    const swatchStyle = tpl.image ? ("background-image:url('"+tpl.image.replace(/'/g,"")+"')") : ("background:"+tpl.color);
+    const swatchStyle = tpl.image ? ("background-image:url('"+tpl.image.replace(/'/g,"")+"');background-size:100% 100%;") : ("background:"+tpl.color);
     card.innerHTML = '<span class="swatch" style="' + swatchStyle + '"></span>' +
       '<span>' + tpl.name + '</span>' +
       '<button type="button" class="del" title="Supprimer ce modèle">✕</button>';
