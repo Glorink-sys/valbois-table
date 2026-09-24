@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Table de jeu — Valbois</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --parchment:#ece2c8;
+  --parchment-alt:#e2d6b3;
+  --parchment-line:#cbb98a;
+  --ink:#2b2013;
+  --ink-soft:#5a4c34;
+  --gold:#a9822f;
+  --gold-strong:#7c5e20;
+  --ok:#2f6b3e;
+  --warn:#8a3b2b;
+  --panel:#f5efdc;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --parchment:#1c1710;
+    --parchment-alt:#241d13;
+    --parchment-line:#4a3d24;
+    --ink:#ece2c8;
+    --ink-soft:#c9bb95;
+    --gold:#d8ac52;
+    --gold-strong:#e8c979;
+    --ok:#6fbf7f;
+    --warn:#e2836b;
+    --panel:#241d13;
+    color-scheme: dark;
+  }
+}
+*{box-sizing:border-box;}
+html,body{margin:0;height:100%;}
+body{
+  background:var(--parchment);
+  color:var(--ink);
+  font-family:'Source Sans 3',system-ui,sans-serif;
+  padding-inline:16px;
+  padding-block:18px;
+  min-height:100%;
+}
+h1,h2,h3{font-family:'Cinzel',serif;color:var(--gold-strong);margin:0;}
+h1{font-size:1.3rem;letter-spacing:.04em;text-transform:uppercase;}
+h2{font-size:.9rem;letter-spacing:.03em;text-transform:uppercase;margin-bottom:8px;}
+.topbar{
+  display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;
+  margin-bottom:14px;
+}
+.status-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:.78rem;}
+.status-pill{
+  display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
+  border:1px solid var(--parchment-line);background:var(--panel);
+}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ink-soft);flex:none;}
+.dot.ok{background:var(--ok);}
+.dot.warn{background:var(--warn);}
+.role-toggle{
+  display:flex;align-items:center;gap:8px;font-size:.82rem;background:var(--panel);
+  border:1px solid var(--parchment-line);border-radius:8px;padding:6px 10px;
+}
+.role-toggle input{accent-color:var(--gold-strong);}
+.tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+.tab-btn{
+  font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.03em;text-transform:uppercase;
+  padding:8px 16px;border-radius:6px 6px 0 0;border:1px solid var(--parchment-line);
+  background:var(--panel);color:var(--ink-soft);cursor:pointer;
+}
+.tab-btn.active{color:var(--gold-strong);border-bottom-color:var(--panel);background:var(--parchment-alt);}
+.panel{
+  background:var(--parchment-alt);border:1px solid var(--parchment-line);border-radius:0 8px 8px 8px;
+  padding:16px;
+}
+.panel[hidden]{display:none;}
+.field-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+input[type=text],input[type=url],input[type=number]{
+  font-family:inherit;font-size:.85rem;padding:7px 10px;border-radius:6px;
+  border:1px solid var(--parchment-line);background:var(--panel);color:var(--ink);
+}
+button{
+  font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.03em;text-transform:uppercase;
+  padding:8px 14px;border-radius:6px;border:1px solid var(--gold-strong);
+  background:var(--gold-strong);color:#fff;cursor:pointer;
+}
+button.ghost{background:transparent;color:var(--gold-strong);}
+button:disabled{opacity:.5;cursor:not-allowed;}
+.board-wrap{overflow:auto;border:1px solid var(--parchment-line);border-radius:6px;background:var(--panel);max-height:70vh;}
+#board{
+  position:relative;
+  width:960px;max-width:none;
+  aspect-ratio: var(--cols) / var(--rows);
+  background-size:cover;background-position:center;
+  background-color:var(--panel);
+  background-image:
+    linear-gradient(var(--parchment-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--parchment-line) 1px, transparent 1px);
+  touch-action:none;
+}
+.token{
+  position:absolute;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:.68rem;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5);
+  cursor:grab;border:2px solid rgba(255,255,255,.7);user-select:none;
+  transition:left .12s ease, top .12s ease;
+}
+.token:active{cursor:grabbing;transition:none;}
+.token.locked{cursor:not-allowed;opacity:.85;}
+.legend{display:flex;gap:12px;margin-top:10px;font-size:.76rem;color:var(--ink-soft);flex-wrap:wrap;}
+.legend span{display:inline-flex;align-items:center;gap:6px;}
+.legend i{width:10px;height:10px;border-radius:50%;display:inline-block;}
+.mood-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:12px;
+}
+.mood-card{
+  border:2px solid transparent;border-radius:6px;overflow:hidden;cursor:pointer;background:var(--panel);
+  aspect-ratio:16/10;position:relative;
+}
+.mood-card.active{border-color:var(--gold-strong);}
+.mood-card img{width:100%;height:100%;object-fit:cover;display:block;}
+.mood-card .mood-name{
+  position:absolute;bottom:0;left:0;right:0;padding:4px 6px;font-size:.7rem;
+  background:rgba(0,0,0,.55);color:#fff;
+}
+.mood-empty{font-size:.82rem;color:var(--ink-soft);}
+#ambiance-overlay{
+  position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;
+  z-index:50;
+}
+#ambiance-overlay[hidden]{display:none;}
+#ambiance-overlay img{max-width:100%;max-height:100%;object-fit:contain;}
+#ambiance-overlay .close-btn{position:absolute;top:16px;right:16px;}
+.hint{font-size:.78rem;color:var(--ink-soft);max-width:60ch;margin:0 0 12px;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <h1>Table de jeu — Valbois</h1>
+    <p class="hint" style="margin-top:4px;">Carte tactique et cartes d'ambiance partagées entre le MJ et les joueurs.</p>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">
+    <div class="status-row">
+      <span class="status-pill"><span class="dot" id="dot-db"></span><span id="txt-db">Connexion…</span></span>
+    </div>
+    <label class="role-toggle">
+      <input type="checkbox" id="chk-mj">
+      Je suis le MJ
+    </label>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="map">Carte tactique</button>
+  <button class="tab-btn" data-tab="mood">Cartes d'ambiance</button>
+</div>
+
+<div class="panel" id="panel-map">
+  <div id="mj-map-controls" hidden>
+    <div class="field-row">
+      <input type="url" id="f-map-url" placeholder="URL de l'image de fond (carte)" style="min-width:280px;flex:1;">
+      <button id="btn-set-map">Appliquer la carte</button>
+    </div>
+    <div class="field-row">
+      <label style="font-size:.8rem;">Colonnes <input type="number" id="f-cols" min="4" max="30" value="12" style="width:64px;"></label>
+      <label style="font-size:.8rem;">Lignes <input type="number" id="f-rows" min="4" max="30" value="8" style="width:64px;"></label>
+      <button class="ghost" id="btn-set-grid">Appliquer la grille</button>
+      <button class="ghost" id="btn-add-token">Ajouter un pion</button>
+    </div>
+  </div>
+  <div class="board-wrap"><div id="board"></div></div>
+  <div class="legend" id="legend"></div>
+</div>
+
+<div class="panel" id="panel-mood" hidden>
+  <div id="mj-mood-controls" hidden>
+    <p class="hint">Colle l'adresse d'une image déjà hébergée en ligne (Imgur, Discord, Google Drive en partage public...) — la page ne stocke pas les images elle-même.</p>
+    <div class="field-row">
+      <input type="url" id="f-mood-url" placeholder="URL de l'image" style="min-width:220px;flex:1;">
+      <input type="text" id="f-mood-name" placeholder="Nom (ex. Taverne du Corbeau)" style="min-width:160px;">
+      <button id="btn-add-mood">Ajouter à la galerie</button>
+    </div>
+  </div>
+  <h2>Galerie</h2>
+  <div id="mood-list"><p class="mood-empty">Aucune carte d'ambiance pour l'instant.</p></div>
+</div>
+
+<div id="ambiance-overlay" hidden>
+  <img id="ambiance-img" src="" alt="Carte d'ambiance">
+  <button class="ghost close-btn" id="btn-close-ambiance">Fermer</button>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot,
+  collection, addDoc, deleteDoc, deleteField
+} from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB54-X-XjMIsNm84d_RnAMkDeb5JzZw0pc",
+  authDomain: "valbois-table.firebaseapp.com",
+  projectId: "valbois-table",
+  storageBucket: "valbois-table.firebasestorage.app",
+  messagingSenderId: "684759038117",
+  appId: "1:684759038117:web:8a67195cb2000a0101754c"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const DEFAULT_TOKENS = {
+  mj:  {label:"MJ", color:"#7c3f3f", x:1, y:1},
+  j1:  {label:"J1", color:"#3f6b7c", x:3, y:4},
+  j2:  {label:"J2", color:"#4c7c3f", x:5, y:6},
+  j3:  {label:"J3", color:"#7c6c3f", x:7, y:2},
+  j4:  {label:"J4", color:"#5f3f7c", x:9, y:5}
+};
+
+const boardRef = doc(db, "state", "board");
+const sceneRef = doc(db, "state", "scene");
+const moodsCol = collection(db, "moods");
+
+let boardData = { tokens: JSON.parse(JSON.stringify(DEFAULT_TOKENS)), mapUrl:"", cols:12, rows:8 };
+let sceneData = { active:"map", activeMoodId:null };
+let moods = [];
+let isMJ = false;
+let dragging = null;
+
+const board = document.getElementById("board");
+const dotDb = document.getElementById("dot-db");
+const txtDb = document.getElementById("txt-db");
+const chkMJ = document.getElementById("chk-mj");
+const mjMapControls = document.getElementById("mj-map-controls");
+const mjMoodControls = document.getElementById("mj-mood-controls");
+const legend = document.getElementById("legend");
+const moodList = document.getElementById("mood-list");
+const overlay = document.getElementById("ambiance-overlay");
+const overlayImg = document.getElementById("ambiance-img");
+
+try{ isMJ = localStorage.getItem("valbois-role-mj") === "1"; }catch(e){}
+chkMJ.checked = isMJ;
+applyRole();
+
+chkMJ.addEventListener("change", () => {
+  isMJ = chkMJ.checked;
+  try{ localStorage.setItem("valbois-role-mj", isMJ ? "1":"0"); }catch(e){}
+  applyRole();
+});
+
+function applyRole(){
+  mjMapControls.hidden = !isMJ;
+  mjMoodControls.hidden = !isMJ;
+}
+
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    const which = btn.dataset.tab;
+    document.getElementById("panel-map").hidden = which !== "map";
+    document.getElementById("panel-mood").hidden = which !== "mood";
+  });
+});
+
+function cellSize(){
+  return { w: board.clientWidth / boardData.cols, h: board.clientHeight / boardData.rows };
+}
+
+function renderBoard(){
+  board.style.setProperty("--cols", boardData.cols);
+  board.style.setProperty("--rows", boardData.rows);
+  board.style.backgroundImage = boardData.mapUrl
+    ? "url('" + boardData.mapUrl.replace(/'/g,"") + "'), linear-gradient(var(--parchment-line) 1px, transparent 1px), linear-gradient(90deg, var(--parchment-line) 1px, transparent 1px)"
+    : "linear-gradient(var(--parchment-line) 1px, transparent 1px), linear-gradient(90deg, var(--parchment-line) 1px, transparent 1px)";
+  board.style.backgroundSize = boardData.mapUrl ? "cover, calc(100% / " + boardData.cols + ") calc(100% / " + boardData.rows + "), calc(100% / " + boardData.cols + ") calc(100% / " + boardData.rows + ")" : "calc(100% / " + boardData.cols + ") calc(100% / " + boardData.rows + ")";
+
+  board.querySelectorAll(".token").forEach(el => el.remove());
+  const { w, h } = cellSize();
+  legend.innerHTML = "";
+  Object.keys(boardData.tokens).forEach(id => {
+    const t = boardData.tokens[id];
+    const el = document.createElement("div");
+    el.className = "token" + (isMJ ? "" : "");
+    el.style.width = (w - 6) + "px";
+    el.style.height = (h - 6) + "px";
+    el.style.left = (t.x * w) + "px";
+    el.style.top = (t.y * h) + "px";
+    el.style.background = t.color;
+    el.textContent = t.label;
+    el.dataset.id = id;
+    el.addEventListener("pointerdown", onPointerDown);
+    board.appendChild(el);
+
+    const li = document.createElement("span");
+    li.innerHTML = '<i style="background:' + t.color + '"></i>' + t.label;
+    legend.appendChild(li);
+  });
+}
+
+function onPointerDown(e){
+  const id = e.currentTarget.dataset.id;
+  dragging = { id, el: e.currentTarget };
+  e.currentTarget.setPointerCapture(e.pointerId);
+  e.currentTarget.addEventListener("pointermove", onPointerMove);
+  e.currentTarget.addEventListener("pointerup", onPointerUp);
+}
+function onPointerMove(e){
+  if(!dragging) return;
+  const rect = board.getBoundingClientRect();
+  const { w, h } = cellSize();
+  let col = Math.round((e.clientX - rect.left - w/2) / w);
+  let row = Math.round((e.clientY - rect.top - h/2) / h);
+  col = Math.max(0, Math.min(boardData.cols-1, col));
+  row = Math.max(0, Math.min(boardData.rows-1, row));
+  dragging.el.style.left = (col * w) + "px";
+  dragging.el.style.top = (row * h) + "px";
+  dragging.col = col; dragging.row = row;
+}
+async function onPointerUp(e){
+  if(!dragging) return;
+  const { id, col, row } = dragging;
+  dragging.el.removeEventListener("pointermove", onPointerMove);
+  dragging.el.removeEventListener("pointerup", onPointerUp);
+  dragging = null;
+  if(col == null || row == null) return;
+  boardData.tokens[id].x = col;
+  boardData.tokens[id].y = row;
+  try{
+    await updateDoc(boardRef, { ["tokens." + id + ".x"]: col, ["tokens." + id + ".y"]: row });
+  }catch(err){ console.error(err); }
+}
+
+document.getElementById("btn-set-map").addEventListener("click", async () => {
+  const url = document.getElementById("f-map-url").value.trim();
+  boardData.mapUrl = url;
+  renderBoard();
+  try{ await updateDoc(boardRef, { mapUrl: url }); }catch(e){ console.error(e); }
+});
+document.getElementById("btn-set-grid").addEventListener("click", async () => {
+  const cols = Math.max(4, Math.min(30, Number(document.getElementById("f-cols").value) || 12));
+  const rows = Math.max(4, Math.min(30, Number(document.getElementById("f-rows").value) || 8));
+  boardData.cols = cols; boardData.rows = rows;
+  renderBoard();
+  try{ await updateDoc(boardRef, { cols, rows }); }catch(e){ console.error(e); }
+});
+document.getElementById("btn-add-token").addEventListener("click", async () => {
+  const name = prompt("Nom du pion :", "Nouveau pion");
+  if(!name) return;
+  const id = "tok" + Date.now();
+  const color = "#" + Math.floor(Math.random()*0xffffff).toString(16).padStart(6,"0");
+  boardData.tokens[id] = { label: name, color, x:0, y:0 };
+  renderBoard();
+  try{ await updateDoc(boardRef, { ["tokens." + id]: boardData.tokens[id] }); }catch(e){ console.error(e); }
+});
+
+function renderMoods(){
+  if(!moods.length){
+    moodList.innerHTML = '<p class="mood-empty">Aucune carte d\'ambiance pour l\'instant.</p>';
+    return;
+  }
+  moodList.innerHTML = "";
+  const grid = document.createElement("div");
+  grid.className = "mood-grid";
+  moods.forEach(m => {
+    const card = document.createElement("div");
+    card.className = "mood-card" + (sceneData.active === "mood" && sceneData.activeMoodId === m.id ? " active" : "");
+    card.innerHTML = '<img src="' + m.url.replace(/"/g,"") + '" alt="' + (m.name||"") + '"><span class="mood-name">' + (m.name||"Sans nom") + '</span>';
+    card.addEventListener("click", () => setActiveMood(m.id));
+    grid.appendChild(card);
+  });
+  moodList.appendChild(grid);
+}
+
+async function setActiveMood(id){
+  if(!isMJ) return;
+  try{ await setDoc(sceneRef, { active:"mood", activeMoodId:id }, { merge:true }); }catch(e){ console.error(e); }
+}
+
+document.getElementById("btn-add-mood").addEventListener("click", async () => {
+  const url = document.getElementById("f-mood-url").value.trim();
+  const name = document.getElementById("f-mood-name").value.trim();
+  if(!url) return;
+  try{
+    await addDoc(moodsCol, { url, name, addedAt: Date.now() });
+    document.getElementById("f-mood-url").value = "";
+    document.getElementById("f-mood-name").value = "";
+  }catch(e){ console.error(e); }
+});
+
+document.getElementById("btn-close-ambiance").addEventListener("click", async () => {
+  if(!isMJ) return;
+  try{ await setDoc(sceneRef, { active:"map", activeMoodId:null }, { merge:true }); }catch(e){ console.error(e); }
+});
+
+function renderOverlay(){
+  if(sceneData.active === "mood" && sceneData.activeMoodId){
+    const m = moods.find(x => x.id === sceneData.activeMoodId);
+    if(m){
+      overlay.hidden = false;
+      overlayImg.src = m.url;
+      document.getElementById("btn-close-ambiance").style.display = isMJ ? "" : "none";
+      return;
+    }
+  }
+  overlay.hidden = true;
+}
+
+async function init(){
+  renderBoard();
+  window.addEventListener("resize", renderBoard);
+
+  try{
+    const snap = await getDoc(boardRef);
+    if(!snap.exists()){
+      await setDoc(boardRef, boardData);
+    }
+    dotDb.className = "dot ok";
+    txtDb.textContent = "Connecté";
+  }catch(err){
+    dotDb.className = "dot warn";
+    txtDb.textContent = "Connexion impossible : " + err.code;
+    console.error(err);
+    return;
+  }
+
+  onSnapshot(boardRef, (snap) => {
+    if(!snap.exists()) return;
+    const d = snap.data();
+    boardData.tokens = d.tokens || boardData.tokens;
+    boardData.mapUrl = d.mapUrl || "";
+    boardData.cols = d.cols || 12;
+    boardData.rows = d.rows || 8;
+    renderBoard();
+  }, (err) => {
+    dotDb.className = "dot warn";
+    txtDb.textContent = "Connexion interrompue";
+    console.error(err);
+  });
+
+  onSnapshot(sceneRef, (snap) => {
+    sceneData = snap.exists() ? snap.data() : { active:"map", activeMoodId:null };
+    renderOverlay();
+    renderMoods();
+  });
+
+  onSnapshot(moodsCol, (snap) => {
+    moods = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    renderMoods();
+    renderOverlay();
+  });
+}
+
+init();
+</script>
+</body>
+</html>
