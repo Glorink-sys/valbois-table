@@ -106,6 +106,23 @@ button:disabled{opacity:.5;cursor:not-allowed;}
 }
 .center-panel{display:flex;flex-direction:column;align-items:center;min-width:0;width:100%;}
 
+.mode-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;}
+.mode-btn{
+  font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:.03em;text-transform:uppercase;
+  padding:6px 12px;border-radius:999px;border:1px solid var(--parchment-line);
+  background:var(--panel);color:var(--ink-soft);cursor:pointer;
+}
+.mode-btn.active{background:var(--arcane,var(--gold-strong));color:#fff;border-color:var(--gold-strong);}
+
+.effect-palette{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+.effect-btn{
+  display:flex;align-items:center;gap:5px;font-family:inherit;font-size:.74rem;
+  padding:5px 9px;border-radius:999px;border:1px solid var(--parchment-line);
+  background:var(--panel);color:var(--ink);cursor:pointer;text-transform:none;letter-spacing:0;
+}
+.effect-btn.active{border-color:var(--gold-strong);background:var(--parchment-alt);box-shadow:0 0 0 1px var(--gold-strong) inset;}
+.effect-btn .ic{font-size:.9rem;}
+
 .board-wrap{overflow:auto;border:1px solid var(--parchment-line);border-radius:6px;background:var(--panel);max-height:70vh;max-width:100%;}
 #board{
   position:relative;
@@ -116,27 +133,35 @@ button:disabled{opacity:.5;cursor:not-allowed;}
   background-image:
     linear-gradient(var(--parchment-line) 1px, transparent 1px),
     linear-gradient(90deg, var(--parchment-line) 1px, transparent 1px);
-  touch-action:none;
+  touch-action:none;cursor:pointer;
 }
 .token{
   position:absolute;border-radius:50%;display:flex;align-items:center;justify-content:center;
   font-size:.68rem;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5);
-  cursor:grab;border:2px solid rgba(255,255,255,.75);user-select:none;box-sizing:border-box;
-  box-shadow:0 3px 6px rgba(0,0,0,.45);
-  transition:left .12s ease, top .12s ease;
+  cursor:pointer;border:2px solid rgba(255,255,255,.75);user-select:none;box-sizing:border-box;
+  box-shadow:0 3px 6px rgba(0,0,0,.45);background-size:cover;background-position:center;
+  z-index:6;
 }
-.token:active{cursor:grabbing;transition:none;}
 .token.selected{outline:2px solid var(--gold);outline-offset:2px;}
+.cell-effect{
+  position:absolute;display:flex;align-items:center;justify-content:center;
+  font-size:1.1rem;pointer-events:none;z-index:2;border-radius:3px;
+}
+.path-cell{
+  position:absolute;background:rgba(217,165,63,.4);border:1px solid rgba(217,165,63,.8);
+  pointer-events:none;z-index:4;box-sizing:border-box;
+}
+.path-cell.dest{background:rgba(217,165,63,.6);}
 .move-badge{
   position:absolute;transform:translate(-50%,-130%);
-  background:rgba(20,15,8,.85);color:#f5efdc;font-family:'Cinzel',serif;
+  background:rgba(20,15,8,.9);color:#f5efdc;font-family:'Cinzel',serif;
   font-size:.72rem;padding:3px 9px;border-radius:999px;white-space:nowrap;
-  pointer-events:none;z-index:5;border:1px solid var(--gold);
+  pointer-events:none;z-index:7;border:1px solid var(--gold);
 }
 .move-badge[hidden]{display:none;}
 .legend{display:flex;gap:12px;margin-top:10px;font-size:.76rem;color:var(--ink-soft);flex-wrap:wrap;}
 .legend span{display:inline-flex;align-items:center;gap:6px;}
-.legend i{width:10px;height:10px;border-radius:50%;display:inline-block;}
+.legend i{width:10px;height:10px;border-radius:50%;display:inline-block;background-size:cover;}
 
 .mood-grid{
   display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:8px;
@@ -162,9 +187,19 @@ button:disabled{opacity:.5;cursor:not-allowed;}
   display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--parchment-line);
   border-radius:999px;padding:5px 6px 5px 6px;cursor:pointer;font-size:.78rem;color:var(--ink);
 }
-.token-template-card .swatch{width:16px;height:16px;border-radius:50%;flex:none;border:1px solid rgba(0,0,0,.2);}
+.token-template-card .swatch{width:16px;height:16px;border-radius:50%;flex:none;border:1px solid rgba(0,0,0,.2);background-size:cover;background-position:center;}
 .token-template-card .del{background:none;border:none;color:var(--ink-soft);font-size:.72rem;padding:0 4px;cursor:pointer;}
 .token-template-card .del:hover{color:var(--warn);}
+
+.init-row{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;
+  border:1px solid var(--parchment-line);border-radius:6px;background:var(--panel);margin-bottom:6px;font-size:.88rem;
+}
+.init-row.current{border-color:var(--gold-strong);background:var(--parchment-alt);box-shadow:0 0 0 1px var(--gold-strong) inset;}
+.init-row .score{font-weight:700;font-variant-numeric:tabular-nums;min-width:28px;text-align:center;}
+.init-row .del{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:.72rem;}
+.init-row .del:hover{color:var(--warn);}
+.init-empty{font-size:.82rem;color:var(--ink-soft);}
 
 #ambiance-overlay{
   position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;
@@ -197,6 +232,7 @@ button:disabled{opacity:.5;cursor:not-allowed;}
 <div class="tabs">
   <button class="tab-btn active" data-tab="map">Carte tactique</button>
   <button class="tab-btn" data-tab="mood">Cartes d'ambiance</button>
+  <button class="tab-btn" data-tab="init">Initiative</button>
 </div>
 
 <div class="game-layout">
@@ -225,11 +261,22 @@ button:disabled{opacity:.5;cursor:not-allowed;}
 
         <h3 class="sub">Bibliothèque de pions</h3>
         <div class="field-row">
-          <input type="text" id="f-token-name" placeholder="Nom du pion (ex. Gobelin)" style="min-width:140px;">
+          <input type="text" id="f-token-name" placeholder="Nom du pion (ex. Gobelin)" style="min-width:130px;">
           <input type="color" id="f-token-color" value="#3f6b7c">
+          <input type="url" id="f-token-image" placeholder="URL d'image (optionnel)" style="min-width:160px;flex:1;">
           <button id="btn-save-token-template">Enregistrer comme modèle</button>
         </div>
         <div id="token-template-list" class="token-template-grid"></div>
+
+        <h3 class="sub">Mode d'interaction</h3>
+        <div class="mode-row">
+          <button type="button" class="mode-btn active" data-mode="move">Déplacer un pion</button>
+          <button type="button" class="mode-btn" data-mode="effect">Placer un effet</button>
+        </div>
+        <div id="effect-palette-wrap" hidden>
+          <div class="effect-palette" id="effect-palette"></div>
+          <p class="hint" style="margin:0 0 6px;">Choisis un effet puis clique une case pour le poser ; reclique la même case pour l'effacer.</p>
+        </div>
       </div>
       <div class="board-wrap"><div id="board"><div class="move-badge" id="move-badge" hidden></div></div></div>
       <div class="legend" id="legend"></div>
@@ -247,11 +294,27 @@ button:disabled{opacity:.5;cursor:not-allowed;}
       <h2>Galerie</h2>
       <div id="mood-list"><p class="mood-empty">Aucune carte d'ambiance pour l'instant.</p></div>
     </div>
+
+    <div class="panel" id="panel-init" hidden>
+      <p class="hint">Chacun peut ajouter son score d'initiative (jet + modificateur). Le MJ fait avancer l'ordre du tour.</p>
+      <div class="field-row">
+        <input type="text" id="f-init-name" placeholder="Nom (personnage ou PNJ)" style="min-width:160px;">
+        <input type="number" id="f-init-score" placeholder="Initiative" style="width:100px;">
+        <button id="btn-add-init">Ajouter à l'ordre</button>
+      </div>
+      <div id="mj-init-controls" class="field-row" hidden>
+        <button class="ghost" id="btn-init-prev">◀ Tour précédent</button>
+        <button id="btn-init-next">Tour suivant ▶</button>
+        <button class="ghost danger" id="btn-init-reset">Réinitialiser l'ordre</button>
+      </div>
+      <p class="hint" id="init-round-label" style="margin:6px 0 10px;"></p>
+      <div id="init-list"><p class="init-empty">Personne dans l'ordre d'initiative pour l'instant.</p></div>
+    </div>
   </main>
 
   <aside class="side-panel" id="panel-right">
     <h2>Sélection</h2>
-    <div id="selection-info"><p class="hint">Clique ou déplace un pion pour voir ses informations ici.</p></div>
+    <div id="selection-info"><p class="hint">Clique un pion pour le sélectionner, puis une case pour prévisualiser son déplacement.</p></div>
   </aside>
 </div>
 
@@ -264,7 +327,7 @@ button:disabled{opacity:.5;cursor:not-allowed;}
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
 import {
   getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot,
-  collection, addDoc, deleteDoc
+  collection, addDoc, deleteDoc, deleteField
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -280,27 +343,48 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 const DEFAULT_TOKENS = {
-  mj:  {label:"MJ", color:"#7c3f3f", x:1, y:1},
-  j1:  {label:"J1", color:"#3f6b7c", x:3, y:4},
-  j2:  {label:"J2", color:"#4c7c3f", x:5, y:6},
-  j3:  {label:"J3", color:"#7c6c3f", x:7, y:2},
-  j4:  {label:"J4", color:"#5f3f7c", x:9, y:5}
+  mj:  {label:"MJ", color:"#7c3f3f", image:"", x:1, y:1},
+  j1:  {label:"J1", color:"#3f6b7c", image:"", x:3, y:4},
+  j2:  {label:"J2", color:"#4c7c3f", image:"", x:5, y:6},
+  j3:  {label:"J3", color:"#7c6c3f", image:"", x:7, y:2},
+  j4:  {label:"J4", color:"#5f3f7c", image:"", x:9, y:5}
 };
+
+const EFFECTS_LIBRARY = [
+  {key:"difficile", label:"Terrain difficile", icon:"🪨", color:"#8a7048"},
+  {key:"feu", label:"Feu", icon:"🔥", color:"#c1440e"},
+  {key:"toile", label:"Toile d'araignée", icon:"🕸️", color:"#6b6b6b"},
+  {key:"brouillard", label:"Brouillard", icon:"🌫️", color:"#8a97a8"},
+  {key:"tenebres", label:"Ténèbres magiques", icon:"🌑", color:"#3a2a52"},
+  {key:"poison", label:"Gaz toxique", icon:"☠️", color:"#4c7c3f"},
+  {key:"givre", label:"Givre / Glace", icon:"❄️", color:"#6fa8c9"},
+  {key:"foudre", label:"Électricité", icon:"⚡", color:"#c9a227"},
+  {key:"acide", label:"Acide", icon:"🧪", color:"#8fae1b"},
+  {key:"eau", label:"Eau profonde", icon:"🌊", color:"#2e6f9e"},
+  {key:"lave", label:"Lave", icon:"🌋", color:"#9e2e1f"},
+  {key:"epines", label:"Épines / Ronces", icon:"🌵", color:"#3f6b3f"},
+  {key:"piege", label:"Piège", icon:"⚠️", color:"#c17a1f"},
+  {key:"sanctuaire", label:"Zone bénie", icon:"✨", color:"#c9a227"},
+  {key:"silence", label:"Silence", icon:"🔇", color:"#5a5a6b"},
+  {key:"illusion", label:"Illusion", icon:"🎭", color:"#7a4f9e"}
+];
 
 const boardRef = doc(db, "state", "board");
 const sceneRef = doc(db, "state", "scene");
+const initRef = doc(db, "state", "init");
 const moodsCol = collection(db, "moods");
 const mapsCol = collection(db, "maps");
 const tokenTemplatesCol = collection(db, "tokenTemplates");
 
-let boardData = { tokens: JSON.parse(JSON.stringify(DEFAULT_TOKENS)), mapUrl:"", cols:12, rows:8 };
+let boardData = { tokens: JSON.parse(JSON.stringify(DEFAULT_TOKENS)), mapUrl:"", cols:12, rows:8, effects:{} };
 let sceneData = { active:"map", activeMoodId:null };
-let moods = [];
-let maps = [];
-let tokenTemplates = [];
+let initData = { entries: [], currentIndex: -1, round: 1 };
+let moods = [], maps = [], tokenTemplates = [];
 let isMJ = false;
-let dragging = null;
 let selectedTokenId = null;
+let pendingMove = null; // {tokenId, startCol, startRow, path:[{col,row}], destCol, destRow}
+let interactionMode = "move"; // "move" | "effect"
+let activeEffectKey = null;
 
 const board = document.getElementById("board");
 const dotDb = document.getElementById("dot-db");
@@ -308,6 +392,7 @@ const txtDb = document.getElementById("txt-db");
 const chkMJ = document.getElementById("chk-mj");
 const mjMapControls = document.getElementById("mj-map-controls");
 const mjMoodControls = document.getElementById("mj-mood-controls");
+const mjInitControls = document.getElementById("mj-init-controls");
 const legend = document.getElementById("legend");
 const moodList = document.getElementById("mood-list");
 const mapList = document.getElementById("map-list");
@@ -315,6 +400,10 @@ const tokenTemplateList = document.getElementById("token-template-list");
 const selectionInfo = document.getElementById("selection-info");
 const overlay = document.getElementById("ambiance-overlay");
 const overlayImg = document.getElementById("ambiance-img");
+const effectPaletteWrap = document.getElementById("effect-palette-wrap");
+const effectPalette = document.getElementById("effect-palette");
+const moveBadge = document.getElementById("move-badge");
+const METERS_PER_CELL = 1.5;
 
 try{ isMJ = localStorage.getItem("valbois-role-mj") === "1"; }catch(e){}
 chkMJ.checked = isMJ;
@@ -329,6 +418,9 @@ chkMJ.addEventListener("change", () => {
 function applyRole(){
   mjMapControls.hidden = !isMJ;
   mjMoodControls.hidden = !isMJ;
+  mjInitControls.hidden = !isMJ;
+  if(!isMJ){ interactionMode = "move"; effectPaletteWrap.hidden = true; }
+  renderMoods();
 }
 
 document.querySelectorAll(".tab-btn").forEach(btn => {
@@ -338,14 +430,35 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
     const which = btn.dataset.tab;
     document.getElementById("panel-map").hidden = which !== "map";
     document.getElementById("panel-mood").hidden = which !== "mood";
+    document.getElementById("panel-init").hidden = which !== "init";
   });
+});
+
+document.querySelectorAll(".mode-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    interactionMode = btn.dataset.mode;
+    document.querySelectorAll(".mode-btn").forEach(b => b.classList.toggle("active", b===btn));
+    effectPaletteWrap.hidden = interactionMode !== "effect";
+    clearPendingMove();
+  });
+});
+
+EFFECTS_LIBRARY.forEach(fx => {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "effect-btn";
+  b.innerHTML = '<span class="ic">' + fx.icon + '</span><span>' + fx.label + '</span>';
+  b.addEventListener("click", () => {
+    activeEffectKey = activeEffectKey === fx.key ? null : fx.key;
+    document.querySelectorAll(".effect-btn").forEach((el,i) => el.classList.toggle("active", EFFECTS_LIBRARY[i].key === activeEffectKey));
+  });
+  effectPalette.appendChild(b);
 });
 
 function cellSize(){
   return { w: board.clientWidth / boardData.cols, h: board.clientHeight / boardData.rows };
 }
 
-// Loads an image just to read its natural width/height (browser cache makes repeat loads instant).
 function loadImageSize(url){
   return new Promise((resolve) => {
     if(!url){ resolve(null); return; }
@@ -356,25 +469,77 @@ function loadImageSize(url){
   });
 }
 
+function clamp(v, max){ return Math.max(0, Math.min(max-1, v)); }
+
+function cellFromEvent(e){
+  const rect = board.getBoundingClientRect();
+  const { w, h } = cellSize();
+  const col = clamp(Math.floor((e.clientX - rect.left) / w), boardData.cols);
+  const row = clamp(Math.floor((e.clientY - rect.top) / h), boardData.rows);
+  return { col, row };
+}
+
+function computePath(x0,y0,x1,y1){
+  const path=[];
+  let x=x0, y=y0;
+  const dx = Math.sign(x1-x0), dy = Math.sign(y1-y0);
+  let guard = 0;
+  while((x!==x1 || y!==y1) && guard < 200){
+    if(x!==x1) x += dx;
+    if(y!==y1) y += dy;
+    path.push({col:x, row:y});
+    guard++;
+  }
+  return path;
+}
+
 function renderBoard(){
   board.style.setProperty("--cols", boardData.cols);
   board.style.setProperty("--rows", boardData.rows);
   // Grid lines are listed FIRST (top layer) so they stay visible drawn over the map image,
   // which is listed last (bottom layer) — the opposite order would hide the grid behind it.
-  const gridLines = "linear-gradient(rgba(255,255,255,.55) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.55) 1px, transparent 1px)";
+  // Kept subtle (low opacity) so it doesn't overpower the artwork.
+  const gridLines = "linear-gradient(rgba(255,255,255,.16) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.16) 1px, transparent 1px)";
   const plainGrid = "linear-gradient(var(--parchment-line) 1px, transparent 1px), linear-gradient(90deg, var(--parchment-line) 1px, transparent 1px)";
   board.style.backgroundImage = boardData.mapUrl
     ? gridLines + ", url('" + boardData.mapUrl.replace(/'/g,"") + "')"
     : plainGrid;
   const cellBg = "calc(100% / " + boardData.cols + ") calc(100% / " + boardData.rows + ")";
-  // "100% 100%" for the map layer: the board's aspect-ratio is kept in sync with the image's
-  // own proportions whenever the map or the grid density changes, so stretching to fill
-  // never crops or distorts it.
   board.style.backgroundSize = boardData.mapUrl ? cellBg + ", " + cellBg + ", 100% 100%" : cellBg;
 
-  board.querySelectorAll(".token").forEach(el => el.remove());
+  board.querySelectorAll(".token, .cell-effect, .path-cell").forEach(el => el.remove());
   const { w, h } = cellSize();
   const pad = Math.max(2, Math.min(w, h) * 0.1);
+
+  // Effects (behind tokens)
+  Object.keys(boardData.effects || {}).forEach(key => {
+    const [col,row] = key.split("_").map(Number);
+    const fx = EFFECTS_LIBRARY.find(f => f.key === boardData.effects[key].key) || boardData.effects[key];
+    const el = document.createElement("div");
+    el.className = "cell-effect";
+    el.style.left = (col*w) + "px";
+    el.style.top = (row*h) + "px";
+    el.style.width = w + "px";
+    el.style.height = h + "px";
+    el.style.background = (fx.color||"#888") + "55";
+    el.title = fx.label || "";
+    el.textContent = fx.icon || "•";
+    board.appendChild(el);
+  });
+
+  // Path preview (behind tokens, above effects)
+  if(pendingMove){
+    pendingMove.path.forEach((c, i) => {
+      const el = document.createElement("div");
+      el.className = "path-cell" + (i === pendingMove.path.length-1 ? " dest" : "");
+      el.style.left = (c.col*w) + "px";
+      el.style.top = (c.row*h) + "px";
+      el.style.width = w + "px";
+      el.style.height = h + "px";
+      board.appendChild(el);
+    });
+  }
+
   legend.innerHTML = "";
   Object.keys(boardData.tokens).forEach(id => {
     const t = boardData.tokens[id];
@@ -384,16 +549,35 @@ function renderBoard(){
     el.style.height = (h - pad*2) + "px";
     el.style.left = (t.x * w + pad) + "px";
     el.style.top = (t.y * h + pad) + "px";
-    el.style.background = t.color;
-    el.textContent = t.label;
+    if(t.image){
+      el.style.backgroundImage = "url('" + t.image.replace(/'/g,"") + "')";
+      el.style.border = "2px solid " + t.color;
+    }else{
+      el.style.background = t.color;
+      el.textContent = t.label;
+    }
+    el.title = t.label;
     el.dataset.id = id;
-    el.addEventListener("pointerdown", onPointerDown);
+    el.addEventListener("click", onTokenClick);
     board.appendChild(el);
 
     const li = document.createElement("span");
-    li.innerHTML = '<i style="background:' + t.color + '"></i>' + t.label;
+    const swatchStyle = t.image ? ("background-image:url('"+t.image.replace(/'/g,"")+"')") : ("background:"+t.color);
+    li.innerHTML = '<i style="' + swatchStyle + '"></i>' + t.label;
     legend.appendChild(li);
   });
+
+  if(pendingMove){
+    const dest = pendingMove.path[pendingMove.path.length-1] || {col:pendingMove.startCol,row:pendingMove.startRow};
+    const cells = pendingMove.path.length;
+    const meters = cells * METERS_PER_CELL;
+    moveBadge.textContent = (cells===0?"0 m":cells + (cells>1?" cases · ":" case · ") + meters.toString().replace(".", ",") + " m") + " — reclique pour valider";
+    moveBadge.style.left = (dest.col*w + w/2) + "px";
+    moveBadge.style.top = (dest.row*h) + "px";
+    moveBadge.hidden = false;
+  }else{
+    moveBadge.hidden = true;
+  }
 
   if(selectedTokenId && boardData.tokens[selectedTokenId]) renderSelection(selectedTokenId);
 }
@@ -401,65 +585,88 @@ function renderBoard(){
 function renderSelection(id){
   const t = boardData.tokens[id];
   if(!t){
-    selectionInfo.innerHTML = '<p class="hint">Clique ou déplace un pion pour voir ses informations ici.</p>';
+    selectionInfo.innerHTML = '<p class="hint">Clique un pion pour le sélectionner, puis une case pour prévisualiser son déplacement.</p>';
     return;
+  }
+  const swatch = t.image ? ("background-image:url('"+t.image.replace(/'/g,"")+"');background-size:cover;") : ("background:"+t.color+";");
+  let extra = "";
+  if(pendingMove && pendingMove.tokenId === id){
+    const cells = pendingMove.path.length;
+    extra = '<p class="hint" style="color:var(--gold-strong);">Déplacement prévisualisé : ' + cells + (cells>1?" cases (":" case (") + (cells*METERS_PER_CELL).toString().replace(".",",") + ' m). Reclique la case cible pour valider, ou choisis une autre case.</p>'+
+     '<button type="button" class="ghost btn-sm" id="btn-cancel-move" style="font-size:.68rem;padding:5px 10px;">Annuler le déplacement</button>';
   }
   selectionInfo.innerHTML =
     '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'+
-    '<span style="width:20px;height:20px;border-radius:50%;background:' + t.color + ';display:inline-block;flex:none;border:1px solid rgba(0,0,0,.2);"></span>'+
+    '<span style="width:22px;height:22px;border-radius:50%;display:inline-block;flex:none;border:1px solid rgba(0,0,0,.2);' + swatch + '"></span>'+
     '<strong style="font-family:\'Cinzel\',serif;">' + t.label + '</strong></div>'+
     '<p class="hint" style="margin-bottom:4px;">Case : colonne ' + (t.x+1) + ', ligne ' + (t.y+1) + '.</p>'+
+    extra +
     '<p class="hint">La fiche complète (PV, capacités...) s\'affichera ici une fois reliée à l\'outil de création de personnage.</p>';
+  const cancelBtn = document.getElementById("btn-cancel-move");
+  if(cancelBtn) cancelBtn.addEventListener("click", () => { clearPendingMove(); renderBoard(); });
 }
 
-const METERS_PER_CELL = 1.5;
-const moveBadge = document.getElementById("move-badge");
-
-function onPointerDown(e){
-  const id = e.currentTarget.dataset.id;
-  const t = boardData.tokens[id];
-  selectedTokenId = id;
-  document.querySelectorAll(".token").forEach(el => el.classList.toggle("selected", el.dataset.id === id));
-  renderSelection(id);
-  dragging = { id, el: e.currentTarget, startCol: t.x, startRow: t.y, col: t.x, row: t.y };
-  e.currentTarget.setPointerCapture(e.pointerId);
-  e.currentTarget.addEventListener("pointermove", onPointerMove);
-  e.currentTarget.addEventListener("pointerup", onPointerUp);
-}
-function onPointerMove(e){
-  if(!dragging) return;
-  const rect = board.getBoundingClientRect();
-  const { w, h } = cellSize();
-  let col = Math.round((e.clientX - rect.left - w/2) / w);
-  let row = Math.round((e.clientY - rect.top - h/2) / h);
-  col = Math.max(0, Math.min(boardData.cols-1, col));
-  row = Math.max(0, Math.min(boardData.rows-1, row));
-  const pad = Math.max(2, Math.min(w, h) * 0.1);
-  dragging.el.style.left = (col * w + pad) + "px";
-  dragging.el.style.top = (row * h + pad) + "px";
-  dragging.col = col; dragging.row = row;
-
-  const cells = Math.max(Math.abs(col - dragging.startCol), Math.abs(row - dragging.startRow));
-  const meters = cells * METERS_PER_CELL;
-  moveBadge.textContent = cells === 0 ? "0 m" : cells + (cells>1?" cases · ":" case · ") + meters.toString().replace(".", ",") + " m";
-  moveBadge.style.left = (col * w + pad + (w - pad*2)/2) + "px";
-  moveBadge.style.top = (row * h) + "px";
-  moveBadge.hidden = false;
-}
-async function onPointerUp(e){
-  if(!dragging) return;
-  const { id, col, row } = dragging;
-  dragging.el.removeEventListener("pointermove", onPointerMove);
-  dragging.el.removeEventListener("pointerup", onPointerUp);
-  dragging = null;
+function clearPendingMove(){
+  pendingMove = null;
   moveBadge.hidden = true;
-  if(col == null || row == null) return;
-  boardData.tokens[id].x = col;
-  boardData.tokens[id].y = row;
-  renderSelection(id);
-  try{
-    await updateDoc(boardRef, { ["tokens." + id + ".x"]: col, ["tokens." + id + ".y"]: row });
-  }catch(err){ console.error(err); }
+}
+
+function onTokenClick(e){
+  e.stopPropagation();
+  const id = e.currentTarget.dataset.id;
+  if(selectedTokenId === id){
+    clearPendingMove();
+    renderBoard();
+    return;
+  }
+  selectedTokenId = id;
+  clearPendingMove();
+  renderBoard();
+}
+
+board.addEventListener("click", async (e) => {
+  const { col, row } = cellFromEvent(e);
+  if(isMJ && interactionMode === "effect"){
+    await toggleEffect(col, row);
+    return;
+  }
+  if(!selectedTokenId || !boardData.tokens[selectedTokenId]) return;
+  const t = boardData.tokens[selectedTokenId];
+  if(pendingMove && pendingMove.tokenId === selectedTokenId && pendingMove.destCol === col && pendingMove.destRow === row){
+    await confirmMove();
+    return;
+  }
+  if(col === t.x && row === t.y){ clearPendingMove(); renderBoard(); return; }
+  const path = computePath(t.x, t.y, col, row);
+  pendingMove = { tokenId: selectedTokenId, startCol: t.x, startRow: t.y, path, destCol: col, destRow: row };
+  renderBoard();
+});
+
+async function confirmMove(){
+  if(!pendingMove) return;
+  const { tokenId, destCol, destRow } = pendingMove;
+  boardData.tokens[tokenId].x = destCol;
+  boardData.tokens[tokenId].y = destRow;
+  pendingMove = null;
+  renderBoard();
+  try{ await updateDoc(boardRef, { ["tokens." + tokenId + ".x"]: destCol, ["tokens." + tokenId + ".y"]: destRow }); }catch(e){ console.error(e); }
+}
+
+async function toggleEffect(col, row){
+  const key = col + "_" + row;
+  const fx = EFFECTS_LIBRARY.find(f => f.key === activeEffectKey);
+  const existing = boardData.effects && boardData.effects[key];
+  if(existing && (!fx || existing.key === fx.key)){
+    delete boardData.effects[key];
+    renderBoard();
+    try{ await updateDoc(boardRef, { ["effects." + key]: deleteField() }); }catch(e){ console.error(e); }
+    return;
+  }
+  if(!fx) return;
+  boardData.effects = boardData.effects || {};
+  boardData.effects[key] = { key: fx.key };
+  renderBoard();
+  try{ await updateDoc(boardRef, { ["effects." + key]: { key: fx.key } }); }catch(e){ console.error(e); }
 }
 
 async function applyMap(url, cols){
@@ -501,11 +708,12 @@ document.getElementById("btn-set-grid").addEventListener("click", async () => {
 });
 
 document.getElementById("btn-reset-map").addEventListener("click", async () => {
-  if(!confirm("Réinitialiser la carte tactique ? L'image de fond sera retirée et les pions remis à leur position de départ.")) return;
-  boardData = { tokens: JSON.parse(JSON.stringify(DEFAULT_TOKENS)), mapUrl:"", cols:12, rows:8 };
+  if(!confirm("Réinitialiser la carte tactique ? L'image de fond et les effets seront retirés, les pions remis à leur position de départ.")) return;
+  boardData = { tokens: JSON.parse(JSON.stringify(DEFAULT_TOKENS)), mapUrl:"", cols:12, rows:8, effects:{} };
   document.getElementById("f-map-url").value = "";
   document.getElementById("f-cols").value = 12;
   selectedTokenId = null;
+  clearPendingMove();
   renderBoard();
   renderSelection(null);
   try{ await setDoc(boardRef, boardData); }catch(e){ console.error(e); }
@@ -540,10 +748,12 @@ function renderMapLibrary(){
 document.getElementById("btn-save-token-template").addEventListener("click", async () => {
   const name = document.getElementById("f-token-name").value.trim();
   const color = document.getElementById("f-token-color").value;
+  const image = document.getElementById("f-token-image").value.trim();
   if(!name) return;
   try{
-    await addDoc(tokenTemplatesCol, { name, color, addedAt: Date.now() });
+    await addDoc(tokenTemplatesCol, { name, color, image, addedAt: Date.now() });
     document.getElementById("f-token-name").value = "";
+    document.getElementById("f-token-image").value = "";
   }catch(e){ console.error(e); }
 });
 
@@ -552,12 +762,13 @@ function renderTokenTemplates(){
   tokenTemplates.forEach(tpl => {
     const card = document.createElement("div");
     card.className = "token-template-card";
-    card.innerHTML = '<span class="swatch" style="background:' + tpl.color + '"></span>' +
+    const swatchStyle = tpl.image ? ("background-image:url('"+tpl.image.replace(/'/g,"")+"')") : ("background:"+tpl.color);
+    card.innerHTML = '<span class="swatch" style="' + swatchStyle + '"></span>' +
       '<span>' + tpl.name + '</span>' +
       '<button type="button" class="del" title="Supprimer ce modèle">✕</button>';
     card.addEventListener("click", async () => {
       const id = "tok" + Date.now();
-      boardData.tokens[id] = { label: tpl.name, color: tpl.color, x:0, y:0 };
+      boardData.tokens[id] = { label: tpl.name, color: tpl.color, image: tpl.image||"", x:0, y:0 };
       renderBoard();
       try{ await updateDoc(boardRef, { ["tokens." + id]: boardData.tokens[id] }); }catch(e){ console.error(e); }
     });
@@ -627,6 +838,63 @@ function renderOverlay(){
   overlay.hidden = true;
 }
 
+function renderInitiative(){
+  const label = document.getElementById("init-round-label");
+  const list = document.getElementById("init-list");
+  if(!initData.entries.length){
+    label.textContent = "";
+    list.innerHTML = '<p class="init-empty">Personne dans l\'ordre d\'initiative pour l\'instant.</p>';
+    return;
+  }
+  label.textContent = "Round " + (initData.round||1);
+  list.innerHTML = "";
+  initData.entries.forEach((entry, i) => {
+    const row = document.createElement("div");
+    row.className = "init-row" + (i === initData.currentIndex ? " current" : "");
+    row.innerHTML = '<span class="score">' + entry.score + '</span>' +
+      '<span style="flex:1;padding:0 10px;">' + entry.name + '</span>' +
+      (isMJ ? '<button type="button" class="del" title="Retirer">✕</button>' : '');
+    const delBtn = row.querySelector(".del");
+    if(delBtn) delBtn.addEventListener("click", async () => {
+      const entries = initData.entries.filter(e2 => e2.id !== entry.id);
+      let currentIndex = initData.currentIndex;
+      if(i < currentIndex) currentIndex--;
+      else if(i === currentIndex) currentIndex = Math.min(currentIndex, entries.length-1);
+      try{ await setDoc(initRef, { entries, currentIndex, round: initData.round||1 }); }catch(e){ console.error(e); }
+    });
+    list.appendChild(row);
+  });
+}
+
+document.getElementById("btn-add-init").addEventListener("click", async () => {
+  const name = document.getElementById("f-init-name").value.trim();
+  const score = Number(document.getElementById("f-init-score").value);
+  if(!name || isNaN(score)) return;
+  const entries = [...initData.entries, { id: "e"+Date.now(), name, score }].sort((a,b)=>b.score-a.score);
+  try{ await setDoc(initRef, { entries, currentIndex: initData.currentIndex, round: initData.round||1 }); }catch(e){ console.error(e); }
+  document.getElementById("f-init-name").value = "";
+  document.getElementById("f-init-score").value = "";
+});
+
+document.getElementById("btn-init-next").addEventListener("click", async () => {
+  if(!initData.entries.length) return;
+  let currentIndex = initData.currentIndex + 1;
+  let round = initData.round || 1;
+  if(currentIndex >= initData.entries.length){ currentIndex = 0; round++; }
+  try{ await setDoc(initRef, { entries: initData.entries, currentIndex, round }); }catch(e){ console.error(e); }
+});
+document.getElementById("btn-init-prev").addEventListener("click", async () => {
+  if(!initData.entries.length) return;
+  let currentIndex = initData.currentIndex - 1;
+  let round = initData.round || 1;
+  if(currentIndex < 0){ currentIndex = initData.entries.length-1; round = Math.max(1, round-1); }
+  try{ await setDoc(initRef, { entries: initData.entries, currentIndex, round }); }catch(e){ console.error(e); }
+});
+document.getElementById("btn-init-reset").addEventListener("click", async () => {
+  if(!confirm("Réinitialiser complètement l'ordre d'initiative ?")) return;
+  try{ await setDoc(initRef, { entries: [], currentIndex: -1, round: 1 }); }catch(e){ console.error(e); }
+});
+
 async function init(){
   renderBoard();
   window.addEventListener("resize", renderBoard);
@@ -652,8 +920,13 @@ async function init(){
     boardData.mapUrl = d.mapUrl || "";
     boardData.cols = d.cols || 12;
     boardData.rows = d.rows || 8;
+    boardData.effects = d.effects || {};
+    if(pendingMove){
+      const t = boardData.tokens[pendingMove.tokenId];
+      if(!t || t.x !== pendingMove.startCol || t.y !== pendingMove.startRow) clearPendingMove();
+    }
     if(document.getElementById("f-cols")) document.getElementById("f-cols").value = boardData.cols;
-    if(document.getElementById("f-map-url") && !document.activeElement.isSameNode(document.getElementById("f-map-url"))){
+    if(document.getElementById("f-map-url") && document.activeElement.id !== "f-map-url"){
       document.getElementById("f-map-url").value = boardData.mapUrl;
     }
     renderBoard();
@@ -668,6 +941,11 @@ async function init(){
     sceneData = snap.exists() ? snap.data() : { active:"map", activeMoodId:null };
     renderOverlay();
     renderMoods();
+  });
+
+  onSnapshot(initRef, (snap) => {
+    initData = snap.exists() ? snap.data() : { entries: [], currentIndex: -1, round: 1 };
+    renderInitiative();
   });
 
   onSnapshot(moodsCol, (snap) => {
