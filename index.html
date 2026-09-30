@@ -390,24 +390,37 @@ button:disabled{opacity:.5;cursor:not-allowed;}
   <main class="center-panel">
     <div class="panel" id="panel-map">
       <div id="mj-map-controls" hidden>
-        <div class="field-row">
-          <input type="text" id="f-map-url" placeholder="URL de l'image de fond (carte)" style="min-width:240px;flex:1;">
-          <input type="text" id="f-map-name" placeholder="Nom (ex. Auberge du Corbeau)" style="min-width:140px;">
-          <button id="btn-set-map">Appliquer et enregistrer</button>
-        </div>
-        <div class="field-row">
-          <label class="file-pick-btn">Choisir un fichier sur le PC<input type="file" id="f-map-file" accept="image/*" hidden></label>
-          <span class="hint" style="margin:0;">ou colle une URL ci-dessus.</span>
-        </div>
-        <div class="field-row">
-          <label style="font-size:.8rem;">Colonnes <input type="number" id="f-cols" min="4" max="50" value="30" style="width:64px;"></label>
-          <button class="ghost" id="btn-set-grid">Appliquer la grille</button>
-          <button class="ghost" id="btn-reset-map">Réinitialiser la carte</button>
-        </div>
-        <p class="hint" style="margin:0 0 4px;">Le nombre de lignes s'ajuste automatiquement à la forme de l'image pour qu'elle ne soit jamais déformée ou coupée.</p>
+        <h3 class="sub" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <span>Préparation</span>
+          <button type="button" class="ghost btn-sm" id="btn-toggle-prep" style="text-transform:none;letter-spacing:normal;font-family:inherit;">▸ Afficher</button>
+        </h3>
+        <div id="prep-wrap" hidden>
+          <h3 class="sub" style="margin-top:0;">Bibliothèque de cartes</h3>
+          <div class="field-row">
+            <input type="text" id="f-map-url" placeholder="URL de l'image de fond (carte)" style="min-width:240px;flex:1;">
+            <input type="text" id="f-map-name" placeholder="Nom (ex. Auberge du Corbeau)" style="min-width:140px;">
+            <button id="btn-set-map">Appliquer et enregistrer</button>
+          </div>
+          <div class="field-row">
+            <label class="file-pick-btn">Choisir un fichier sur le PC<input type="file" id="f-map-file" accept="image/*" hidden></label>
+            <span class="hint" style="margin:0;">ou colle une URL ci-dessus.</span>
+          </div>
+          <div class="field-row">
+            <label style="font-size:.8rem;">Colonnes <input type="number" id="f-cols" min="4" max="50" value="30" style="width:64px;"></label>
+            <button class="ghost" id="btn-set-grid">Appliquer la grille</button>
+            <button class="ghost" id="btn-reset-map">Réinitialiser la carte</button>
+          </div>
+          <p class="hint" style="margin:0 0 4px;">Le nombre de lignes s'ajuste automatiquement à la forme de l'image pour qu'elle ne soit jamais déformée ou coupée.</p>
+          <div id="map-list"><p class="mood-empty">Aucune carte enregistrée pour l'instant.</p></div>
 
-        <h3 class="sub">Bibliothèque de cartes</h3>
-        <div id="map-list"><p class="mood-empty">Aucune carte enregistrée pour l'instant.</p></div>
+          <h3 class="sub">Scènes préparées</h3>
+          <p class="hint" style="margin:0 0 8px;">Une scène capture d'un coup la carte, les pions posés, le brouillard, les effets et l'initiative en cours — prépare-la à l'avance, ou mets un combat en pause pour le reprendre plus tard exactement où tu l'as laissé.</p>
+          <div class="field-row">
+            <input type="text" id="f-scene-name" placeholder="Nom de la scène (ex. Embuscade de la forêt)" style="min-width:220px;flex:1;">
+            <button id="btn-save-scene">Enregistrer la scène actuelle</button>
+          </div>
+          <div id="scene-list"><p class="mood-empty">Aucune scène enregistrée pour l'instant.</p></div>
+        </div>
 
         <h3 class="sub" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
           <span>Personnages (créés dans l'outil de personnage)</span>
@@ -415,14 +428,6 @@ button:disabled{opacity:.5;cursor:not-allowed;}
         </h3>
         <p class="hint" style="margin:0 0 8px;">Ces pions sont reliés à la vraie fiche du joueur (ou du PNJ) — portrait et PV inclus, rien à réimporter.</p>
         <div id="character-library-list" class="char-library-grid"></div>
-
-        <h3 class="sub">Scènes préparées</h3>
-        <p class="hint" style="margin:0 0 8px;">Une scène capture d'un coup la carte, les pions posés, le brouillard, les effets et l'initiative en cours — prépare-la à l'avance, ou mets un combat en pause pour le reprendre plus tard exactement où tu l'as laissé.</p>
-        <div class="field-row">
-          <input type="text" id="f-scene-name" placeholder="Nom de la scène (ex. Embuscade de la forêt)" style="min-width:220px;flex:1;">
-          <button id="btn-save-scene">Enregistrer la scène actuelle</button>
-        </div>
-        <div id="scene-list"><p class="mood-empty">Aucune scène enregistrée pour l'instant.</p></div>
 
         <h3 class="sub">Mode d'interaction</h3>
         <div class="mode-row">
@@ -488,6 +493,22 @@ button:disabled{opacity:.5;cursor:not-allowed;}
     </div>
     <p class="hint">Coche les PNJ que les joueurs peuvent voir apparaître comme pions posables cette session — les autres restent rangés dans le bestiaire de l'outil personnage.</p>
     <div id="npc-picker-list"></div>
+  </div>
+</div>
+
+<div id="mj-password-modal" class="simple-modal" hidden>
+  <div class="simple-modal-backdrop" id="mj-password-backdrop"></div>
+  <div class="simple-modal-panel" style="max-width:360px;">
+    <div class="simple-modal-head">
+      <h2>Accès MJ</h2>
+      <button type="button" class="ghost btn-sm" id="mj-password-close">Annuler</button>
+    </div>
+    <p class="hint">Entre le mot de passe du MJ pour activer ce rôle.</p>
+    <div class="field-row">
+      <input type="password" id="f-mj-password" placeholder="Mot de passe" style="flex:1;">
+    </div>
+    <p class="hint" id="mj-password-error" style="color:var(--warn);margin:6px 0 0;display:none;">Mot de passe incorrect.</p>
+    <button type="button" id="btn-mj-password-submit" style="margin-top:10px;">Valider</button>
   </div>
 </div>
 
@@ -747,11 +768,49 @@ try{ isMJ = localStorage.getItem("valbois-role-mj") === "1"; }catch(e){}
 chkMJ.checked = isMJ;
 applyRole();
 
+// A password stops a player from just ticking this box out of curiosity — it's a
+// speed bump, not real security (this file's source, and the password in it, is as
+// visible as the rest of the page). Only turning the role ON is gated; turning it
+// off needs nothing, and a role already restored from localStorage on page load
+// never re-prompts (the "change" event only fires on an actual click, not on the
+// chkMJ.checked = isMJ line above).
+const MJ_PASSWORD = "654321";
 chkMJ.addEventListener("change", () => {
-  isMJ = chkMJ.checked;
-  try{ localStorage.setItem("valbois-role-mj", isMJ ? "1":"0"); }catch(e){}
-  applyRole();
+  if(chkMJ.checked){
+    chkMJ.checked = false;
+    openMjPasswordModal();
+  }else{
+    isMJ = false;
+    try{ localStorage.setItem("valbois-role-mj", "0"); }catch(e){}
+    applyRole();
+  }
 });
+function openMjPasswordModal(){
+  document.getElementById("mj-password-error").style.display = "none";
+  const input = document.getElementById("f-mj-password");
+  input.value = "";
+  document.getElementById("mj-password-modal").hidden = false;
+  input.focus();
+}
+function closeMjPasswordModal(){
+  document.getElementById("mj-password-modal").hidden = true;
+}
+function submitMjPassword(){
+  const val = document.getElementById("f-mj-password").value;
+  if(val === MJ_PASSWORD){
+    isMJ = true;
+    chkMJ.checked = true;
+    try{ localStorage.setItem("valbois-role-mj", "1"); }catch(e){}
+    applyRole();
+    closeMjPasswordModal();
+  }else{
+    document.getElementById("mj-password-error").style.display = "block";
+  }
+}
+document.getElementById("mj-password-close").addEventListener("click", closeMjPasswordModal);
+document.getElementById("mj-password-backdrop").addEventListener("click", closeMjPasswordModal);
+document.getElementById("btn-mj-password-submit").addEventListener("click", submitMjPassword);
+document.getElementById("f-mj-password").addEventListener("keydown", (e) => { if(e.key === "Enter") submitMjPassword(); });
 
 function applyRole(){
   mjMapControls.hidden = !isMJ;
@@ -824,17 +883,31 @@ function getActiveMapUrl(){
 // twenty tiny {label,color,templateId,x,y} entries instead of twenty copies of a
 // 20-60 KB image — which is what was silently blocking new tokens once the shared
 // document crept past 1 MiB.
+function characterPortraitList(ch){
+  const list = [ch.portrait, ...(ch.portraitVariants || [])].filter(Boolean);
+  return list;
+}
+
 function resolveTokenImage(t){
   if(t.characterId){
     const ch = characters.find(x => x.id === t.characterId);
-    if(ch) return ch.portrait || "";
+    if(ch){
+      const list = characterPortraitList(ch);
+      if(list.length){
+        const idx = (typeof t.portraitIndex === "number" && t.portraitIndex < list.length) ? t.portraitIndex : 0;
+        return list[idx] || "";
+      }
+    }
   }
   return t.image || "";
 }
 
 async function placeCharacterAsToken(ch, pos){
   const id = "tok" + Date.now();
-  boardData.tokens[id] = { label: ch.name || "Personnage", color: "#7c5e20", characterId: ch.id, x: pos.x, y: pos.y };
+  const token = { label: ch.name || "Personnage", color: "#7c5e20", characterId: ch.id, x: pos.x, y: pos.y };
+  const list = characterPortraitList(ch);
+  if(list.length > 1) token.portraitIndex = Math.floor(Math.random() * list.length);
+  boardData.tokens[id] = token;
   renderBoard();
   await saveBoard({ ["tokens." + id]: boardData.tokens[id] });
   await joinInitiativeIfVisible(id);
@@ -1778,6 +1851,20 @@ document.getElementById("btn-save-scene").addEventListener("click", async () => 
   if(!name){ alert("Donne un nom à cette scène avant de l'enregistrer."); return; }
   await saveCurrentScene(name);
   nameEl.value = "";
+});
+
+// "Préparation" (map upload + bibliothèque de cartes + scènes préparées) is setup
+// work, only needed occasionally — one shared toggle collapses all of it so it
+// doesn't clutter the MJ panel mid-session, unlike "Personnages" (quick to add a
+// pion) and "Mode d'interaction" (used constantly), which stay visible. Renders from
+// Firestore only ever touch the #map-list/#scene-list divs inside this wrapper, never
+// the wrapper itself, so the open/closed state survives every snapshot update.
+const btnTogglePrep = document.getElementById("btn-toggle-prep");
+const prepWrap = document.getElementById("prep-wrap");
+btnTogglePrep.addEventListener("click", () => {
+  const willShow = prepWrap.hidden;
+  prepWrap.hidden = !willShow;
+  btnTogglePrep.textContent = willShow ? "▾ Masquer" : "▸ Afficher";
 });
 
 function renderCharacterLibrary(){
