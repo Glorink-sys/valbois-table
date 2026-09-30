@@ -86,11 +86,34 @@ button{font-family:inherit;}
 .lede{color:var(--ink-soft);max-width:66ch;margin:0 0 22px;font-size:1.02rem;}
 
 .info-strip{
-  display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
-  gap:14px;background:var(--surface);border:1px solid var(--line-soft);
-  border-radius:10px;padding:16px 18px;margin-bottom:22px;
+  display:flex;align-items:flex-end;flex-wrap:wrap;
+  gap:12px;background:var(--surface);border:1px solid var(--line-soft);
+  border-radius:10px;padding:8px 14px;margin-bottom:16px;
   box-shadow:0 1px 0 var(--line-soft) inset;
 }
+.info-strip .field{flex:0 1 260px;}
+.info-strip input{padding:5px 9px;font-size:.9rem;}
+.char-actions-row{display:flex;justify-content:flex-end;gap:8px;margin-bottom:10px;}
+.mj-corner{
+  position:fixed;top:10px;right:10px;z-index:40;display:flex;align-items:center;gap:8px;
+  background:var(--surface);border:1px solid var(--line-soft);border-radius:999px;padding:5px 10px;
+  box-shadow:0 2px 8px rgba(0,0,0,.15);
+}
+#btn-delete-char{padding:9px 11px;color:var(--ink-soft);}
+#btn-delete-char:hover{color:#a33;border-color:#a33;}
+.roster-card{display:flex;align-items:center;gap:12px;padding:10px;border:1px solid var(--line-soft);border-radius:8px;background:var(--bg-alt);cursor:pointer;}
+.roster-card:hover{border-color:var(--gold);}
+.roster-card .portrait{width:44px;height:44px;border-radius:50%;background-color:var(--surface-2);background-size:cover;background-position:center;flex:none;border:1px solid var(--line-soft);}
+.roster-card .rinfo{flex:1;min-width:0;}
+.roster-card .rname{font-family:'Cinzel',serif;font-size:.9rem;color:var(--gold-strong);}
+.roster-card .rmeta{font-size:.78rem;color:var(--ink-soft);margin-top:2px;}
+.roster-card.new{justify-content:center;border-style:dashed;color:var(--gold-strong);font-family:'Cinzel',serif;text-transform:uppercase;font-size:.78rem;letter-spacing:.04em;}
+.npc-form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:10px;margin-bottom:14px;}
+.npc-row{display:grid;grid-template-columns:1.4fr 1.6fr .7fr 1.4fr auto;gap:6px;align-items:center;margin-bottom:6px;}
+.npc-row input{padding:5px 8px;font-size:.82rem;}
+.npc-row .del{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:.8rem;padding:4px;}
+.npc-row .del:hover{color:#a33;}
+.npc-section-title{font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--gold-strong);margin:16px 0 6px;}
 .field{display:flex;flex-direction:column;gap:5px;min-width:0;}
 .field label{font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:.09em;text-transform:uppercase;color:var(--gold-strong);}
 input,select,textarea{
@@ -109,16 +132,6 @@ input[readonly]{opacity:.7;cursor:not-allowed;}
 }
 .app.is-validated .actions-row.creation-actions{display:none;}
 .app.is-validated #tabpanel{padding:14px 18px 16px;}
-
-.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;scrollbar-width:thin;}
-.tab-btn{
-  flex:none;font-family:'Cinzel',serif;font-size:.74rem;letter-spacing:.05em;text-transform:uppercase;
-  background:var(--surface-2);color:var(--ink-soft);border:1px solid var(--line-soft);
-  border-radius:999px;padding:9px 16px;cursor:pointer;white-space:nowrap;transition:background .15s,color .15s;
-}
-.tab-btn .n{opacity:.65;margin-right:6px;}
-.tab-btn.active{background:var(--arcane);color:var(--surface);border-color:var(--arcane-strong);}
-.tab-btn:hover:not(.active){background:var(--bg-alt);}
 
 .panel-card{
   background:var(--surface);border:1px solid var(--line-soft);border-radius:12px;
@@ -217,6 +230,7 @@ select:disabled{opacity:.5;cursor:not-allowed;}
 .kit-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:16px;}
 .kit-cols h3{font-size:.88rem;margin:0 0 6px;color:var(--gold-strong);}
 .kit-cols ul{margin:0;padding-left:18px;font-size:.9rem;color:var(--ink-soft);}
+.kit-cols ul.kit-list{padding-left:0;}
 
 .price-wrap{overflow-x:auto;margin:8px 0 20px;border-radius:8px;}
 table.price-table{border-collapse:collapse;width:100%;font-size:.8rem;min-width:460px;}
@@ -373,22 +387,52 @@ table.price-table td.mono{white-space:nowrap;}
   </div>
   <p class="lede">Vous n'êtes pas des héros venus sauver qui que ce soit — seulement des voyageurs.</p>
 
+  <div class="char-actions-row">
+    <button class="btn btn-ghost" id="btn-npc-manager" hidden>PNJ</button>
+    <button class="btn btn-ghost" id="btn-roster">Mes personnages</button>
+  </div>
+
+  <div class="mj-corner">
+    <label style="display:flex;align-items:center;gap:5px;font-size:.72rem;color:var(--ink-soft);white-space:nowrap;">
+      <input type="checkbox" id="chk-mj-perso">MJ
+    </label>
+  </div>
+
   <div class="info-strip">
     <div class="field">
       <label for="f-name">Nom du personnage</label>
       <input id="f-name" type="text" placeholder="Ex. Loran Vey">
     </div>
+    <div class="field" style="flex:0 1 160px;">
+      <label for="f-player">Joueur</label>
+      <input id="f-player" type="text" placeholder="Ton prénom">
+    </div>
+    <div class="field" style="flex:none;">
+      <label>Portrait</label>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <div id="portrait-preview" style="width:38px;height:38px;border-radius:50%;background-color:var(--bg-alt);border:1px solid var(--line-soft);background-size:cover;background-position:center;flex:none;"></div>
+        <label class="btn btn-ghost" style="cursor:pointer;margin:0;">Choisir<input type="file" id="f-portrait-file" accept="image/*" hidden></label>
+        <input type="url" id="f-portrait-url" placeholder="ou URL d'image (GitHub, Imgur...)" style="min-width:170px;flex:1;">
+      </div>
+    </div>
+    <button class="btn btn-ghost" id="btn-delete-char" title="Supprimer ce personnage" aria-label="Supprimer ce personnage" style="margin-left:auto;">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 7h16"/>
+        <path d="M9 7V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V7"/>
+        <path d="M6 7l1 12.5A1.5 1.5 0 0 0 8.5 21h7a1.5 1.5 0 0 0 1.5-1.5L18 7"/>
+        <path d="M10 11v6M14 11v6"/>
+      </svg>
+    </button>
   </div>
 
   <div class="app">
     <div class="main">
-      <nav class="tabs" id="tabs"></nav>
       <div class="panel-card" id="tabpanel"></div>
-      <div class="actions-row creation-actions">
+      <div class="actions-row creation-actions" style="justify-content:space-between;">
+        <button class="btn btn-ghost" id="btn-back">◀ Retour</button>
         <button class="btn btn-arcane" id="btn-validate">Valider ce personnage</button>
-        <button class="btn btn-ghost" id="btn-reset">Nouveau personnage</button>
-        <span class="storage-note" style="text-align:left;margin-top:0;align-self:center;">Sauvegarde automatique locale — rien n'est envoyé ailleurs.</span>
       </div>
+      <p class="storage-note" style="text-align:left;">Sauvegarde automatique locale, et synchronisée avec la table de jeu.</p>
     </div>
     <aside class="sheet" id="sheet"></aside>
   </div>
@@ -431,10 +475,70 @@ table.price-table td.mono{white-space:nowrap;}
     <div id="grimoire-list" class="lexicon-list"></div>
   </div>
 </div>
+<div id="roster-modal" class="lexicon-modal" hidden>
+  <div class="lexicon-backdrop" id="roster-backdrop"></div>
+  <div class="lexicon-panel" role="dialog" aria-label="Mes personnages">
+    <div class="lexicon-head">
+      <h2 class="font-display">Personnages de la table</h2>
+      <button class="btn btn-ghost btn-sm" id="roster-close" type="button">Fermer</button>
+    </div>
+    <div id="roster-list" class="lexicon-list"><p class="sheet-text">Chargement...</p></div>
+  </div>
+</div>
+<div id="readonly-modal" class="lexicon-modal" hidden>
+  <div class="lexicon-backdrop" id="readonly-backdrop"></div>
+  <div class="lexicon-panel" role="dialog" aria-label="Fiche en lecture seule" style="max-width:520px;">
+    <div class="lexicon-head">
+      <h2 class="font-display">Fiche (lecture seule)</h2>
+      <button class="btn btn-ghost btn-sm" id="readonly-close" type="button">Fermer</button>
+    </div>
+    <div id="readonly-body"></div>
+  </div>
+</div>
 
-<script>
+<div id="npc-modal" class="lexicon-modal" hidden>
+  <div class="lexicon-backdrop" id="npc-backdrop"></div>
+  <div class="lexicon-panel" role="dialog" aria-label="PNJ" style="max-width:720px;">
+    <div class="lexicon-head">
+      <h2 class="font-display" id="npc-modal-title">PNJ</h2>
+      <button class="btn btn-ghost btn-sm" id="npc-close" type="button">Fermer</button>
+    </div>
+    <div id="npc-modal-body" class="lexicon-list"></div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, deleteDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+// Same Firebase project as la table de jeu (valbois-table) — this is step 1 of
+// linking the two tools: each validated character mirrors itself into a shared
+// "characters" collection so the game table can later pull its portrait and sheet
+// directly instead of re-uploading an image as a separate token.
+const firebaseConfig = {
+  apiKey: "AIzaSyB54-X-XjMIsNm84d_RnAMkDeb5JzZw0pc",
+  authDomain: "valbois-table.firebaseapp.com",
+  projectId: "valbois-table",
+  storageBucket: "valbois-table.firebasestorage.app",
+  messagingSenderId: "684759038117",
+  appId: "1:684759038117:web:8a67195cb2000a0101754c"
+};
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getFirestore(firebaseApp);
+const charactersCol = collection(db, "characters");
+
 (function(){
 "use strict";
+
+let isMJPerso=false;
+try{ isMJPerso=localStorage.getItem("valbois-perso-role-mj")==="1"; }catch(e){}
+document.getElementById("chk-mj-perso").checked=isMJPerso;
+document.getElementById("btn-npc-manager").hidden=!isMJPerso;
+document.getElementById("chk-mj-perso").addEventListener("change",(e)=>{
+  isMJPerso=e.target.checked;
+  try{ localStorage.setItem("valbois-perso-role-mj",isMJPerso?"1":"0"); }catch(err){}
+  document.getElementById("btn-npc-manager").hidden=!isMJPerso;
+});
 
 const MAX_LEVEL=6;
 const ABILS=["FOR","DEX","CON","INT","SAG","CHA"];
@@ -928,10 +1032,10 @@ const FEATS={
  observateur:{name:"Observateur",effect:"+1 Intelligence ou Sagesse (au choix) ; vous pouvez lire sur les lèvres si vous voyez la bouche d'une créature parlant une langue que vous comprenez ; votre Perception passive et votre Investigation passive augmentent de +5.",abilityChoice:["INT","SAG"]}
 };
 const BACKGROUNDS={
- erudit:{label:"Érudit",skills:["Arcanes","Investigation"],equip:["Un carnet de recherche personnel, couvert de notes de plusieurs mains","Une loupe de lecture montée sur manche d'os","Un sceau de cire personnel, jamais utilisé","5 po"],feature:"Mémoire des textes : partout où subsistent des archives, même poussiéreuses ou incomplètes, vous savez où chercher — et souvent, ce que vous y trouvez vaut le détour."},
- noble:{label:"Noble",skills:["Histoire","Persuasion"],equip:["Une chevalière frappée d'un blason familial","Une bourse vide, mais de belle facture","Une tenue élégante, un peu fripée par la route","Une lettre de recommandation scellée","5 po"],feature:"Un nom qui ouvre les portes : même loin de vos terres, votre naissance vous vaut audience et égards auprès de qui compte — pour peu que vous sachiez encore vous en servir."},
- soldat:{label:"Soldat",skills:["Athlétisme","Intimidation"],equip:["Une pierre à aiguiser usée jusqu'à la moitié","Une liste de noms, à moitié raturée","Une gourde militaire cabossée","Un vieux trophée pris à l'ennemi","5 po"],feature:"Frères et sœurs d'armes : où que le hasard les mène, d'anciens soldats et mercenaires reconnaissent l'un des leurs — et cela compte encore, parfois plus que l'or."},
- fermier:{label:"Fermier(ère)",skills:["Survie","Intuition"],equip:["Un petit couteau à greffer, toujours affûté","Une pièce de monnaie étrangère, ramassée en chemin","Un bâton de marche entaillé d'un repère à chaque étape du voyage","Une gourde en peau tannée","5 po"],feature:"De la terre à la route : vous savez lire un ciel qui tourne, une bête qui s'agite ou une récolte qui s'annonce mauvaise — des réflexes qui ne vous ont pas quitté(e), même loin des champs."}
+ erudit:{label:"Érudit",kitLabel:"Paquetage de l'érudit",skills:["Arcanes","Investigation"],equip:["Un carnet de recherche personnel, couvert de notes de plusieurs mains","Une loupe de lecture montée sur manche d'os","Un sceau de cire personnel, jamais utilisé","5 po"],feature:"Mémoire des textes : partout où subsistent des archives, même poussiéreuses ou incomplètes, vous savez où chercher — et souvent, ce que vous y trouvez vaut le détour."},
+ noble:{label:"Noble",kitLabel:"Paquetage du noble",skills:["Histoire","Persuasion"],equip:["Une chevalière frappée d'un blason familial","Une bourse vide, mais de belle facture","Une tenue élégante, un peu fripée par la route","Une lettre de recommandation scellée","5 po"],feature:"Un nom qui ouvre les portes : même loin de vos terres, votre naissance vous vaut audience et égards auprès de qui compte — pour peu que vous sachiez encore vous en servir."},
+ soldat:{label:"Ancien Mercenaire",kitLabel:"Paquetage de l'ancien mercenaire",skills:["Athlétisme","Intimidation"],equip:["Une pierre à aiguiser usée jusqu'à la moitié","Une liste de noms, à moitié raturée","Une gourde militaire cabossée","Un vieux trophée pris à l'ennemi","5 po"],feature:"Frères et sœurs d'armes : où que le hasard les mène, d'anciens soldats et mercenaires reconnaissent l'un des leurs — et cela compte encore, parfois plus que l'or."},
+ fermier:{label:"Fermier(ère)",kitLabel:"Paquetage du fermier ou de la fermière",skills:["Survie","Intuition"],equip:["Un petit couteau à greffer, toujours affûté","Une pièce de monnaie étrangère, ramassée en chemin","Un bâton de marche entaillé d'un repère à chaque étape du voyage","Une gourde en peau tannée","5 po"],feature:"De la terre à la route : vous savez lire un ciel qui tourne, une bête qui s'agite ou une récolte qui s'annonce mauvaise — des réflexes qui ne vous ont pas quitté(e), même loin des champs."}
 };
 
 const WEAPONS_SIMPLE=[
@@ -970,6 +1074,29 @@ const GEAR=[
  ["Craie (bâton)","1 pc"],["Miroir en acier poli","5 po"],["Kit d'escalade","25 po"],["Feuille de parchemin","1 pa"],
  ["Sac de billes de métal","1 po"]
 ];
+
+// The two GEAR rows above priced as a range ("5 à 15 po"...) have no single amount to
+// deduct — this gives them a dropdown of concrete options with real prices instead,
+// so they can actually be bought like everything else.
+const GEAR_CHOICES={
+ "Outils d'artisan (au choix)":[
+  {name:"Outils de cordonnier",price:5},
+  {name:"Outils de tanneur",price:5},
+  {name:"Outils de charpentier",price:8},
+  {name:"Outils de calligraphe",price:10},
+  {name:"Outils de potier",price:10},
+  {name:"Outils de peintre",price:10},
+  {name:"Outils de maçon",price:10},
+  {name:"Outils de cartographe",price:15}
+ ],
+ "Instrument de musique":[
+  {name:"Tambour",price:6},
+  {name:"Flûte de Pan",price:12},
+  {name:"Cornemuse",price:30},
+  {name:"Lyre",price:30},
+  {name:"Viole",price:30}
+ ]
+};
 
 const ARMOR_DATA=[
  {key:"aucune",label:"Aucune (défense sans armure)",base:10,dexCap:null,none:true},
@@ -1065,13 +1192,21 @@ const SPELLS_DB=[
 ];
 
 const TABS=[
- {k:"classe",label:"Classe"},
  {k:"race",label:"Race"},
+ {k:"classe",label:"Classe"},
  {k:"carac",label:"Caractéristiques"},
  {k:"historique",label:"Historique"},
  {k:"competences",label:"Compétences"},
  {k:"equip",label:"Équipement"}
 ];
+const STEP_VALIDATE_LABEL={
+ race:"Valider la race",
+ classe:"Valider la classe",
+ carac:"Valider les caractéristiques",
+ historique:"Valider l'historique",
+ competences:"Valider les compétences",
+ equip:"Valider ce personnage"
+};
 
 const PB_COST={8:0,9:1,10:2,11:3,12:4,13:5,14:7,15:9};
 
@@ -1152,7 +1287,10 @@ function esc(s){return (s||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":
 
 function defaultState(){
   return {
-    activeTab:"classe",
+    docId:null,
+    playerName:"",
+    portrait:"",
+    activeTab:"race",
     name:"Loran Vey",
     raceKey:"demiElfe",
     raceChoiceAbilities:["DEX","INT"],
@@ -1166,7 +1304,9 @@ function defaultState(){
     weapon1:"Épée courte",
     weapon2:"",
     weaponRanged:"Arc court",
-    equipNotes:"Une carte de Valbois griffonnée à la main.",
+    equipNotes:"",
+    gearBought:{},
+    bgGoldApplied:0,
     spellsKnown:[],
     spellsPrepared:[],
     traitChoices:{},
@@ -1186,6 +1326,7 @@ function defaultState(){
     activeConditions:[],
     asiBonuses:{FOR:0,DEX:0,CON:0,INT:0,SAG:0,CHA:0},
     asiApplied:{},
+    asiChoices:{},
     featsChosen:{},
     concentratingOn:null,
     grantedLevels:[],
@@ -1199,12 +1340,155 @@ let state=defaultState();
 function loadLocal(){
   try{
     const raw=localStorage.getItem("valbois-forge-char");
-    if(raw){const parsed=JSON.parse(raw);return Object.assign(defaultState(),parsed);}
+    if(raw){
+      const parsed=JSON.parse(raw);
+      // Whatever this browser already had locally before ownership tracking existed
+      // counts as "mine" too — otherwise every existing player would suddenly see
+      // their own character open read-only after this update.
+      if(parsed.docId) addOwnedDocId(parsed.docId);
+      return Object.assign(defaultState(),parsed);
+    }
   }catch(e){}
   return null;
 }
 function saveLocal(){
   try{localStorage.setItem("valbois-forge-char",JSON.stringify(state));}catch(e){}
+  scheduleSync();
+}
+
+// Which characters THIS browser is allowed to edit — a lightweight, no-login stand-in
+// for "who am I". Only docIds actually created (or already active) on this browser
+// land here; browsing someone else's card in the roster, or a shared link to their
+// sheet, must never add to this list, or the whole point of it is lost.
+function getOwnedDocIds(){
+  try{ return JSON.parse(localStorage.getItem("valbois-owned-docids")||"[]"); }catch(e){ return []; }
+}
+function isOwnedDocId(id){ return !!id && getOwnedDocIds().includes(id); }
+function addOwnedDocId(id){
+  if(!id) return;
+  const ids=getOwnedDocIds();
+  if(!ids.includes(id)){
+    ids.push(id);
+    try{ localStorage.setItem("valbois-owned-docids",JSON.stringify(ids)); }catch(e){}
+  }
+}
+
+// --- Sync with la table de jeu (shared Firebase project) ---
+// Debounced so typing in the name/notes fields doesn't fire a write per keystroke;
+// fires ~800ms after the last change, same trigger point as the local save.
+let syncTimer=null;
+function scheduleSync(){
+  clearTimeout(syncTimer);
+  syncTimer=setTimeout(syncToFirestore,800);
+}
+async function syncToFirestore(){
+  // A brand-new/just-deleted character has no name yet — syncing it anyway cluttered
+  // "Mes personnages" with empty drafts on every "Nouveau personnage" click, which is
+  // exactly what made deleting a character look like it wasn't doing anything: the
+  // roster kept showing another nameless entry right after. Wait for an actual name.
+  if(!(state.name||"").trim())return;
+  if(!state.docId){
+    state.docId=doc(charactersCol).id;
+    addOwnedDocId(state.docId);
+    try{localStorage.setItem("valbois-forge-char",JSON.stringify(state));}catch(e){}
+  }
+  try{
+    // Derived combat stats (HP max, AC, vitesse, attaques équipées, jets de
+    // sauvegarde, compétences...) depend on D&D rules that only this tool
+    // implements — compute them once here so the game table can display them
+    // without re-implementing character-sheet math.
+    const derived=computeDerived();
+    const attacks=equippedWeaponPairs().map(([w,tag])=>({name:w.name,props:w.props,atk:w.atk,dmgText:w.dmgText,tag}));
+    await setDoc(doc(charactersCol,state.docId),{...state,kind:"pc",hpMax:derived.hp,ac:derived.ac,speed:derived.speed,attacks,equippedArmor:armorLineText(),saveBonuses:computeSaveBonuses(),skillBonuses:computeSkillBonuses(),updatedAt:Date.now()});
+  }catch(e){
+    console.error(e);
+    alert("Échec de l'enregistrement de la fiche. Vérifie ta connexion et réessaie — sinon la modification ne sera vue ni par le MJ, ni sur la table de jeu.");
+  }
+}
+
+function computeSaveBonuses(){
+  const cls=CLASSES[state.classKey]||{saves:[]};
+  const pb=profBonus(curLevel());
+  const out={};
+  ["FOR","DEX","CON","INT","SAG","CHA"].forEach(k=>{
+    out[k]=mod(totalAbility(k))+(cls.saves.includes(k)?pb:0);
+  });
+  return out;
+}
+function computeSkillBonuses(){
+  const out={};
+  SKILLS.forEach(s=>{ out[s.n]=skillBonus(s); });
+  return out;
+}
+
+// --- Portrait upload: crops transparent margins on a cut-out portrait and zooms
+// in slightly so the subject fills the frame, exactly like the token images on the
+// game table (same algorithm, copied here since the two tools don't share code).
+function loadImageAny(source){
+  return new Promise((resolve,reject)=>{
+    if(source instanceof File){
+      const reader=new FileReader();
+      reader.onerror=()=>reject(reader.error||new Error("lecture impossible"));
+      reader.onload=()=>{
+        const img=new Image();
+        img.onload=()=>resolve(img);
+        img.onerror=()=>reject(new Error("image invalide"));
+        img.src=reader.result;
+      };
+      reader.readAsDataURL(source);
+    }else{
+      const img=new Image();
+      img.crossOrigin="anonymous";
+      img.onload=()=>resolve(img);
+      img.onerror=()=>reject(new Error("image invalide ou inaccessible"));
+      img.src=source;
+    }
+  });
+}
+function findOpaqueBounds(ctx,w,h,alphaThreshold){
+  const data=ctx.getImageData(0,0,w,h).data;
+  let minX=w,minY=h,maxX=-1,maxY=-1;
+  for(let y=0;y<h;y++){
+    for(let x=0;x<w;x++){
+      if(data[(y*w+x)*4+3]>alphaThreshold){
+        if(x<minX)minX=x;
+        if(x>maxX)maxX=x;
+        if(y<minY)minY=y;
+        if(y>maxY)maxY=y;
+      }
+    }
+  }
+  return maxX<0?null:{minX,minY,maxX,maxY};
+}
+async function processPortraitImage(source,maxDim){
+  maxDim=maxDim||256;
+  const img=await loadImageAny(source);
+  try{
+    const full=document.createElement("canvas");
+    full.width=img.naturalWidth;full.height=img.naturalHeight;
+    const fctx=full.getContext("2d");
+    fctx.drawImage(img,0,0);
+    let sx=0,sy=0,sw=full.width,sh=full.height;
+    const bounds=findOpaqueBounds(fctx,full.width,full.height,10);
+    if(bounds){
+      const bw=bounds.maxX-bounds.minX,bh=bounds.maxY-bounds.minY;
+      const cx=(bounds.minX+bounds.maxX)/2,cy=(bounds.minY+bounds.maxY)/2;
+      const INSET=0.18;
+      const w2=bw*(1-INSET),h2=bh*(1-INSET);
+      sx=Math.max(0,Math.round(cx-w2/2));
+      sy=Math.max(0,Math.round(cy-h2/2));
+      sw=Math.min(full.width,Math.round(cx+w2/2))-sx;
+      sh=Math.min(full.height,Math.round(cy+h2/2))-sy;
+    }
+    const out=document.createElement("canvas");
+    out.width=maxDim;out.height=maxDim;
+    out.getContext("2d").drawImage(full,sx,sy,sw,sh,0,0,maxDim,maxDim);
+    return out.toDataURL("image/png",0.92);
+  }catch(err){
+    console.error(err);
+    if(typeof source==="string")return source;
+    throw new Error("Impossible de traiter cette image.");
+  }
 }
 
 function raceBonusFor(key){
@@ -1428,15 +1712,83 @@ function seedInventory(){
   if(state.armorKey&&state.armorKey!=="aucune")push(SHORT_ARMOR_NAME[state.armorKey]||state.armorKey,1,"armor",state.armorKey);
   if(state.shield)push("Bouclier",1,"shield","shield");
   (cls.extraKit||[]).forEach(t=>{if(typeof t!=="object")push(t,1,"other",null);});
-  let gold=state.gold||0;
+  // The background's flat gold ("5 po"...) is already folded into state.gold by
+  // ensureStartingGold() as soon as the Équipement step is first shown — adding it
+  // again here would double it. Non-monetary background items still go to inventory.
   (bg.equip||[]).forEach(t=>{
-    const m=t.match(/^(\d+)\s*po$/);
-    if(m)gold+=Number(m[1]);
-    else push(t,1,"other",null);
+    if(!t.match(/^(\d+)\s*po$/))push(t,1,"other",null);
+  });
+  Object.keys(state.gearBought||{}).forEach(idx=>{
+    const bought=state.gearBought[idx];
+    const row=GEAR[Number(idx)];
+    if(!row)return;
+    const name=(bought&&typeof bought==="object"&&bought.name)?bought.name:row[0];
+    push(name,1,"other",null);
   });
   state.inventory=items;
-  state.gold=gold;
   state.inventoryInit=true;
+}
+
+// Parses a GEAR price string ("2 po", "5 pa", "1 po 5 pa"...) into a plain "po"
+// number so checking a box can deduct it from starting gold. Returns null for
+// ranged/variable prices ("5 à 15 po") since there's no single amount to deduct.
+function gearPrice(str){
+  if(str.includes(" à "))return null; // ranged/variable price (e.g. "5 à 15 po") — nothing single to deduct
+  const re=/(\d+(?:[.,]\d+)?)\s*(po|pa|pc)\b/g;
+  let total=0,found=false,m;
+  while((m=re.exec(str))){
+    found=true;
+    const val=Number(m[1].replace(",","."));
+    total+=m[2]==="po"?val:m[2]==="pa"?val/10:val/100;
+  }
+  return found?Math.round(total*100)/100:null;
+}
+
+// The background's flat starting gold ("5 po"...) used to only get added at final
+// validation, via seedInventory() — meaning during creation, on the Équipement step
+// itself, state.gold was always stuck at 0 with nothing to spend. This folds it in
+// as soon as the player reaches that step, once, so the shop checkboxes below have
+// real money to work with.
+function bgGoldValue(bg){
+  let total=0;
+  (bg.equip||[]).forEach(t=>{
+    const m=t.match(/^(\d+)\s*po$/);
+    if(m)total+=Number(m[1]);
+  });
+  return total;
+}
+// Re-syncs state.gold to the CURRENT background's flat starting amount by adjusting
+// only the delta versus what was already folded in (state.bgGoldApplied) — calling
+// this again after switching background no longer re-adds a fresh 5 po on top of
+// whatever was already there, which was the reported bug.
+function ensureStartingGold(){
+  const shouldBe=bgGoldValue(BACKGROUNDS[state.bgKey]);
+  const already=state.bgGoldApplied||0;
+  if(shouldBe===already)return;
+  state.gold=Math.max(0,(state.gold||0)-already+shouldBe);
+  state.bgGoldApplied=shouldBe;
+}
+
+function gearShopHtml(){
+  const rows=GEAR.map((r,idx)=>{
+    const choices=GEAR_CHOICES[r[0]];
+    if(choices){
+      const bought=state.gearBought&&state.gearBought[idx];
+      const selectedIdx=(bought&&typeof bought==="object")?bought.choiceIndex:"";
+      const options='<option value="">— Choisir —</option>'+choices.map((c,i)=>
+        '<option value="'+i+'"'+(String(selectedIdx)===String(i)?' selected':'')+'>'+c.name+' — '+c.price+' po</option>'
+      ).join("");
+      return '<tr><td></td><td>'+r[0]+'<div style="margin-top:4px;"><select data-gear-choice-idx="'+idx+'" style="max-width:100%;">'+options+'</select></div></td><td class="mono">'+r[1]+'</td></tr>';
+    }
+    const price=gearPrice(r[1]);
+    const bought=!!(state.gearBought&&state.gearBought[idx]);
+    const cell=price===null
+      ? '<span style="color:var(--ink-soft);">—</span>'
+      : '<input type="checkbox" data-gear-idx="'+idx+'" data-gear-price="'+price+'"'+(bought?' checked':'')+'>';
+    return '<tr><td>'+cell+'</td><td>'+r[0]+'</td><td class="mono">'+r[1]+'</td></tr>';
+  }).join("");
+  return '<div class="price-wrap"><table class="price-table"><caption>Équipement d\'aventurier courant — coche ce que tu achètes, ça se déduit de ton or de départ</caption>'+
+   '<thead><tr><th></th><th>Objet</th><th>Prix</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
 }
 function isEquippedItem(it){
   if(it.cat==="weapon")return state.weapon1===it.refKey||state.weapon2===it.refKey||state.weaponRanged===it.refKey;
@@ -1882,30 +2234,28 @@ function spellBox(){
   bodySections+
   '</div>';
 }
-function priceTable(caption,headers,rows){
-  return '<div class="price-wrap"><table class="price-table"><caption>'+caption+'</caption><thead><tr>'+
-  headers.map(h=>'<th>'+h+'</th>').join("")+'</tr></thead><tbody>'+
-  rows.map(r=>'<tr>'+r.map((c,i)=>'<td'+(i===1?' class="mono"':'')+'>'+c+'</td>').join("")+'</tr>').join("")+
-  '</tbody></table></div>';
-}
 
 function renderTabs(){
-  document.querySelector(".app").classList.toggle("is-validated",!!state.validated);
-  const nav=document.getElementById("tabs");
-  if(state.validated){nav.innerHTML="";return;}
-  nav.innerHTML=TABS.map((t,i)=>
-    '<button class="tab-btn'+(state.activeTab===t.k?" active":"")+'" data-tab="'+t.k+'"><span class="n">'+(i+1)+'</span>'+t.label+'</button>'
-  ).join("");
-  nav.querySelectorAll(".tab-btn").forEach(btn=>{
-    btn.addEventListener("click",()=>{state.activeTab=btn.dataset.tab;renderTabs();renderTab();});
-  });
+  const validated=!!state.validated;
+  document.querySelector(".app").classList.toggle("is-validated",validated);
+  const nameEl=document.getElementById("f-name");
+  if(nameEl)nameEl.readOnly=validated; // the name is locked in once the character is validated
+  if(validated)return;
+  const idx=Math.max(0,TABS.findIndex(t=>t.k===state.activeTab));
+  const backBtn=document.getElementById("btn-back");
+  if(backBtn)backBtn.hidden=idx===0;
+  const validateBtn=document.getElementById("btn-validate");
+  if(validateBtn)validateBtn.textContent=STEP_VALIDATE_LABEL[state.activeTab]||"Valider ce personnage";
 }
 
 function asiPickerHtml(){
   const applied=state.asiApplied&&state.asiApplied[state.level];
   if(applied){
+    const canUndo=!!(state.asiChoices&&state.asiChoices[state.level]);
     return '<div class="detail-box" style="margin-top:14px;border-left-color:var(--gold);"><h3>Amélioration de caractéristique</h3>'+
-    '<p style="font-size:.86rem;margin:0;">Appliquée : <strong>'+esc(applied)+'</strong></p></div>';
+    '<p style="font-size:.86rem;margin:0 0 8px;">Appliquée : <strong>'+esc(applied)+'</strong></p>'+
+    (canUndo?'<button type="button" class="btn btn-ghost btn-sm" id="btn-undo-asi">Modifier ce choix</button>':'')+
+    '</div>';
   }
   return '<div class="detail-box" style="margin-top:14px;border-left-color:var(--gold);"><h3>Amélioration de caractéristique</h3>'+
    '<p style="font-size:.86rem;margin:0 0 10px;">Choisissez : +2 à une caractéristique, +1 à deux caractéristiques différentes (aucune ne peut dépasser 20), ou un don.</p>'+
@@ -1960,7 +2310,6 @@ function tabValidated(){
   '<div class="actions-row" style="margin-top:0;">'+
    '<button class="btn btn-arcane btn-sm" id="btn-levelup">Passer un niveau</button>'+
    '<button class="btn btn-ghost btn-sm" id="btn-unlock">'+(state.level===1?"Modifier le personnage":"Revoir ce niveau")+'</button>'+
-   '<button class="btn btn-ghost btn-sm" id="btn-reset-validated">Nouveau personnage (supprimer)</button>'+
   '</div>';
 }
 function bindValidatedEvents(){
@@ -1981,9 +2330,15 @@ function bindValidatedEvents(){
   });
   const doLevelupBtn=panel.querySelector("#btn-do-levelup");
   if(doLevelupBtn)doLevelupBtn.addEventListener("click",()=>{
+    // Max HP goes up with the new hit die + CON — top up current HP by the same
+    // amount, or a character shows up "already hurt" right after leveling for no
+    // in-fiction reason, until the next long rest quietly papers over it.
+    const hpMaxBefore=computeDerived().hp;
     state.level=Math.min(MAX_LEVEL,state.level+1);
     state.levelUpBumped=true;
     if(!state.grantedLevels.includes(state.level))state.grantedLevels.push(state.level);
+    const hpMaxAfter=computeDerived().hp;
+    if(state.hpCurrent!=null)state.hpCurrent+=(hpMaxAfter-hpMaxBefore);
     renderTab();renderSheet();saveLocal();
   });
   panel.querySelectorAll("[data-trait]").forEach(el=>el.addEventListener("change",()=>{
@@ -2042,10 +2397,13 @@ function bindValidatedEvents(){
   if(applyAsiBtn)applyAsiBtn.addEventListener("click",()=>{
     const mode=panel.querySelector('input[name="asi-mode"]:checked').value;
     let label="";
+    let deltas={};
+    let isFeat=false;
     if(mode==="one"){
       const a=panel.querySelector("#asi-pick-1").value;
       if(totalAbility(a)+2>20){showAlert("Cette caractéristique dépasserait 20 — choisissez-en une autre, ou répartissez +1/+1.");return;}
       state.asiBonuses[a]=(state.asiBonuses[a]||0)+2;
+      deltas[a]=2;
       label="+2 "+a;
     }else if(mode==="two"){
       const a=panel.querySelector("#asi-pick-2a").value;
@@ -2054,8 +2412,10 @@ function bindValidatedEvents(){
       if(totalAbility(a)+1>20||totalAbility(b)+1>20){showAlert("Une de ces caractéristiques dépasserait 20.");return;}
       state.asiBonuses[a]=(state.asiBonuses[a]||0)+1;
       state.asiBonuses[b]=(state.asiBonuses[b]||0)+1;
+      deltas[a]=(deltas[a]||0)+1;deltas[b]=(deltas[b]||0)+1;
       label="+1 "+a+", +1 "+b;
     }else{
+      isFeat=true;
       const featKey=panel.querySelector("#asi-pick-feat").value;
       const f=FEATS[featKey];
       let ability=null;
@@ -2063,20 +2423,36 @@ function bindValidatedEvents(){
         ability=panel.querySelector("#asi-feat-ability").value;
         if(totalAbility(ability)+1>20){showAlert("Cette caractéristique dépasserait 20 — choisissez-en une autre pour ce don.");return;}
         state.asiBonuses[ability]=(state.asiBonuses[ability]||0)+1;
+        deltas[ability]=1;
       }
       if(!state.featsChosen)state.featsChosen={};
       state.featsChosen[state.level]={feat:featKey,ability};
       label="Don : "+f.name+(ability?" ("+ability+")":"");
     }
     if(!state.asiApplied)state.asiApplied={};
+    if(!state.asiChoices)state.asiChoices={};
     state.asiApplied[state.level]=label;
+    state.asiChoices[state.level]={deltas,feat:isFeat};
+    renderTab();renderSheet();saveLocal();
+  });
+  const undoAsiBtn=panel.querySelector("#btn-undo-asi");
+  if(undoAsiBtn)undoAsiBtn.addEventListener("click",()=>{
+    const choice=state.asiChoices&&state.asiChoices[state.level];
+    if(!choice)return;
+    Object.entries(choice.deltas||{}).forEach(([k,v])=>{
+      state.asiBonuses[k]=(state.asiBonuses[k]||0)-v;
+      if(state.asiBonuses[k]<0)state.asiBonuses[k]=0;
+    });
+    if(choice.feat&&state.featsChosen)delete state.featsChosen[state.level];
+    delete state.asiApplied[state.level];
+    delete state.asiChoices[state.level];
     renderTab();renderSheet();saveLocal();
   });
   const unlockBtn=panel.querySelector("#btn-unlock");
   if(unlockBtn)unlockBtn.addEventListener("click",()=>{
     if(state.level===1){
       state.inventory=[];state.inventoryInit=false;
-      state.gold=0;state.hpCurrent=null;
+      state.gold=0;state.bgGoldApplied=0;state.gearBought={};state.hpCurrent=null;
       state.deathSuccess=0;state.deathFail=0;
       state.activeConditions=[];
       state.resourceUsed={};state.spellSlotsUsed={};
@@ -2086,8 +2462,6 @@ function bindValidatedEvents(){
       state.levelUpMode=true;state.levelUpBumped=true;state.levelUpReview=true;renderTab();saveLocal();
     }
   });
-  const resetBtn=panel.querySelector("#btn-reset-validated");
-  if(resetBtn)resetBtn.addEventListener("click",resetCharacter);
 }
 
 function renderTab(){
@@ -2131,7 +2505,7 @@ function tabRace(){
     '</div>';
   }
   const malusBox=race.malus?'<div class="warn-box"><strong>'+(race.malus.tier==="gros"?"Gros malus social":"Malus social")+' — </strong>'+MALUS_TEXT[race.malus.tier]+'</div>':'';
-  return '<h2>Étape 2 — Choisissez une race</h2><p class="panel-hint">Aldoria est un monde très majoritairement humain : les races non-humaines existent comme individus, jamais comme nations visibles à Valbois. Elles restent jouables, avec un coût social.</p>'+
+  return '<h2>Étape 1 — Choisissez une race</h2><p class="panel-hint">Aldoria est un monde très majoritairement humain : les races non-humaines existent comme individus, jamais comme nations visibles à Valbois. Elles restent jouables, avec un coût social.</p>'+
   '<div class="opt-grid">'+cards+'</div>'+
   '<div class="detail-box"><h3>'+race.label+'</h3>'+
   (bonusLine?'<div class="race-bonus-tag">Bonus fixe : '+bonusLine+'</div>':'')+
@@ -2149,7 +2523,7 @@ function tabClasse(){
   ).join("");
   const cls=CLASSES[state.classKey];
   const skillList=cls.skills.list==="any"?SKILLS.map(s=>s.n):cls.skills.list;
-  return '<h2>Étape 1 — Choisissez une classe</h2><p class="panel-hint">Toute classe standard de la 5e est ouverte si elle trouve sa place dans votre personnage.</p>'+
+  return '<h2>Étape 2 — Choisissez une classe</h2><p class="panel-hint">Toute classe standard de la 5e est ouverte si elle trouve sa place dans votre personnage.</p>'+
   '<div class="opt-grid">'+cards+'</div>'+
   '<div class="detail-box"><h3>'+cls.label+'</h3>'+
   '<div class="pill-row">'+
@@ -2305,6 +2679,7 @@ function kitLineHtml(cls,text,index){
   return kitChoiceLi(kc);
 }
 function tabEquip(){
+  ensureStartingGold();
   const cls=CLASSES[state.classKey];
   const bg=BACKGROUNDS[state.bgKey];
   const extraChoices=(cls.kitChoices||[]).filter(k=>typeof k.kitIndex!=="number"&&(!k.visibleIf||k.visibleIf()));
@@ -2315,13 +2690,15 @@ function tabEquip(){
   return '<h2>Étape 6 — Votre paquetage</h2><p class="panel-hint">Chaque aventurier part avec le paquetage fixe de sa classe et de son historique, un peu d\'or inclus dedans. 1 pièce d\'or (po) = 10 pièces d\'argent (pa) = 100 pièces de cuivre (pc). Sur les lignes soulignées, cliquez pour choisir précisément ce que vous emportez — les dégâts ou la CA obtenus s\'affichent aussitôt.</p>'+
   '<div class="kit-cols">'+
    '<div><h3>Paquetage de '+cls.label.toLowerCase()+'</h3><ul class="kit-list">'+kitListHtml+'</ul></div>'+
-   '<div><h3>Don de l\'historique — '+bg.label+'</h3><ul>'+bg.equip.map(i=>'<li>'+i+'</li>').join("")+'</ul></div>'+
+   '<div><h3>'+(bg.kitLabel||("Paquetage de "+bg.label.toLowerCase()))+'</h3><ul class="kit-list">'+bg.equip.filter(i=>!/^\d+\s*po$/.test(i)).map(i=>'<li>'+i+'</li>').join("")+'</ul>'+
+    '<p class="panel-hint" style="margin-top:8px;margin-bottom:0;">Or restant à dépenser : <strong>'+(state.gold||0)+' po</strong></p>'+
+   '</div>'+
   '</div>'+
   '<div class="field" style="margin-bottom:16px;">'+
-   '<label for="f-equipnotes">Objets, armes ou notes supplémentaires</label>'+
-   '<textarea id="f-equipnotes">'+esc(state.equipNotes)+'</textarea>'+
+   '<label for="f-equipnotes">Notes supplémentaires</label>'+
+   '<textarea id="f-equipnotes" placeholder="Notes de contexte, pas d\'équipement — ex. une carte de Valbois griffonnée à la main.">'+esc(state.equipNotes)+'</textarea>'+
   '</div>'+
-  priceTable("Équipement d'aventurier courant",["Objet","Prix"],GEAR);
+  gearShopHtml();
 }
 
 function bindTabEvents(){
@@ -2382,6 +2759,40 @@ function bindTabEvents(){
   }));
   const eq=panel.querySelector("#f-equipnotes");
   if(eq)eq.addEventListener("input",()=>{state.equipNotes=eq.value;renderSheet();saveLocal();});
+  panel.querySelectorAll("[data-gear-idx]").forEach(el=>el.addEventListener("change",()=>{
+    const idx=el.dataset.gearIdx;
+    const price=Number(el.dataset.gearPrice);
+    state.gearBought=state.gearBought||{};
+    if(el.checked){
+      if((state.gold||0)<price){el.checked=false;return;}
+      state.gearBought[idx]=true;
+      state.gold=Math.round(((state.gold||0)-price)*100)/100;
+    }else{
+      delete state.gearBought[idx];
+      state.gold=Math.round(((state.gold||0)+price)*100)/100;
+    }
+    renderTab();renderSheet();saveLocal();
+  }));
+  panel.querySelectorAll("[data-gear-choice-idx]").forEach(el=>el.addEventListener("change",()=>{
+    const idx=el.dataset.gearChoiceIdx;
+    const choices=GEAR_CHOICES[GEAR[Number(idx)][0]];
+    state.gearBought=state.gearBought||{};
+    const prev=state.gearBought[idx];
+    const available=(state.gold||0)+(prev&&typeof prev==="object"?prev.price:0);
+    if(el.value===""){
+      state.gold=Math.round(available*100)/100;
+      delete state.gearBought[idx];
+    }else{
+      const choice=choices[Number(el.value)];
+      if(available<choice.price){
+        el.value=(prev&&typeof prev==="object")?String(prev.choiceIndex):"";
+        return;
+      }
+      state.gold=Math.round((available-choice.price)*100)/100;
+      state.gearBought[idx]={choiceIndex:Number(el.value),name:choice.name,price:choice.price};
+    }
+    renderTab();renderSheet();saveLocal();
+  }));
   panel.querySelectorAll(".kit-line").forEach(d=>d.addEventListener("toggle",()=>{
     if(d.open)panel.querySelectorAll(".kit-line").forEach(o=>{if(o!==d)o.open=false;});
   }));
@@ -2807,46 +3218,645 @@ function renderSheet(){
   if(state.validated)bindSheetPlayEvents();
 }
 
+function syncHeader(){
+  const nameEl=document.getElementById("f-name");
+  if(nameEl)nameEl.value=state.name;
+  const playerEl=document.getElementById("f-player");
+  if(playerEl)playerEl.value=state.playerName||"";
+  const preview=document.getElementById("portrait-preview");
+  if(preview)preview.style.backgroundImage=state.portrait?"url('"+state.portrait.replace(/'/g,"")+"')":"none";
+}
 function bindHeader(){
   const nameEl=document.getElementById("f-name");
-  nameEl.value=state.name;
   nameEl.addEventListener("input",()=>{state.name=nameEl.value;renderSheet();saveLocal();});
+  const playerEl=document.getElementById("f-player");
+  playerEl.addEventListener("input",()=>{state.playerName=playerEl.value;saveLocal();});
+  document.getElementById("f-portrait-file").addEventListener("change",async(e)=>{
+    const file=e.target.files[0];
+    e.target.value="";
+    if(!file)return;
+    try{
+      state.portrait=await processPortraitImage(file,256);
+      syncHeader();
+      renderSheet();
+      saveLocal();
+    }catch(err){
+      console.error(err);
+      alert("Impossible de lire ce fichier image.");
+    }
+  });
+  const portraitUrlEl=document.getElementById("f-portrait-url");
+  portraitUrlEl.addEventListener("change",async()=>{
+    const url=portraitUrlEl.value.trim();
+    if(!url)return;
+    try{
+      state.portrait=await processPortraitImage(url,256);
+      portraitUrlEl.value="";
+      syncHeader();
+      renderSheet();
+      saveLocal();
+    }catch(err){
+      console.error(err);
+      showAlert("Impossible de charger cette image — vérifie l'adresse.");
+    }
+  });
 }
 
-function resetCharacter(){
-  showConfirm("Recommencer avec une fiche vierge ? Le personnage actuel sera perdu.",()=>{
-    state=defaultState();
-    state.name="";
-    state.raceKey="humain";state.classKey="guerrier";state.bgKey="soldat";
-    state.classSkillChoices=[];
-    ABILS.forEach(a=>state.baseScores[a]=8);
-    ensureRaceChoice();
-    state.equipNotes="";state.spellsKnown=[];
-    const def=CLASSES[state.classKey].kitDefault;
-    state.armorKey=def?def.armorKey:"aucune";state.shield=def?def.shield:false;
-    state.weapon1=def?def.weapon1:"";state.weapon2=def?def.weapon2:"";
-    state.weaponRanged=def?def.weaponRanged:"";
-    state.traitChoices={};
+function applyBlankCharacter(){
+  state=defaultState();
+  state.name="";
+  state.raceKey="humain";state.classKey="guerrier";state.bgKey="soldat";
+  state.classSkillChoices=[];
+  ABILS.forEach(a=>state.baseScores[a]=8);
+  ensureRaceChoice();
+  state.equipNotes="";state.spellsKnown=[];
+  const def=CLASSES[state.classKey].kitDefault;
+  state.armorKey=def?def.armorKey:"aucune";state.shield=def?def.shield:false;
+  state.weapon1=def?def.weapon1:"";state.weapon2=def?def.weapon2:"";
+  state.weaponRanged=def?def.weaponRanged:"";
+  state.traitChoices={};
+}
+
+// "Nouveau personnage" used to wipe the current character with a scary confirm —
+// but nothing is actually lost: every character already lives in the shared
+// "characters" collection (see syncToFirestore), so starting a new one is just
+// switching this browser's view to a fresh blank sheet. No confirmation needed.
+function createNewCharacter(){
+  applyBlankCharacter();
+  boot(state);
+  saveLocal();
+  closeRoster();
+}
+
+// Distinct from "Nouveau personnage": this permanently removes the character from
+// the shared table de jeu (its Firestore document), not just the local browser —
+// "Nouveau personnage" alone never deleted anything server-side.
+function deleteCharacter(){
+  showConfirm("Supprimer définitivement ce personnage ? Il disparaîtra aussi de la table de jeu. Cette action est irréversible.",async()=>{
+    const idToDelete=state.docId;
+    applyBlankCharacter();
     boot(state);
     saveLocal();
+    if(idToDelete){
+      try{ await deleteDoc(doc(charactersCol,idToDelete)); }catch(e){ console.error(e); }
+    }
   });
 }
 function bindReset(){
-  document.getElementById("btn-reset").addEventListener("click",resetCharacter);
+  document.getElementById("btn-delete-char").addEventListener("click",deleteCharacter);
+}
+
+// --- Roster: browse every character in the shared table (any player's, or the
+// MJ's NPCs later on) and switch this browser's view to one of them, or start a
+// new one, without ever touching what's already there.
+function loadCharacterData(data){
+  boot(data);
+  saveLocal();
+  closeRoster();
+}
+function rosterCardHtml(id,data){
+  const race=RACES[data.raceKey],cls=CLASSES[data.classKey];
+  const meta=(data.playerName?esc(data.playerName)+" · ":"")+
+    (race&&cls?race.label+" "+cls.label+" · ":"")+
+    "Niveau "+(data.level||1)+(data.validated?"":" · en cours de création");
+  const swatch=data.portrait?"background-image:url('"+data.portrait.replace(/'/g,"")+"');":"";
+  return '<div class="roster-card" data-roster-id="'+id+'">'+
+    '<div class="portrait" style="'+swatch+'"></div>'+
+    '<div class="rinfo"><div class="rname">'+esc(data.name||"Sans nom")+'</div><div class="rmeta">'+meta+'</div></div>'+
+  '</div>';
+}
+async function renderRoster(){
+  const list=document.getElementById("roster-list");
+  list.innerHTML='<p class="sheet-text">Chargement...</p>';
+  let docs=[];
+  try{
+    const snap=await getDocs(charactersCol);
+    docs=snap.docs.map(d=>({id:d.id,data:d.data()}))
+      .filter(d=>(d.data.name||"").trim() && d.data.kind!=="npc")
+      .sort((a,b)=>(b.data.updatedAt||0)-(a.data.updatedAt||0));
+  }catch(e){
+    console.error(e);
+    list.innerHTML='<p class="sheet-text">Impossible de charger la liste des personnages.</p>';
+    return;
+  }
+  list.innerHTML='<div class="roster-card new" id="roster-new">+ Nouveau personnage</div>'+
+    docs.map(d=>rosterCardHtml(d.id,d.data)).join("");
+  document.getElementById("roster-new").addEventListener("click",createNewCharacter);
+  list.querySelectorAll("[data-roster-id]").forEach(el=>{
+    el.addEventListener("click",()=>{
+      const found=docs.find(d=>d.id===el.dataset.rosterId);
+      if(!found)return;
+      // This list shows every player's character, not just yours — only open one for
+      // editing (and silently make it "this browser's" character) when it's actually
+      // yours, or you're the MJ. Anyone else's opens as a look-but-don't-touch summary,
+      // so idle curiosity here can never end up overwriting a teammate's real sheet.
+      if(isOwnedDocId(found.id)||isMJPerso) loadCharacterData(found.data);
+      else openReadOnlyModal(found.data);
+    });
+  });
+}
+function openRoster(){
+  document.getElementById("roster-modal").hidden=false;
+  renderRoster();
+}
+function closeRoster(){
+  document.getElementById("roster-modal").hidden=true;
+}
+
+function readOnlyCharacterHtml(data){
+  const race=RACES[data.raceKey],cls=CLASSES[data.classKey],bg=BACKGROUNDS[data.bgKey];
+  const subtitle=[race&&race.label,cls&&cls.label].filter(Boolean).join(" ")+(bg?" — "+bg.label:"")+" · Niveau "+(data.level||1);
+  const swatchStyle=data.portrait?"background-image:url('"+data.portrait.replace(/'/g,"")+"');background-size:cover;":"background:#7c5e20;";
+  const attacks=data.attacks||[];
+  const attackRows=attacks.length
+    ? attacks.map(a=>'<div class="roster-card" style="cursor:default;"><div class="rinfo"><div class="rname">'+esc(a.name||"")+'</div><div class="rmeta">'+(a.atk>=0?"+":"")+a.atk+' · '+esc(a.dmgText||"")+'</div></div></div>').join("")
+    : '<p class="sheet-text">Aucune arme équipée.</p>';
+  const inv=data.inventory||[];
+  const invRows=inv.length
+    ? '<ul style="margin:4px 0 0;padding-left:18px;">'+inv.map(it=>'<li class="sheet-text">'+esc(it.name||"")+(it.qty>1?(" ×"+it.qty):"")+'</li>').join("")+'</ul>'
+    : '<p class="sheet-text">Inventaire vide.</p>';
+  const hpCur=data.hpCurrent==null?(data.hpMax!=null?data.hpMax:"?"):data.hpCurrent;
+  const hpMax=data.hpMax!=null?data.hpMax:"?";
+  return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">'+
+    '<span style="width:44px;height:44px;border-radius:50%;flex:none;border:1px solid rgba(0,0,0,.2);'+swatchStyle+'"></span>'+
+    '<div><strong class="font-display" style="display:block;font-size:1.05rem;">'+esc(data.name||"Sans nom")+'</strong>'+
+    (data.playerName?'<span class="sheet-text" style="display:block;">Joueur : '+esc(data.playerName)+'</span>':'')+
+    '<span class="sheet-text">'+esc(subtitle)+'</span></div>'+
+    '</div>'+
+    '<p class="sheet-text">PV '+hpCur+' / '+hpMax+(data.ac!=null?' · CA '+data.ac:'')+(data.speed!=null?' · Vitesse '+data.speed+' m':'')+'</p>'+
+    (data.equippedArmor?'<p class="sheet-text">'+esc(data.equippedArmor)+'</p>':'')+
+    '<h3 class="font-display" style="margin:12px 0 4px;font-size:.92rem;">Attaques</h3>'+attackRows+
+    '<h3 class="font-display" style="margin:12px 0 4px;font-size:.92rem;">Inventaire</h3>'+invRows;
+}
+function openReadOnlyModal(data){
+  document.getElementById("readonly-body").innerHTML=readOnlyCharacterHtml(data);
+  document.getElementById("readonly-modal").hidden=false;
+}
+function closeReadOnlyModal(){
+  document.getElementById("readonly-modal").hidden=true;
+}
+function bindReadOnlyModal(){
+  document.getElementById("readonly-close").addEventListener("click",closeReadOnlyModal);
+  document.getElementById("readonly-backdrop").addEventListener("click",closeReadOnlyModal);
+}
+function bindRoster(){
+  document.getElementById("btn-roster").addEventListener("click",openRoster);
+  document.getElementById("roster-close").addEventListener("click",closeRoster);
+  document.getElementById("roster-backdrop").addEventListener("click",closeRoster);
+}
+
+// ============ PNJ (réservé MJ) ============
+// PNJ live in the same shared "characters" collection as the players' fiches
+// (kind:"npc" instead of "pc"), so la table de jeu can place them exactly the same
+// way — see placeCharacterAsToken() there. Kept as a self-contained subsystem
+// (its own state, its own form) rather than bolted onto the player wizard, since a
+// monster stat block (CA/PV/Traits/Actions en texte libre) has nothing to do with
+// the race/classe/historique flow above.
+function defaultNpc(){
+  return {
+    kind:"npc", docId:null, name:"", portrait:"", descriptor:"", cr:"",
+    ac:null, acNote:"", hpMax:null, hpCurrent:null, speed:null,
+    baseScores:{FOR:10,DEX:10,CON:10,INT:10,SAG:10,CHA:10},
+    saveBonuses:{FOR:0,DEX:0,CON:0,INT:0,SAG:0,CHA:0},
+    skillsText:"", sensesText:"", languagesText:"", equipmentText:"", traitsText:"",
+    attacks:[], actionsRaw:"", reactionsText:"", bonusActionText:"", notesMjText:"",
+    activeOnMap:false
+  };
+}
+let npcs=[];
+let npcDraft=null;
+let npcSyncTimer=null;
+let lastNpcImportMsg="";
+
+async function loadNpcs(){
+  try{
+    const snap=await getDocs(charactersCol);
+    npcs=snap.docs.map(d=>({id:d.id,data:d.data()})).filter(d=>d.data.kind==="npc")
+      .sort((a,b)=>(b.data.updatedAt||0)-(a.data.updatedAt||0));
+  }catch(e){ console.error(e); npcs=[]; }
+}
+
+function scheduleNpcSync(){
+  clearTimeout(npcSyncTimer);
+  npcSyncTimer=setTimeout(syncNpcToFirestore,800);
+}
+async function syncNpcToFirestore(){
+  if(!npcDraft || !(npcDraft.name||"").trim()) return;
+  if(!npcDraft.docId) npcDraft.docId=doc(charactersCol).id;
+  try{
+    await setDoc(doc(charactersCol,npcDraft.docId),{...npcDraft,kind:"npc",updatedAt:Date.now()});
+  }catch(e){
+    console.error(e);
+    alert("Échec de l'enregistrement du PNJ. Vérifie ta connexion et réessaie.");
+  }
+}
+
+function openNpcManager(){
+  document.getElementById("npc-modal").hidden=false;
+  npcDraft=null;
+  renderNpcListView();
+}
+function closeNpcModal(){
+  document.getElementById("npc-modal").hidden=true;
+}
+function bindNpcManager(){
+  document.getElementById("btn-npc-manager").addEventListener("click",openNpcManager);
+  document.getElementById("npc-close").addEventListener("click",closeNpcModal);
+  document.getElementById("npc-backdrop").addEventListener("click",closeNpcModal);
+}
+
+async function renderNpcListView(){
+  document.getElementById("npc-modal-title").textContent="PNJ de la campagne";
+  const body=document.getElementById("npc-modal-body");
+  body.innerHTML='<p class="sheet-text">Chargement...</p>';
+  await loadNpcs();
+  const cards=npcs.map(n=>{
+    const swatch=n.data.portrait?"background-image:url('"+n.data.portrait.replace(/'/g,"")+"');":"";
+    return '<div class="roster-card" data-npc-id="'+n.id+'">'+
+      '<div class="portrait" style="'+swatch+'"></div>'+
+      '<div class="rinfo"><div class="rname">'+esc(n.data.name||"Sans nom")+
+        (n.data.activeOnMap?' <span style="color:var(--gold-strong);font-size:.72rem;">● sur la carte</span>':'')+
+      '</div><div class="rmeta">'+esc((n.data.descriptor||"").slice(0,70))+'</div></div>'+
+    '</div>';
+  }).join("");
+  body.innerHTML=
+    '<div class="roster-card new" id="npc-new">+ Nouveau PNJ</div>'+
+    cards+
+    '<div class="npc-section-title">Importer depuis un document (texte collé)</div>'+
+    '<p class="sheet-text">Colle le texte copié depuis un document de bestiaire/PNJ (blocs Nom / CA / PV / Vitesse / Actions...) — chaque bloc reconnu devient un PNJ séparé. Vérifie/complète les champs après import, surtout les attaques.</p>'+
+    '<textarea id="npc-import-text" rows="6" placeholder="Colle le texte ici..."></textarea>'+
+    '<button class="btn btn-arcane" id="btn-npc-import" style="margin-top:8px;">Importer</button>'+
+    '<p class="sheet-text" id="npc-import-result">'+lastNpcImportMsg+'</p>';
+  body.querySelector("#npc-new").addEventListener("click",()=>{
+    npcDraft=defaultNpc();
+    renderNpcEditView();
+  });
+  body.querySelectorAll("[data-npc-id]").forEach(el=>{
+    el.addEventListener("click",()=>{
+      const found=npcs.find(n=>n.id===el.dataset.npcId);
+      if(found){
+        npcDraft=Object.assign(defaultNpc(),found.data,{docId:found.id});
+        renderNpcEditView();
+      }
+    });
+  });
+  document.getElementById("btn-npc-import").addEventListener("click",async()=>{
+    const text=document.getElementById("npc-import-text").value;
+    const resultEl=document.getElementById("npc-import-result");
+    if(!text.trim()){ resultEl.textContent="Colle du texte avant d'importer."; return; }
+    resultEl.textContent="Import en cours...";
+    const parsed=parseBestiaryText(text).map(buildNpcFromParsed);
+    if(!parsed.length){ resultEl.textContent="Aucun PNJ reconnu dans ce texte (il faut au moins une ligne «CA» par bloc)."; return; }
+    const failed=[];
+    let updatedCount=0;
+    for(const p of parsed){
+      // Re-pasting the same (or an updated) bestiary text used to spawn a brand-new
+      // PNJ every time, one per matching name already in the campaign — cluttering the
+      // list with near-duplicates. A name match updates that PNJ in place instead,
+      // keeping anything a re-import doesn't touch (portrait, "disponible sur la carte"...).
+      const existing=npcs.find(n=>(n.data.name||"").trim().toLowerCase()===(p.name||"").trim().toLowerCase());
+      const id=existing?existing.id:doc(charactersCol).id;
+      const full=Object.assign(defaultNpc(),existing?existing.data:{},p,{docId:id});
+      try{
+        await setDoc(doc(charactersCol,id),{...full,kind:"npc",updatedAt:Date.now()});
+        if(existing)updatedCount++;
+      }catch(e){ console.error(e); failed.push(p.name); }
+    }
+    const okCount=parsed.length-failed.length;
+    const newCount=okCount-updatedCount;
+    lastNpcImportMsg=okCount+" PNJ traités ("+newCount+" créés, "+updatedCount+" mis à jour) : "+parsed.filter(p=>!failed.includes(p.name)).map(p=>esc(p.name)).join(", ")+
+      (failed.length ? (" — échec pour "+failed.length+" (vérifie ta connexion et réessaie) : "+failed.map(esc).join(", ")) : "");
+    await renderNpcListView();
+  });
+}
+
+function npcAttackRowHtml(a,i){
+  return '<div class="npc-row" data-attack-idx="'+i+'">'+
+    '<input data-atk-field="name" placeholder="Nom (ex. Morsure)" value="'+esc(a.name||"")+'">'+
+    '<input data-atk-field="props" placeholder="Portée / propriétés" value="'+esc(a.props||"")+'">'+
+    '<input data-atk-field="atk" type="number" placeholder="+" value="'+(a.atk!=null?a.atk:"")+'">'+
+    '<input data-atk-field="dmgText" placeholder="Dégâts (ex. 7 (2d4+2) tranchants)" value="'+esc(a.dmgText||"")+'">'+
+    '<button type="button" class="del" data-del-attack="'+i+'">✕</button>'+
+  '</div>';
+}
+function renderNpcEditView(){
+  document.getElementById("npc-modal-title").textContent=npcDraft.docId?"Modifier le PNJ":"Nouveau PNJ";
+  const n=npcDraft;
+  const body=document.getElementById("npc-modal-body");
+  const abilities=["FOR","DEX","CON","INT","SAG","CHA"];
+  n.saveBonuses=n.saveBonuses||{FOR:0,DEX:0,CON:0,INT:0,SAG:0,CHA:0};
+  body.innerHTML=
+    '<button type="button" class="btn btn-ghost btn-sm" id="npc-back-to-list" style="margin-bottom:10px;">◀ Retour à la liste</button>'+
+    '<div class="field" style="margin-bottom:10px;"><label>Nom</label><input id="npc-f-name" value="'+esc(n.name)+'"></div>'+
+    '<div style="display:flex;gap:12px;align-items:flex-end;margin-bottom:14px;">'+
+      '<div class="field" style="flex:none;"><label>Portrait</label>'+
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'+
+          '<div id="npc-portrait-preview" style="width:44px;height:44px;border-radius:50%;background-color:var(--bg-alt);border:1px solid var(--line-soft);background-size:cover;background-position:center;'+(n.portrait?"background-image:url('"+n.portrait.replace(/'/g,"")+"');":"")+'"></div>'+
+          '<label class="btn btn-ghost btn-sm" style="cursor:pointer;margin:0;">Choisir<input type="file" id="npc-f-portrait-file" accept="image/*" hidden></label>'+
+          '<input type="url" id="npc-f-portrait-url" placeholder="ou URL d\'image" style="min-width:140px;flex:1;">'+
+        '</div>'+
+      '</div>'+
+      '<div class="field" style="flex:1;"><label>Description (race, taille...)</label><input id="npc-f-descriptor" value="'+esc(n.descriptor)+'"></div>'+
+      '<div class="field" style="flex:none;width:80px;"><label>FP</label><input id="npc-f-cr" placeholder="ex. 1/4" value="'+esc(n.cr||"")+'"></div>'+
+    '</div>'+
+    '<div class="npc-form-grid">'+
+      '<div class="field"><label>CA</label><input id="npc-f-ac" type="number" value="'+(n.ac!=null?n.ac:"")+'"></div>'+
+      '<div class="field"><label>Note CA</label><input id="npc-f-acnote" value="'+esc(n.acNote)+'"></div>'+
+      '<div class="field"><label>PV max</label><input id="npc-f-hpmax" type="number" value="'+(n.hpMax!=null?n.hpMax:"")+'"></div>'+
+      '<div class="field"><label>Vitesse (m)</label><input id="npc-f-speed" type="number" value="'+(n.speed!=null?n.speed:"")+'"></div>'+
+    '</div>'+
+    '<div class="npc-form-grid">'+
+      abilities.map(k=>'<div class="field"><label>'+k+'</label><input data-ability="'+k+'" type="number" value="'+(n.baseScores[k]!=null?n.baseScores[k]:10)+'"></div>').join("")+
+    '</div>'+
+    '<div class="npc-section-title">Jets de sauvegarde</div>'+
+    '<div class="npc-form-grid" style="margin-bottom:14px;">'+
+      abilities.map(k=>'<div class="field"><label>'+k+'</label><input data-save-value="'+k+'" type="number" value="'+(n.saveBonuses[k]!=null?n.saveBonuses[k]:0)+'"></div>').join("")+
+    '</div>'+
+    '<div class="field" style="margin-bottom:10px;"><label>Compétences</label><input id="npc-f-skills" value="'+esc(n.skillsText)+'"></div>'+
+    '<div style="display:flex;gap:10px;margin-bottom:10px;">'+
+      '<div class="field" style="flex:1;"><label>Sens</label><input id="npc-f-senses" value="'+esc(n.sensesText)+'"></div>'+
+      '<div class="field" style="flex:1;"><label>Langues</label><input id="npc-f-languages" value="'+esc(n.languagesText)+'"></div>'+
+    '</div>'+
+    '<div class="field" style="margin-bottom:10px;"><label>Équipement</label><input id="npc-f-equipment" value="'+esc(n.equipmentText)+'"></div>'+
+    '<div class="field" style="margin-bottom:10px;"><label>Traits</label><textarea id="npc-f-traits" rows="3">'+esc(n.traitsText)+'</textarea></div>'+
+    '<div class="npc-section-title">Attaques</div>'+
+    '<div id="npc-attacks-list">'+n.attacks.map(npcAttackRowHtml).join("")+'</div>'+
+    '<button type="button" class="btn btn-ghost btn-sm" id="btn-npc-add-attack">+ Ajouter une attaque</button>'+
+    '<div class="field" style="margin:14px 0 10px;"><label>Actions (texte complet / notes)</label><textarea id="npc-f-actionsraw" rows="3">'+esc(n.actionsRaw)+'</textarea></div>'+
+    '<div class="field" style="margin-bottom:10px;"><label>Réactions</label><textarea id="npc-f-reactions" rows="2">'+esc(n.reactionsText)+'</textarea></div>'+
+    '<div class="field" style="margin-bottom:10px;"><label>Action bonus</label><textarea id="npc-f-bonusaction" rows="2">'+esc(n.bonusActionText)+'</textarea></div>'+
+    '<div class="field" style="margin-bottom:10px;"><label>Notes MJ</label><textarea id="npc-f-notesmj" rows="2">'+esc(n.notesMjText)+'</textarea></div>'+
+    '<label style="display:flex;align-items:center;gap:6px;font-size:.82rem;margin:16px 0;">'+
+      '<input type="checkbox" id="npc-f-active" '+(n.activeOnMap?"checked":"")+'> Disponible sur la table de jeu'+
+    '</label>'+
+    '<div class="actions-row" style="justify-content:space-between;">'+
+      '<button type="button" class="btn btn-ghost" id="btn-npc-delete" style="color:#a33;">Supprimer ce PNJ</button>'+
+      '<span class="sheet-text">Sauvegarde automatique.</span>'+
+    '</div>';
+  bindNpcEditView();
+}
+
+function bindNpcEditView(){
+  document.getElementById("npc-back-to-list").addEventListener("click",()=>{
+    npcDraft=null;
+    renderNpcListView();
+  });
+  const simpleFields=[
+    ["npc-f-name","name"],["npc-f-descriptor","descriptor"],["npc-f-cr","cr"],
+    ["npc-f-acnote","acNote"],
+    ["npc-f-skills","skillsText"],["npc-f-senses","sensesText"],
+    ["npc-f-languages","languagesText"],["npc-f-equipment","equipmentText"],
+    ["npc-f-traits","traitsText"],
+    ["npc-f-actionsraw","actionsRaw"],["npc-f-reactions","reactionsText"],
+    ["npc-f-bonusaction","bonusActionText"],["npc-f-notesmj","notesMjText"]
+  ];
+  simpleFields.forEach(([id,field])=>{
+    document.getElementById(id).addEventListener("input",(e)=>{ npcDraft[field]=e.target.value; scheduleNpcSync(); });
+  });
+  [["npc-f-ac","ac"],["npc-f-hpmax","hpMax"],["npc-f-speed","speed"]].forEach(([id,field])=>{
+    document.getElementById(id).addEventListener("input",(e)=>{
+      npcDraft[field]=e.target.value===""?null:Number(e.target.value);
+      scheduleNpcSync();
+    });
+  });
+  document.querySelectorAll("[data-ability]").forEach(el=>{
+    el.addEventListener("input",()=>{
+      npcDraft.baseScores[el.dataset.ability]=Number(el.value)||10;
+      scheduleNpcSync();
+    });
+  });
+  document.querySelectorAll("[data-save-value]").forEach(el=>{
+    el.addEventListener("input",()=>{
+      npcDraft.saveBonuses[el.dataset.saveValue]=Number(el.value)||0;
+      scheduleNpcSync();
+    });
+  });
+  document.getElementById("npc-f-active").addEventListener("change",(e)=>{
+    npcDraft.activeOnMap=e.target.checked;
+    scheduleNpcSync();
+  });
+  document.getElementById("npc-f-portrait-file").addEventListener("change",async(e)=>{
+    const file=e.target.files[0];
+    e.target.value="";
+    if(!file) return;
+    try{
+      npcDraft.portrait=await processPortraitImage(file,256);
+      document.getElementById("npc-portrait-preview").style.backgroundImage="url('"+npcDraft.portrait+"')";
+      scheduleNpcSync();
+    }catch(err){
+      console.error(err);
+      showAlert("Impossible de lire ce fichier image.");
+    }
+  });
+  const npcPortraitUrlEl=document.getElementById("npc-f-portrait-url");
+  npcPortraitUrlEl.addEventListener("change",async()=>{
+    const url=npcPortraitUrlEl.value.trim();
+    if(!url)return;
+    try{
+      npcDraft.portrait=await processPortraitImage(url,256);
+      document.getElementById("npc-portrait-preview").style.backgroundImage="url('"+npcDraft.portrait+"')";
+      npcPortraitUrlEl.value="";
+      scheduleNpcSync();
+    }catch(err){
+      console.error(err);
+      showAlert("Impossible de charger cette image — vérifie l'adresse.");
+    }
+  });
+
+  document.getElementById("npc-attacks-list").addEventListener("input",(e)=>{
+    const row=e.target.closest("[data-attack-idx]");
+    if(!row) return;
+    const i=Number(row.dataset.attackIdx);
+    const field=e.target.dataset.atkField;
+    if(!field) return;
+    npcDraft.attacks[i][field]=field==="atk"?(Number(e.target.value)||0):e.target.value;
+    scheduleNpcSync();
+  });
+  document.getElementById("npc-attacks-list").addEventListener("click",(e)=>{
+    const idx=e.target.dataset.delAttack;
+    if(idx===undefined) return;
+    npcDraft.attacks.splice(Number(idx),1);
+    scheduleNpcSync();
+    renderNpcEditView();
+  });
+  document.getElementById("btn-npc-add-attack").addEventListener("click",()=>{
+    npcDraft.attacks.push({name:"",props:"",atk:0,dmgText:""});
+    renderNpcEditView();
+  });
+
+  document.getElementById("btn-npc-delete").addEventListener("click",()=>{
+    showConfirm("Supprimer définitivement ce PNJ ? Cette action est irréversible.",async()=>{
+      if(npcDraft.docId){
+        try{ await deleteDoc(doc(charactersCol,npcDraft.docId)); }catch(e){ console.error(e); }
+      }
+      npcDraft=null;
+      renderNpcListView();
+    });
+  });
+}
+
+// --- Import parser: turns pasted stat-block text (Nom / descriptif / lignes
+// CA-PV-Vitesse-...-Actions, one per PNJ) into structured NPC objects. Built and
+// validated against a real bestiary export — see project notes. Best-effort: a
+// line it doesn't recognize as a known label is buffered as a candidate name/
+// descriptor for whichever block starts next, never silently merged into the
+// previous field (that swallowed the next monster's name in early testing).
+const NPC_LABEL_MAP={
+  "ca":"ca","pv":"pv","vitesse":"vitesse",
+  "for":"for","dex":"dex","con":"con","int":"int","sag":"sag","cha":"cha",
+  "sauvegardes":"saves",
+  "compétences":"skills","competences":"skills",
+  "sens":"senses","langues":"languages",
+  "équipement":"equipment","equipement":"equipment",
+  "traits":"traits","actions":"actions",
+  "réaction":"reactions","réactions":"reactions","reaction":"reactions","reactions":"reactions",
+  "action bonus":"bonusAction",
+  "notes mj":"notesMj"
+};
+function npcSplitLabelValue(line){
+  const idx=line.indexOf("\t");
+  if(idx===-1){
+    const m=line.match(/^(\S[^\t]*?)\s{2,}(.+)$/);
+    return m?[m[1].trim(),m[2].trim()]:null;
+  }
+  const label=line.slice(0,idx).trim(), value=line.slice(idx+1).trim();
+  return (label&&value)?[label,value]:null;
+}
+function npcNormalizeLabel(raw){ return NPC_LABEL_MAP[raw.trim().toLowerCase()]||null; }
+
+function parseBestiaryText(text){
+  const rawLines=text.split(/\r?\n/).map(l=>l.trim());
+  const entries=[];
+  let current=null;
+  let pendingCandidates=[];
+  function finalizeCurrent(){ if(current&&current.name) entries.push(current); current=null; }
+  for(const line of rawLines){
+    if(!line) continue;
+    const lv=npcSplitLabelValue(line);
+    const key=lv?npcNormalizeLabel(lv[0]):null;
+    if(key==="ca"){
+      finalizeCurrent();
+      const name=pendingCandidates[pendingCandidates.length-2]||pendingCandidates[pendingCandidates.length-1]||"PNJ sans nom";
+      const descriptor=(pendingCandidates.length>=2)?pendingCandidates[pendingCandidates.length-1]:"";
+      current={name,descriptor,fields:{},lastKey:null};
+      current.fields.ca=lv[1];
+      current.lastKey="ca";
+      pendingCandidates=[];
+      continue;
+    }
+    if(key){
+      if(!current) continue;
+      current.fields[key]=current.fields[key]?current.fields[key]+" "+lv[1]:lv[1];
+      current.lastKey=key;
+      continue;
+    }
+    pendingCandidates.push(line);
+    if(pendingCandidates.length>3) pendingCandidates.shift();
+  }
+  finalizeCurrent();
+  return entries;
+}
+function npcParseLeadingNumber(s){ const m=(s||"").match(/-?\d+/); return m?parseInt(m[0],10):null; }
+function npcParseParenNote(s){ const m=(s||"").match(/\(([^)]+)\)/); return m?m[1]:""; }
+function parseAttacksFromActionsText(text){
+  if(!text) return [];
+  const parts=text.split(/(?<=\.)\s+/).map(s=>s.trim()).filter(Boolean);
+  const isNameFrag=(s)=>/^[A-ZÀ-Ý][^.]{1,40}$/.test(s.replace(/\.$/,""))&&!/\d/.test(s);
+  const attacks=[];
+  let i=0;
+  while(i<parts.length){
+    if(isNameFrag(parts[i])){
+      const frag=parts[i].replace(/\.$/,"");
+      let body="",j=i+1;
+      while(j<parts.length&&!isNameFrag(parts[j])){ body+=(body?" ":"")+parts[j]; j++; }
+      const atkMatch=body.match(/\+(\d+)/);
+      const dmgMatch=body.match(/(\d+\s*\([^)]+\)[^.;]*)/);
+      if(atkMatch||dmgMatch){
+        attacks.push({ name:frag, props:body.slice(0,80), atk:atkMatch?parseInt(atkMatch[1],10):0, dmgText:dmgMatch?dmgMatch[1].trim():"" });
+      }
+      i=j;
+    }else{ i++; }
+  }
+  return attacks;
+}
+function npcParseCrFromDescriptor(descriptor){
+  const m=(descriptor||"").match(/FP\s+([\d/]+)/i);
+  return m?m[1]:"";
+}
+// A monster's saves rarely match "ability mod, no more" — irregular values are the
+// norm in real stat blocks — so default every save to the plain ability modifier,
+// then overlay any explicit "Force +6, Sagesse +5" style line the doc actually gave.
+function npcParseSaveBonusesFromText(text,baseScores){
+  const out={};
+  ["FOR","DEX","CON","INT","SAG","CHA"].forEach(k=>{ out[k]=Math.floor(((baseScores[k]||10)-10)/2); });
+  if(text){
+    Object.keys(ABIL_NAME).forEach(k=>{
+      const m=text.match(new RegExp(ABIL_NAME[k]+"\\s*([+-]\\s*\\d+)"));
+      if(m) out[k]=parseInt(m[1].replace(/\s+/g,""),10);
+    });
+  }
+  return out;
+}
+function buildNpcFromParsed(entry){
+  const f=entry.fields;
+  const baseScores={};
+  ["for","dex","con","int","sag","cha"].forEach(k=>{ baseScores[k.toUpperCase()]=npcParseLeadingNumber(f[k])??10; });
+  return {
+    name:entry.name, descriptor:entry.descriptor, cr:npcParseCrFromDescriptor(entry.descriptor),
+    ac:npcParseLeadingNumber(f.ca), acNote:npcParseParenNote(f.ca),
+    hpMax:npcParseLeadingNumber(f.pv),
+    speed:npcParseLeadingNumber(f.vitesse), baseScores,
+    saveBonuses:npcParseSaveBonusesFromText(f.saves||"",baseScores),
+    skillsText:f.skills||"", sensesText:f.senses||"", languagesText:f.languages||"",
+    equipmentText:f.equipment||"", traitsText:f.traits||"",
+    actionsRaw:f.actions||"", attacks:parseAttacksFromActionsText(f.actions||""),
+    reactionsText:f.reactions||"", bonusActionText:f.bonusAction||"", notesMjText:f.notesMj||""
+  };
 }
 
 function bindValidate(){
   document.getElementById("btn-validate").addEventListener("click",()=>{
-    state.validated=true;state.levelUpMode=false;seedInventory();renderTabs();renderTab();renderSheet();saveLocal();
+    const idx=TABS.findIndex(t=>t.k===state.activeTab);
+    const isLastStep=idx===-1||idx===TABS.length-1;
+    if(isLastStep){
+      if(!(state.name||"").trim()){
+        alert("Renseigne un nom avant de valider — sans nom, ce personnage ne sera jamais envoyé au MJ ni visible sur la table de jeu.");
+        return;
+      }
+      state.validated=true;state.levelUpMode=false;seedInventory();renderTabs();renderTab();renderSheet();saveLocal();
+    }else{
+      state.activeTab=TABS[idx+1].k;
+      renderTabs();renderTab();saveLocal();
+      document.getElementById("tabpanel").scrollIntoView({behavior:"smooth",block:"start"});
+    }
   });
 }
 
+function bindBack(){
+  document.getElementById("btn-back").addEventListener("click",()=>{
+    const idx=TABS.findIndex(t=>t.k===state.activeTab);
+    if(idx<=0)return;
+    state.activeTab=TABS[idx-1].k;
+    renderTabs();renderTab();saveLocal();
+    document.getElementById("tabpanel").scrollIntoView({behavior:"smooth",block:"start"});
+  });
+}
+
+let eventsWired=false;
 function boot(initial){
   state=Object.assign(defaultState(),initial||{});
   ensureRaceChoice();
   ensureEquipmentChoice();
   renderTabs();renderTab();renderSheet();
-  bindHeader();bindReset();bindValidate();
+  syncHeader();
+  // boot() re-runs every time a character is reset/deleted — binding these again each
+  // time stacked a duplicate click listener on every button (never removed), so a
+  // single click on "Valider" ended up firing several "advance one step" handlers at
+  // once, skipping multiple steps ahead. Bind the actual event listeners exactly once.
+  if(!eventsWired){
+    bindHeader();bindReset();bindValidate();bindBack();bindRoster();bindNpcManager();bindReadOnlyModal();
+    eventsWired=true;
+  }
 }
 
 function renderLexicon(filter){
@@ -2924,6 +3934,48 @@ function initConfirmModal(){
 }
 
 function getSnapshot(){return state;}
+async function bootFromUrlOrLocal(){
+  // Runs the "docId already stored locally becomes owned" migration (see loadLocal)
+  // BEFORE the isOwnedDocId check below — a player whose character predates this
+  // ownership system, opening their OWN sheet via a ?docId= link from the table de
+  // jeu (table-de-jeu always links this way), would otherwise fail the ownership
+  // check on this very first load and see their own fiche in read-only by mistake.
+  const localData=loadLocal();
+  const wantedId=new URLSearchParams(location.search).get("docId");
+  if(wantedId){
+    try{
+      const snap=await getDoc(doc(charactersCol,wantedId));
+      if(snap.exists()){
+        const data=snap.data();
+        // A PNJ is never a personnage joueur — booting it through the wizard used to
+        // silently turn it into an editable PC sheet. Route it to the (MJ-only) PNJ
+        // editor instead, full view included, and leave the page's own PC state alone.
+        if(data.kind==="npc"){
+          boot(localData);
+          if(isMJPerso){
+            npcDraft=Object.assign(defaultNpc(),data,{docId:wantedId});
+            document.getElementById("npc-modal").hidden=false;
+            renderNpcEditView();
+          }else{
+            alert('Cette fiche PNJ est réservée au MJ. Coche "Je suis le MJ" pour la consulter.');
+          }
+          return;
+        }
+        // Same rule as the roster: a link to someone else's fiche (e.g. the MJ
+        // checking a player's sheet from the table de jeu) opens read-only instead of
+        // silently making this browser "become" that character.
+        if(isOwnedDocId(wantedId)||isMJPerso){
+          loadCharacterData(data);
+        }else{
+          boot(localData);
+          openReadOnlyModal(data);
+        }
+        return;
+      }
+    }catch(e){ console.error(e); }
+  }
+  boot(localData);
+}
 try{
   initLexicon();
   initGrimoire();
@@ -2933,7 +3985,7 @@ try{
     const start=(data)=>{boot((data&&Object.keys(data).length)?data:loadLocal());};
     if(window.claude.hot.ready)window.claude.hot.ready(start);else start(window.claude.hot.data||{});
   }else{
-    boot(loadLocal());
+    bootFromUrlOrLocal();
   }
 }catch(e){boot(loadLocal());}
 })();
