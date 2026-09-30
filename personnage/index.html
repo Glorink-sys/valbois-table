@@ -465,6 +465,18 @@ table.price-table td.mono{white-space:nowrap;}
     </div>
   </div>
 </div>
+<div id="mj-password-modal" class="lexicon-modal" hidden>
+  <div class="lexicon-backdrop" id="mj-password-backdrop"></div>
+  <div class="lexicon-panel" role="dialog" aria-label="Accès MJ" style="max-width:360px;">
+    <p style="font-size:.95rem;margin:0 0 10px;">Entre le mot de passe du MJ pour activer ce rôle.</p>
+    <input type="password" id="f-mj-password" placeholder="Mot de passe" style="width:100%;box-sizing:border-box;">
+    <p id="mj-password-error" style="color:var(--warn,#c0392b);font-size:.85rem;margin:8px 0 0;display:none;">Mot de passe incorrect.</p>
+    <div class="actions-row" style="margin-top:14px;">
+      <button class="btn btn-arcane btn-sm" id="btn-mj-password-submit" type="button">Valider</button>
+      <button class="btn btn-ghost btn-sm" id="mj-password-close" type="button">Annuler</button>
+    </div>
+  </div>
+</div>
 <div id="grimoire-modal" class="lexicon-modal" hidden>
   <div class="lexicon-backdrop" id="grimoire-backdrop"></div>
   <div class="lexicon-panel" role="dialog" aria-label="Grimoire">
@@ -534,11 +546,44 @@ let isMJPerso=false;
 try{ isMJPerso=localStorage.getItem("valbois-perso-role-mj")==="1"; }catch(e){}
 document.getElementById("chk-mj-perso").checked=isMJPerso;
 document.getElementById("btn-npc-manager").hidden=!isMJPerso;
+
+const MJ_PERSO_PASSWORD="654321";
 document.getElementById("chk-mj-perso").addEventListener("change",(e)=>{
-  isMJPerso=e.target.checked;
-  try{ localStorage.setItem("valbois-perso-role-mj",isMJPerso?"1":"0"); }catch(err){}
-  document.getElementById("btn-npc-manager").hidden=!isMJPerso;
+  if(e.target.checked){
+    e.target.checked=false;
+    openMjPasswordModal();
+  }else{
+    isMJPerso=false;
+    try{ localStorage.setItem("valbois-perso-role-mj","0"); }catch(err){}
+    document.getElementById("btn-npc-manager").hidden=true;
+  }
 });
+function openMjPasswordModal(){
+  document.getElementById("mj-password-error").style.display="none";
+  const input=document.getElementById("f-mj-password");
+  input.value="";
+  document.getElementById("mj-password-modal").hidden=false;
+  input.focus();
+}
+function closeMjPasswordModal(){
+  document.getElementById("mj-password-modal").hidden=true;
+}
+function submitMjPassword(){
+  const val=document.getElementById("f-mj-password").value;
+  if(val===MJ_PERSO_PASSWORD){
+    isMJPerso=true;
+    document.getElementById("chk-mj-perso").checked=true;
+    try{ localStorage.setItem("valbois-perso-role-mj","1"); }catch(err){}
+    document.getElementById("btn-npc-manager").hidden=false;
+    closeMjPasswordModal();
+  }else{
+    document.getElementById("mj-password-error").style.display="block";
+  }
+}
+document.getElementById("mj-password-close").addEventListener("click",closeMjPasswordModal);
+document.getElementById("mj-password-backdrop").addEventListener("click",closeMjPasswordModal);
+document.getElementById("btn-mj-password-submit").addEventListener("click",submitMjPassword);
+document.getElementById("f-mj-password").addEventListener("keydown",(e)=>{ if(e.key==="Enter") submitMjPassword(); });
 
 const MAX_LEVEL=6;
 const ABILS=["FOR","DEX","CON","INT","SAG","CHA"];
@@ -3414,7 +3459,7 @@ function bindRoster(){
 // the race/classe/historique flow above.
 function defaultNpc(){
   return {
-    kind:"npc", docId:null, name:"", portrait:"", descriptor:"", cr:"",
+    kind:"npc", docId:null, name:"", portrait:"", portraitVariants:[], descriptor:"", cr:"",
     ac:null, acNote:"", hpMax:null, hpCurrent:null, speed:null,
     baseScores:{FOR:10,DEX:10,CON:10,INT:10,SAG:10,CHA:10},
     saveBonuses:{FOR:0,DEX:0,CON:0,INT:0,SAG:0,CHA:0},
@@ -3559,6 +3604,21 @@ function renderNpcEditView(){
       '<div class="field" style="flex:1;"><label>Description (race, taille...)</label><input id="npc-f-descriptor" value="'+esc(n.descriptor)+'"></div>'+
       '<div class="field" style="flex:none;width:80px;"><label>FP</label><input id="npc-f-cr" placeholder="ex. 1/4" value="'+esc(n.cr||"")+'"></div>'+
     '</div>'+
+    '<div class="field" style="margin-bottom:14px;"><label>Variantes d\'apparence (pour des pions différents du même PNJ)</label>'+
+      '<div id="npc-portrait-variants" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;">'+
+        (n.portraitVariants||[]).map((v,i)=>(
+          '<div style="position:relative;width:44px;height:44px;">'+
+            '<div style="width:44px;height:44px;border-radius:50%;background-color:var(--bg-alt);border:1px solid var(--line-soft);background-size:cover;background-position:center;background-image:url(\''+v.replace(/'/g,"")+'\');"></div>'+
+            '<button type="button" data-remove-variant="'+i+'" title="Supprimer cette variante" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;border:none;background:#a33;color:#fff;font-size:11px;line-height:18px;padding:0;cursor:pointer;">×</button>'+
+          '</div>'
+        )).join("")+
+      '</div>'+
+      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'+
+        '<label class="btn btn-ghost btn-sm" style="cursor:pointer;margin:0;">+ Ajouter une variante<input type="file" id="npc-f-variant-file" accept="image/*" hidden></label>'+
+        '<input type="url" id="npc-f-variant-url" placeholder="ou URL d\'image" style="min-width:140px;flex:1;">'+
+      '</div>'+
+      '<p class="hint" style="margin:6px 0 0;">Quand plusieurs pions de ce PNJ sont posés sur la carte, une apparence est tirée au hasard parmi le portrait principal et ces variantes.</p>'+
+    '</div>'+
     '<div class="npc-form-grid">'+
       '<div class="field"><label>CA</label><input id="npc-f-ac" type="number" value="'+(n.ac!=null?n.ac:"")+'"></div>'+
       '<div class="field"><label>Note CA</label><input id="npc-f-acnote" value="'+esc(n.acNote)+'"></div>'+
@@ -3657,6 +3717,44 @@ function bindNpcEditView(){
       document.getElementById("npc-portrait-preview").style.backgroundImage="url('"+npcDraft.portrait+"')";
       npcPortraitUrlEl.value="";
       scheduleNpcSync();
+    }catch(err){
+      console.error(err);
+      showAlert("Impossible de charger cette image — vérifie l'adresse.");
+    }
+  });
+
+  document.getElementById("npc-portrait-variants").addEventListener("click",(e)=>{
+    const idx=e.target.dataset.removeVariant;
+    if(idx===undefined) return;
+    npcDraft.portraitVariants.splice(Number(idx),1);
+    scheduleNpcSync();
+    renderNpcEditView();
+  });
+  document.getElementById("npc-f-variant-file").addEventListener("change",async(e)=>{
+    const file=e.target.files[0];
+    e.target.value="";
+    if(!file) return;
+    try{
+      const img=await processPortraitImage(file,256);
+      npcDraft.portraitVariants=npcDraft.portraitVariants||[];
+      npcDraft.portraitVariants.push(img);
+      scheduleNpcSync();
+      renderNpcEditView();
+    }catch(err){
+      console.error(err);
+      showAlert("Impossible de lire ce fichier image.");
+    }
+  });
+  const npcVariantUrlEl=document.getElementById("npc-f-variant-url");
+  npcVariantUrlEl.addEventListener("change",async()=>{
+    const url=npcVariantUrlEl.value.trim();
+    if(!url)return;
+    try{
+      const img=await processPortraitImage(url,256);
+      npcDraft.portraitVariants=npcDraft.portraitVariants||[];
+      npcDraft.portraitVariants.push(img);
+      scheduleNpcSync();
+      renderNpcEditView();
     }catch(err){
       console.error(err);
       showAlert("Impossible de charger cette image — vérifie l'adresse.");
