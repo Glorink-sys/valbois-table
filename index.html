@@ -67,13 +67,6 @@ h3.sub{font-size:.76rem;letter-spacing:.03em;text-transform:uppercase;color:var(
   border:1px solid var(--parchment-line);border-radius:8px;padding:6px 10px;
 }
 .role-toggle input{accent-color:var(--gold-strong);}
-.tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
-.tab-btn{
-  font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.03em;text-transform:uppercase;
-  padding:8px 16px;border-radius:6px 6px 0 0;border:1px solid var(--parchment-line);
-  background:var(--panel);color:var(--ink-soft);cursor:pointer;
-}
-.tab-btn.active{color:var(--gold-strong);border-bottom-color:var(--panel);background:var(--parchment-alt);}
 .panel{
   background:var(--parchment-alt);border:1px solid var(--parchment-line);border-radius:0 8px 8px 8px;
   padding:16px;width:100%;
@@ -91,6 +84,12 @@ button{
   background:var(--gold-strong);color:#fff;cursor:pointer;
 }
 button.ghost{background:transparent;color:var(--gold-strong);}
+.file-pick-btn{
+  font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.03em;text-transform:uppercase;
+  padding:8px 14px;border-radius:6px;border:1px dashed var(--parchment-line);
+  background:transparent;color:var(--ink-soft);cursor:pointer;display:inline-flex;align-items:center;
+}
+.file-pick-btn:hover{border-color:var(--gold-strong);color:var(--gold-strong);}
 button.danger{background:transparent;color:var(--warn);border-color:var(--warn);}
 button:disabled{opacity:.5;cursor:not-allowed;}
 
@@ -113,6 +112,12 @@ button:disabled{opacity:.5;cursor:not-allowed;}
   background:var(--panel);color:var(--ink-soft);cursor:pointer;
 }
 .mode-btn.active{background:var(--arcane,var(--gold-strong));color:#fff;border-color:var(--gold-strong);}
+.fog-brush-btn{
+  font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:.03em;text-transform:uppercase;
+  padding:6px 12px;border-radius:999px;border:1px solid var(--parchment-line);
+  background:var(--panel);color:var(--ink-soft);cursor:pointer;
+}
+.fog-brush-btn.active{background:var(--gold-strong);color:#fff;border-color:var(--gold-strong);}
 
 .effect-palette{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
 .effect-btn{
@@ -121,20 +126,27 @@ button:disabled{opacity:.5;cursor:not-allowed;}
   background:var(--panel);color:var(--ink);cursor:pointer;text-transform:none;letter-spacing:0;
 }
 .effect-btn.active{border-color:var(--gold-strong);background:var(--parchment-alt);box-shadow:0 0 0 1px var(--gold-strong) inset;}
-.effect-btn .ic{font-size:.9rem;}
 
-.board-wrap{overflow:auto;border:1px solid var(--parchment-line);border-radius:6px;background:var(--panel);max-height:70vh;max-width:100%;}
+.zoom-row{display:flex;gap:6px;align-items:center;margin-bottom:8px;font-size:.78rem;color:var(--ink-soft);}
+.zoom-btn{
+  width:30px;height:30px;padding:0;border-radius:6px;border:1px solid var(--parchment-line);
+  background:var(--panel);color:var(--ink);font-family:inherit;font-size:1rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.zoom-btn:hover{border-color:var(--gold-strong);}
+.board-wrap{overflow:auto;border:1px solid var(--parchment-line);border-radius:6px;background:var(--panel);max-height:96vh;max-width:100%;}
 #board{
   position:relative;
-  width:960px;max-width:none;
+  width:1280px;max-width:none;
   aspect-ratio: var(--cols) / var(--rows);
-  background-size:cover;background-position:center;
+  background-size:cover;background-position:0 0;
   background-color:var(--panel);
   background-image:
     linear-gradient(var(--parchment-line) 1px, transparent 1px),
     linear-gradient(90deg, var(--parchment-line) 1px, transparent 1px);
-  touch-action:none;cursor:pointer;
+  touch-action:none;cursor:grab;
 }
+#board.panning{cursor:grabbing;}
 .token{
   position:absolute;border-radius:50%;display:flex;align-items:center;justify-content:center;
   font-size:.68rem;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5);
@@ -143,15 +155,27 @@ button:disabled{opacity:.5;cursor:not-allowed;}
   z-index:6;
 }
 .token.selected{outline:2px solid var(--gold);outline-offset:2px;}
+.token.dragging{cursor:grabbing;z-index:20;box-shadow:0 6px 14px rgba(0,0,0,.55);}
+@keyframes turn-pulse{
+  0%,100%{box-shadow:0 3px 6px rgba(0,0,0,.45),0 0 0 3px rgba(224,89,42,.9),0 0 14px 4px rgba(224,89,42,.55);}
+  50%{box-shadow:0 3px 6px rgba(0,0,0,.45),0 0 0 3px rgba(224,89,42,.5),0 0 20px 8px rgba(224,89,42,.25);}
+}
+.token.current-turn{animation:turn-pulse 1.4s ease-in-out infinite;}
+.token-hpbar{
+  position:absolute;left:0;bottom:-6px;width:100%;height:4px;border-radius:2px;
+  background:rgba(20,15,8,.55);overflow:hidden;pointer-events:none;z-index:1;
+}
+.token-hpbar-fill{height:100%;transition:width .25s ease,background .25s ease;}
 .cell-effect{
   position:absolute;display:flex;align-items:center;justify-content:center;
-  font-size:1.1rem;pointer-events:none;z-index:2;border-radius:3px;
+  pointer-events:none;z-index:2;border-radius:3px;color:var(--ink);
 }
-.path-cell{
-  position:absolute;background:rgba(217,165,63,.4);border:1px solid rgba(217,165,63,.8);
-  pointer-events:none;z-index:4;box-sizing:border-box;
-}
-.path-cell.dest{background:rgba(217,165,63,.6);}
+.cell-effect svg{width:55%;height:55%;max-width:26px;max-height:26px;}
+.effect-btn .ic{display:inline-flex;width:1.1em;height:1.1em;}
+.effect-btn .ic svg{width:100%;height:100%;}
+#drag-line-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;overflow:visible;}
+.fog-tile{position:absolute;pointer-events:none;background:#15100a;z-index:25;}
+.fog-tile.mj{background:rgba(40,40,40,.6);z-index:3;}
 .move-badge{
   position:absolute;transform:translate(-50%,-130%);
   background:rgba(20,15,8,.9);color:#f5efdc;font-family:'Cinzel',serif;
@@ -182,24 +206,34 @@ button:disabled{opacity:.5;cursor:not-allowed;}
 }
 .mood-empty{font-size:.82rem;color:var(--ink-soft);}
 
-.token-template-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
-.token-template-card{
+.char-library-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+.char-library-card{
   display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--parchment-line);
   border-radius:999px;padding:5px 6px 5px 6px;cursor:pointer;font-size:.78rem;color:var(--ink);
 }
-.token-template-card .swatch{width:16px;height:16px;border-radius:50%;flex:none;border:1px solid rgba(0,0,0,.2);background-size:cover;background-position:center;}
-.token-template-card .del{background:none;border:none;color:var(--ink-soft);font-size:.72rem;padding:0 4px;cursor:pointer;}
-.token-template-card .del:hover{color:var(--warn);}
+.char-library-card .swatch{width:16px;height:16px;border-radius:50%;flex:none;border:1px solid rgba(0,0,0,.2);background-size:cover;background-position:center;}
+.char-library-card .del{background:none;border:none;color:var(--ink-soft);font-size:.72rem;padding:0 4px;cursor:pointer;}
+.char-library-card .del:hover{color:var(--warn);}
 
-.init-row{
-  display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;
-  border:1px solid var(--parchment-line);border-radius:6px;background:var(--panel);margin-bottom:6px;font-size:.88rem;
+.init-bar{flex:1;display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;padding:3px 0;}
+.init-chip{
+  position:relative;display:block;padding:2px;border-radius:50%;
+  border:2px solid transparent;line-height:0;cursor:pointer;
 }
-.init-row.current{border-color:var(--gold-strong);background:var(--parchment-alt);box-shadow:0 0 0 1px var(--gold-strong) inset;}
-.init-row .score{font-weight:700;font-variant-numeric:tabular-nums;min-width:28px;text-align:center;}
-.init-row .del{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:.72rem;}
-.init-row .del:hover{color:var(--warn);}
-.init-empty{font-size:.82rem;color:var(--ink-soft);}
+.init-chip.current{border-color:var(--warn);box-shadow:0 0 8px 1px rgba(224,89,42,.6);}
+.init-chip.selected{box-shadow:0 0 0 2px var(--gold);}
+.init-chip.current.selected{box-shadow:0 0 0 2px var(--gold),0 0 8px 1px rgba(224,89,42,.6);}
+.init-avatar{
+  width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background-size:cover;background-position:center;color:#fff;font-weight:700;font-size:.8rem;
+  text-shadow:0 1px 2px rgba(0,0,0,.5);
+}
+.init-score-badge{
+  position:absolute;left:50%;bottom:-5px;transform:translateX(-50%);
+  background:rgba(20,15,8,.88);color:#f5efdc;font-size:.6rem;font-weight:700;
+  padding:0 5px;border-radius:999px;line-height:1.4;font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
 
 #ambiance-overlay{
   position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;
@@ -207,8 +241,121 @@ button:disabled{opacity:.5;cursor:not-allowed;}
 }
 #ambiance-overlay[hidden]{display:none;}
 #ambiance-overlay img{max-width:100%;max-height:100%;object-fit:contain;}
-#ambiance-overlay .close-btn{position:absolute;top:16px;right:16px;}
+
+/* The MJ never sees the full-screen overlay (see renderOverlay) — just this compact
+   "showing to players" reminder, so the map/tokens stay usable while it's up. */
+#ambiance-indicator{
+  position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:55;
+  display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--gold);
+  border-radius:999px;padding:6px 8px 6px 6px;box-shadow:0 4px 14px rgba(0,0,0,.3);font-size:.8rem;
+}
+#ambiance-indicator[hidden]{display:none;}
+#ambiance-indicator img{width:32px;height:32px;border-radius:50%;object-fit:cover;flex:none;}
+
+.simple-modal{position:fixed;inset:0;z-index:60;}
+.simple-modal-backdrop{position:absolute;inset:0;background:rgba(20,15,8,.55);}
+.dice-roller,.combat-log{padding-top:6px;}
+.dice-drawer-toggle,.combat-drawer-toggle,.mood-drawer-toggle{
+  position:fixed;bottom:18px;z-index:70;width:52px;height:52px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;padding:0;
+  border:1px solid var(--gold-strong);background:var(--gold-strong);color:#fff;font-size:1.4rem;
+  line-height:1;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.35);
+}
+.dice-drawer-toggle{right:18px;}
+.combat-drawer-toggle{left:18px;}
+.mood-drawer-toggle{left:50%;margin-left:-26px;}
+/* Centered via left+margin (not transform) since .floating-drawer/.open already
+   use transform for the slide-up animation — a transform here would win on
+   specificity (ID beats class) and silently break that animation. */
+#mood-drawer{left:50%;margin-left:-150px;right:auto;}
+.floating-drawer{
+  position:fixed;bottom:82px;z-index:65;width:300px;max-width:calc(100vw - 36px);
+  background-color:color-mix(in srgb, var(--panel) 55%, transparent);
+  backdrop-filter:blur(2px);
+  border:1px solid var(--gold);border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.25);
+  padding:10px 14px;max-height:60vh;overflow-y:auto;
+  transform:translateY(16px) scale(.97);opacity:0;pointer-events:none;
+  transition:transform .2s ease, opacity .2s ease;
+}
+.floating-drawer.open{transform:translateY(0) scale(1);opacity:1;pointer-events:auto;}
+#dice-drawer{right:18px;}
+#combat-drawer{left:18px;}
+#dice-drawer .dice-history,#combat-drawer .dice-history{max-height:160px;}
+.floating-drawer h3.sub{margin-top:0;font-size:.7rem;}
+@media (max-width:640px){
+  .floating-drawer{max-height:65vh;width:calc(100vw - 36px);}
+  #mood-drawer{margin-left:calc(-50vw + 18px);}
+}
+.combat-setup{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.combat-side{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;}
+.combat-side strong{font-family:'Cinzel',serif;font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.combat-arrow{color:var(--gold-strong);font-size:1.1rem;flex:none;}
+.dice-roll-row .undo-btn{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:.68rem;text-decoration:underline;padding:0;}
+.dice-roll-row .undo-btn:hover{color:var(--warn);}
+.dice-roll-row.miss{opacity:.75;}
+.dice-roll-row.crit .total{color:var(--warn);}
+.adv-btn{
+  font-family:'Cinzel',serif;font-size:.68rem;padding:4px 9px;border-radius:999px;
+  border:1px solid var(--parchment-line);background:var(--panel);color:var(--ink-soft);cursor:pointer;
+}
+.adv-btn.active{background:var(--gold-strong);color:#fff;border-color:var(--gold-strong);}
+.dice-btn-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px;}
+.dice-btn{
+  font-family:'Cinzel',serif;font-size:.72rem;padding:6px 10px;border-radius:6px;
+  border:1px solid var(--parchment-line);background:var(--panel);color:var(--ink);cursor:pointer;
+}
+.dice-btn:hover{border-color:var(--gold-strong);}
+.dice-hidden-label{display:flex;align-items:center;gap:4px;font-size:.78rem;color:var(--ink-soft);}
+.dice-history{display:flex;flex-direction:column;gap:5px;max-height:180px;overflow-y:auto;}
+.dice-roll-row{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 9px;
+  border:1px solid var(--parchment-line);border-radius:6px;
+  background-color:color-mix(in srgb, var(--panel) 45%, transparent);font-size:.8rem;
+}
+.dice-roll-row .who{color:var(--gold-strong);font-weight:600;}
+.dice-roll-row .total{font-weight:700;font-variant-numeric:tabular-nums;}
+.dice-roll-row.secret{opacity:.7;font-style:italic;}
+.simple-modal-panel{
+  position:relative;max-width:480px;margin:8vh auto 0;max-height:80vh;overflow-y:auto;
+  background:var(--panel);border:1px solid var(--gold);border-radius:12px;padding:18px;
+  box-shadow:0 12px 40px rgba(0,0,0,.35);
+}
+.simple-modal-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px;}
+.simple-modal-head h2{margin:0;font-size:1.05rem;}
+.npc-picker-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--parchment-line);}
+.npc-picker-row .swatch{width:26px;height:26px;border-radius:50%;flex:none;background-size:cover;background-position:center;border:1px solid rgba(0,0,0,.2);}
+.npc-picker-row .name{flex:1;font-size:.85rem;}
 .hint{font-size:.78rem;color:var(--ink-soft);max-width:60ch;margin:0 0 12px;}
+
+.my-ability-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:6px;}
+.my-ability{display:flex;flex-direction:column;align-items:center;background:var(--panel);border:1px solid var(--parchment-line);border-radius:6px;padding:4px 2px;}
+.my-ability-k{font-size:.68rem;color:var(--ink-soft);letter-spacing:.03em;}
+.my-ability-v{font-weight:700;font-variant-numeric:tabular-nums;}
+.my-inventory-list{list-style:none;padding:0;margin:0 0 6px;font-size:.82rem;}
+.my-inventory-list li{padding:2px 0;border-bottom:1px solid var(--parchment-line);}
+.cond-chip-wrap{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;}
+.cond-chip-wrap[hidden]{display:none;}
+.cond-chip{
+  background:var(--panel);border:1px solid var(--parchment-line);border-radius:999px;
+  padding:3px 8px;font-size:.7rem;color:var(--ink-soft);cursor:pointer;
+}
+.cond-chip.active{background:var(--warn);border-color:var(--warn);color:#fff;}
+.cond-active-badges{display:flex;flex-wrap:wrap;gap:5px;margin:-2px 0 8px;}
+.cond-badge{
+  background:var(--warn);color:#fff;border-radius:999px;padding:3px 9px;
+  font-size:.7rem;font-weight:600;letter-spacing:.02em;
+}
+.hp-row{display:flex;align-items:center;gap:6px;margin-bottom:8px;}
+.hp-bar{position:relative;flex:1;height:18px;border-radius:9px;background:#2a1414;border:1px solid rgba(0,0,0,.35);overflow:hidden;}
+.hp-bar-fill{position:absolute;left:0;top:0;bottom:0;transition:width .25s ease,background .25s ease;}
+.hp-bar-label{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;height:100%;font-size:.7rem;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.65);font-variant-numeric:tabular-nums;}
+.atk-block{display:flex;flex-direction:column;gap:4px;margin-bottom:6px;}
+.atk-block[hidden]{display:none;}
+.atk-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:.82rem;}
+.atk-weapon-row{display:flex;flex-direction:column;gap:2px;padding:2px 0;}
+.atk-weapon-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:.82rem;}
+.atk-weapon-props{font-style:italic;color:var(--ink-soft);font-size:.78rem;width:100%;}
+.mono{font-variant-numeric:tabular-nums;white-space:nowrap;}
 </style>
 </head>
 <body>
@@ -229,28 +376,31 @@ button:disabled{opacity:.5;cursor:not-allowed;}
   </div>
 </div>
 
-<div class="tabs">
-  <button class="tab-btn active" data-tab="map">Carte tactique</button>
-  <button class="tab-btn" data-tab="mood">Cartes d'ambiance</button>
-  <button class="tab-btn" data-tab="init">Initiative</button>
-</div>
-
 <div class="game-layout">
   <aside class="side-panel" id="panel-left">
     <h2>Personnage</h2>
-    <p class="hint">La fiche de ton personnage s'affichera ici — intégration avec l'outil de création prévue dans une prochaine version.</p>
+    <div class="field-row">
+      <select id="my-character-select" style="flex:1;min-width:0;">
+        <option value="">— Choisis ton personnage —</option>
+      </select>
+    </div>
+    <div id="my-character-panel"><p class="hint">Choisis ton personnage dans la liste pour voir sa fiche ici.</p></div>
   </aside>
 
   <main class="center-panel">
     <div class="panel" id="panel-map">
       <div id="mj-map-controls" hidden>
         <div class="field-row">
-          <input type="url" id="f-map-url" placeholder="URL de l'image de fond (carte)" style="min-width:240px;flex:1;">
+          <input type="text" id="f-map-url" placeholder="URL de l'image de fond (carte)" style="min-width:240px;flex:1;">
           <input type="text" id="f-map-name" placeholder="Nom (ex. Auberge du Corbeau)" style="min-width:140px;">
           <button id="btn-set-map">Appliquer et enregistrer</button>
         </div>
         <div class="field-row">
-          <label style="font-size:.8rem;">Colonnes <input type="number" id="f-cols" min="4" max="30" value="12" style="width:64px;"></label>
+          <label class="file-pick-btn">Choisir un fichier sur le PC<input type="file" id="f-map-file" accept="image/*" hidden></label>
+          <span class="hint" style="margin:0;">ou colle une URL ci-dessus.</span>
+        </div>
+        <div class="field-row">
+          <label style="font-size:.8rem;">Colonnes <input type="number" id="f-cols" min="4" max="50" value="30" style="width:64px;"></label>
           <button class="ghost" id="btn-set-grid">Appliquer la grille</button>
           <button class="ghost" id="btn-reset-map">Réinitialiser la carte</button>
         </div>
@@ -259,75 +409,163 @@ button:disabled{opacity:.5;cursor:not-allowed;}
         <h3 class="sub">Bibliothèque de cartes</h3>
         <div id="map-list"><p class="mood-empty">Aucune carte enregistrée pour l'instant.</p></div>
 
-        <h3 class="sub">Bibliothèque de pions</h3>
+        <h3 class="sub" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <span>Personnages (créés dans l'outil de personnage)</span>
+          <button type="button" class="ghost btn-sm" id="btn-npc-picker" style="text-transform:none;letter-spacing:normal;font-family:inherit;">Gérer les PNJ disponibles</button>
+        </h3>
+        <p class="hint" style="margin:0 0 8px;">Ces pions sont reliés à la vraie fiche du joueur (ou du PNJ) — portrait et PV inclus, rien à réimporter.</p>
+        <div id="character-library-list" class="char-library-grid"></div>
+
+        <h3 class="sub">Scènes préparées</h3>
+        <p class="hint" style="margin:0 0 8px;">Une scène capture d'un coup la carte, les pions posés, le brouillard, les effets et l'initiative en cours — prépare-la à l'avance, ou mets un combat en pause pour le reprendre plus tard exactement où tu l'as laissé.</p>
         <div class="field-row">
-          <input type="text" id="f-token-name" placeholder="Nom du pion (ex. Gobelin)" style="min-width:130px;">
-          <input type="color" id="f-token-color" value="#3f6b7c">
-          <input type="url" id="f-token-image" placeholder="URL d'image (optionnel)" style="min-width:160px;flex:1;">
-          <button id="btn-save-token-template">Enregistrer comme modèle</button>
+          <input type="text" id="f-scene-name" placeholder="Nom de la scène (ex. Embuscade de la forêt)" style="min-width:220px;flex:1;">
+          <button id="btn-save-scene">Enregistrer la scène actuelle</button>
         </div>
-        <div id="token-template-list" class="token-template-grid"></div>
+        <div id="scene-list"><p class="mood-empty">Aucune scène enregistrée pour l'instant.</p></div>
 
         <h3 class="sub">Mode d'interaction</h3>
         <div class="mode-row">
           <button type="button" class="mode-btn active" data-mode="move">Déplacer un pion</button>
           <button type="button" class="mode-btn" data-mode="effect">Placer un effet</button>
+          <button type="button" class="mode-btn" data-mode="fog">Brouillard de guerre</button>
         </div>
         <div id="effect-palette-wrap" hidden>
           <div class="effect-palette" id="effect-palette"></div>
           <p class="hint" style="margin:0 0 6px;">Choisis un effet puis clique une case pour le poser ; reclique la même case pour l'effacer.</p>
         </div>
+        <div id="fog-controls" hidden>
+          <div class="field-row">
+            <button type="button" class="fog-brush-btn active" data-fogmode="hide">Masquer</button>
+            <button type="button" class="fog-brush-btn" data-fogmode="reveal">Révéler</button>
+            <label style="font-size:.8rem;">Taille du pinceau <input type="number" id="f-fog-brush" min="1" max="5" value="1" style="width:56px;"></label>
+          </div>
+          <div class="field-row">
+            <button type="button" class="ghost" id="btn-fog-hide-all">Masquer toute la carte</button>
+            <button type="button" class="ghost" id="btn-fog-reveal-all">Révéler toute la carte</button>
+          </div>
+          <p class="hint" style="margin:0 0 6px;">Choisis Masquer ou Révéler, puis glisse le pinceau sur les cases. Toi (MJ) vois toujours tout, légèrement grisé sur les cases masquées.</p>
+        </div>
       </div>
-      <div class="board-wrap"><div id="board"><div class="move-badge" id="move-badge" hidden></div></div></div>
+      <div class="zoom-row" id="zoom-row">
+        <button type="button" class="zoom-btn" id="btn-zoom-out" title="Dézoomer">−</button>
+        <span id="zoom-label">100%</span>
+        <button type="button" class="zoom-btn" id="btn-zoom-in" title="Zoomer">+</button>
+        <button type="button" class="zoom-btn" id="btn-zoom-reset" title="Réinitialiser le zoom" style="width:auto;padding:0 8px;font-size:.68rem;">100%</button>
+        <div id="init-bar" class="init-bar"></div>
+      </div>
+      <div class="board-wrap"><div id="board">
+        <svg id="drag-line-svg"><line id="drag-line" x1="0" y1="0" x2="0" y2="0" stroke="#d9a53f" stroke-width="3" stroke-dasharray="7,5" style="display:none;"/></svg>
+        <div class="move-badge" id="move-badge" hidden></div>
+      </div></div>
       <div class="legend" id="legend"></div>
     </div>
 
-    <div class="panel" id="panel-mood" hidden>
-      <div id="mj-mood-controls" hidden>
-        <p class="hint">Colle l'adresse d'une image déjà hébergée en ligne (Imgur, Discord, Google Drive en partage public, ou ton propre dépôt GitHub) — la page ne stocke pas les images elle-même.</p>
-        <div class="field-row">
-          <input type="url" id="f-mood-url" placeholder="URL de l'image" style="min-width:220px;flex:1;">
-          <input type="text" id="f-mood-name" placeholder="Nom (ex. Taverne du Corbeau)" style="min-width:160px;">
-          <button id="btn-add-mood">Ajouter à la galerie</button>
-        </div>
-      </div>
-      <h2>Galerie</h2>
-      <div id="mood-list"><p class="mood-empty">Aucune carte d'ambiance pour l'instant.</p></div>
-    </div>
-
-    <div class="panel" id="panel-init" hidden>
-      <p class="hint">Chacun peut ajouter son score d'initiative (jet + modificateur). Le MJ fait avancer l'ordre du tour.</p>
-      <div class="field-row">
-        <input type="text" id="f-init-name" placeholder="Nom (personnage ou PNJ)" style="min-width:160px;">
-        <input type="number" id="f-init-score" placeholder="Initiative" style="width:100px;">
-        <button id="btn-add-init">Ajouter à l'ordre</button>
-      </div>
-      <div id="mj-init-controls" class="field-row" hidden>
-        <button class="ghost" id="btn-init-prev">◀ Tour précédent</button>
-        <button id="btn-init-next">Tour suivant ▶</button>
-        <button class="ghost danger" id="btn-init-reset">Réinitialiser l'ordre</button>
-      </div>
-      <p class="hint" id="init-round-label" style="margin:6px 0 10px;"></p>
-      <div id="init-list"><p class="init-empty">Personne dans l'ordre d'initiative pour l'instant.</p></div>
-    </div>
   </main>
 
   <aside class="side-panel" id="panel-right">
     <h2>Sélection</h2>
-    <div id="selection-info"><p class="hint">Clique un pion pour le sélectionner, puis une case pour prévisualiser son déplacement.</p></div>
+    <div id="selection-info"><p class="hint">Glisse un pion pour le déplacer sur la carte.</p></div>
   </aside>
 </div>
 
 <div id="ambiance-overlay" hidden>
   <img id="ambiance-img" src="" alt="Carte d'ambiance">
-  <button class="ghost close-btn" id="btn-close-ambiance">Fermer</button>
+</div>
+
+<div id="ambiance-indicator" hidden>
+  <img id="ambiance-indicator-img" src="" alt="">
+  <span>Ambiance affichée aux joueurs</span>
+  <button type="button" class="ghost btn-sm" id="btn-close-ambiance-indicator" style="padding:3px 8px;">Fermer</button>
+</div>
+
+<div id="npc-picker-modal" class="simple-modal" hidden>
+  <div class="simple-modal-backdrop" id="npc-picker-backdrop"></div>
+  <div class="simple-modal-panel">
+    <div class="simple-modal-head">
+      <h2>PNJ disponibles sur la table</h2>
+      <button type="button" class="ghost btn-sm" id="npc-picker-close">Fermer</button>
+    </div>
+    <p class="hint">Coche les PNJ que les joueurs peuvent voir apparaître comme pions posables cette session — les autres restent rangés dans le bestiaire de l'outil personnage.</p>
+    <div id="npc-picker-list"></div>
+  </div>
+</div>
+
+<button type="button" id="dice-drawer-toggle" class="dice-drawer-toggle" title="Lancer de dés">🎲</button>
+<div id="dice-drawer" class="floating-drawer">
+  <div class="dice-roller">
+    <h3 class="sub">Lancer de dés</h3>
+    <div class="dice-btn-row">
+      <button type="button" class="dice-btn" data-die="4">d4</button>
+      <button type="button" class="dice-btn" data-die="6">d6</button>
+      <button type="button" class="dice-btn" data-die="8">d8</button>
+      <button type="button" class="dice-btn" data-die="10">d10</button>
+      <button type="button" class="dice-btn" data-die="12">d12</button>
+      <button type="button" class="dice-btn" data-die="20">d20</button>
+      <button type="button" class="dice-btn" data-die="100">d100</button>
+    </div>
+    <div class="dice-btn-row">
+      <input type="text" id="f-dice-formula" placeholder="ex. 2d6+3" style="width:90px;">
+      <button type="button" class="ghost btn-sm" id="btn-dice-roll-formula">Lancer</button>
+      <label id="dice-hidden-wrap" class="dice-hidden-label" hidden>
+        <input type="checkbox" id="f-dice-hidden"> Caché (MJ)
+      </label>
+    </div>
+    <div class="dice-btn-row">
+      <button type="button" class="adv-btn dice-adv-btn active" data-adv="normal">Normal</button>
+      <button type="button" class="adv-btn dice-adv-btn" data-adv="adv">Avantage</button>
+      <button type="button" class="adv-btn dice-adv-btn" data-adv="dis">Désavantage</button>
+    </div>
+    <div id="dice-history" class="dice-history"></div>
+  </div>
+</div>
+
+<button type="button" id="mood-drawer-toggle" class="mood-drawer-toggle" title="Cartes d'ambiance">🖼️</button>
+<div id="mood-drawer" class="floating-drawer">
+  <div id="mj-mood-controls" hidden>
+    <p class="hint" style="margin-top:0;">Colle l'adresse d'une image déjà hébergée en ligne (Imgur, Discord, Google Drive en partage public, ou ton propre dépôt GitHub) — la page ne stocke pas les images elle-même.</p>
+    <div class="field-row">
+      <input type="url" id="f-mood-url" placeholder="URL de l'image" style="min-width:160px;flex:1;">
+      <input type="text" id="f-mood-name" placeholder="Nom (ex. Taverne du Corbeau)" style="min-width:140px;">
+      <button id="btn-add-mood">Ajouter à la galerie</button>
+    </div>
+  </div>
+  <h3 class="sub">Galerie</h3>
+  <div id="mood-list"><p class="mood-empty">Aucune carte d'ambiance pour l'instant.</p></div>
+</div>
+
+<button type="button" id="combat-drawer-toggle" class="combat-drawer-toggle" title="Journal de combat">⚔️</button>
+<div id="combat-drawer" class="floating-drawer">
+  <div class="combat-log">
+    <h3 class="sub" style="display:flex;align-items:center;justify-content:space-between;">
+      <span>Journal de combat</span>
+      <button type="button" class="ghost btn-sm" id="btn-combat-log-clear" title="Vider le journal (nouveau combat)" style="text-transform:none;letter-spacing:normal;font-family:inherit;padding:2px 8px;">↺</button>
+    </h3>
+    <div class="combat-setup">
+      <div class="combat-side"><span class="hint" style="margin:0;">Attaquant (clic droit)</span><strong id="combat-attacker-name">—</strong></div>
+      <div class="combat-arrow">→</div>
+      <div class="combat-side"><span class="hint" style="margin:0;">Cible (clic gauche)</span><strong id="combat-target-name">—</strong></div>
+    </div>
+    <div class="dice-btn-row">
+      <select id="f-combat-weapon" style="flex:1;min-width:120px;"></select>
+      <button type="button" class="ghost btn-sm" id="btn-combat-attack">Attaquer</button>
+    </div>
+    <p class="hint" id="combat-weapon-range" style="margin:0 0 4px;"></p>
+    <div class="dice-btn-row">
+      <button type="button" class="adv-btn combat-adv-btn active" data-adv="normal">Normal</button>
+      <button type="button" class="adv-btn combat-adv-btn" data-adv="adv">Avantage</button>
+      <button type="button" class="adv-btn combat-adv-btn" data-adv="dis">Désavantage</button>
+    </div>
+    <p class="hint" id="combat-setup-hint" style="margin:2px 0 4px;"></p>
+    <div id="combat-log-list" class="dice-history"></div>
+  </div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
 import {
   getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot,
-  collection, addDoc, deleteDoc, deleteField
+  collection, addDoc, deleteDoc, deleteField, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -342,68 +580,168 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const DEFAULT_TOKENS = {
-  mj:  {label:"MJ", color:"#7c3f3f", image:"", x:1, y:1},
-  j1:  {label:"J1", color:"#3f6b7c", image:"", x:3, y:4},
-  j2:  {label:"J2", color:"#4c7c3f", image:"", x:5, y:6},
-  j3:  {label:"J3", color:"#7c6c3f", image:"", x:7, y:2},
-  j4:  {label:"J4", color:"#5f3f7c", image:"", x:9, y:5}
+// Small hand-drawn "map legend" style line icons (single ink color via currentColor)
+// instead of emoji, whose look varies wildly across OS/fonts and clashed with the
+// parchment aesthetic.
+const SVG_ICONS = {
+  difficile: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 17c2-4 4-2 5-5s3-3 4 0 3-5 5-2 3 5 6 3"/></svg>',
+  feu: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2c1 3-3 4-3 7a3 3 0 0 0 6 0c0-1-1-2-1-3 2 1 3 4 3 6a5 5 0 0 1-10 0c0-4 2-6 5-10Z"/></svg>',
+  toile: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M12 2v20M2 12h20M4.5 4.5l15 15M19.5 4.5l-15 15"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="8"/></svg>',
+  brouillard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 8c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/><path d="M3 13c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/><path d="M3 18c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/></svg>',
+  tenebres: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M15 3a9 9 0 1 0 0 18 7 7 0 0 1 0-18Z"/></svg>',
+  poison: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 16a4 4 0 0 1 1-8 5 5 0 0 1 9.6-1A4.5 4.5 0 0 1 18 16Z"/><circle cx="8" cy="20.3" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="21.2" r="1" fill="currentColor" stroke="none"/><circle cx="16" cy="20" r="1" fill="currentColor" stroke="none"/></svg>',
+  givre: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 2v20M4 6l16 12M20 6L4 18"/></svg>',
+  foudre: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M13 2 3 14h7l-1 8 11-14h-7z"/></svg>',
+  acide: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2c4 5 7 9 7 13a7 7 0 1 1-14 0c0-4 3-8 7-13Z"/></svg>',
+  eau: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M2 10c2.5-2 5-2 7 0s5 2 7 0 5-2 7 0"/><path d="M2 16c2.5-2 5-2 7 0s5 2 7 0 5-2 7 0"/></svg>',
+  lave: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 3c1 2-2 3-2 5a2 2 0 0 0 4 0c0-1-.5-1.5-.5-2 1.5 1 2.5 3 2.5 5a5 5 0 0 1-10 0c0-4 3-6 6-8Z"/><circle cx="7" cy="19.5" r="1.3" fill="currentColor"/><circle cx="17" cy="19.5" r="1.3" fill="currentColor"/></svg>',
+  epines: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21 21 3"/><path d="M8 16l-3-1M8 16l-1-3M13 11l-3-1M13 11l-1-3M18 6l-3-1M18 6l-1-3"/></svg>',
+  piege: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9c3 3 15 3 18 0"/><path d="M3 15c3-3 15-3 18 0"/><path d="M6 9v2M9 9.6v2M12 9.8v2M15 9.6v2M18 9v2M6 15v-2M9 14.4v-2M12 14.2v-2M15 14.4v-2M18 15v-2"/></svg>',
+  sanctuaire: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2l2 7 7 2-7 2-2 7-2-7-7-2 7-2 2-7Z"/></svg>',
+  silence: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4Z"/><path d="M3 3l18 18"/></svg>',
+  illusion: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 0-7-7 5 5 0 0 0-5 5 3 3 0 0 0 3 3"/></svg>'
 };
 
 const EFFECTS_LIBRARY = [
-  {key:"difficile", label:"Terrain difficile", icon:"🪨", color:"#8a7048"},
-  {key:"feu", label:"Feu", icon:"🔥", color:"#c1440e"},
-  {key:"toile", label:"Toile d'araignée", icon:"🕸️", color:"#6b6b6b"},
-  {key:"brouillard", label:"Brouillard", icon:"🌫️", color:"#8a97a8"},
-  {key:"tenebres", label:"Ténèbres magiques", icon:"🌑", color:"#3a2a52"},
-  {key:"poison", label:"Gaz toxique", icon:"☠️", color:"#4c7c3f"},
-  {key:"givre", label:"Givre / Glace", icon:"❄️", color:"#6fa8c9"},
-  {key:"foudre", label:"Électricité", icon:"⚡", color:"#c9a227"},
-  {key:"acide", label:"Acide", icon:"🧪", color:"#8fae1b"},
-  {key:"eau", label:"Eau profonde", icon:"🌊", color:"#2e6f9e"},
-  {key:"lave", label:"Lave", icon:"🌋", color:"#9e2e1f"},
-  {key:"epines", label:"Épines / Ronces", icon:"🌵", color:"#3f6b3f"},
-  {key:"piege", label:"Piège", icon:"⚠️", color:"#c17a1f"},
-  {key:"sanctuaire", label:"Zone bénie", icon:"✨", color:"#c9a227"},
-  {key:"silence", label:"Silence", icon:"🔇", color:"#5a5a6b"},
-  {key:"illusion", label:"Illusion", icon:"🎭", color:"#7a4f9e"}
+  {key:"difficile", label:"Terrain difficile", icon:SVG_ICONS.difficile, color:"#8a7048"},
+  {key:"feu", label:"Feu", icon:SVG_ICONS.feu, color:"#c1440e"},
+  {key:"toile", label:"Toile d'araignée", icon:SVG_ICONS.toile, color:"#6b6b6b"},
+  {key:"brouillard", label:"Brouillard", icon:SVG_ICONS.brouillard, color:"#8a97a8"},
+  {key:"tenebres", label:"Ténèbres magiques", icon:SVG_ICONS.tenebres, color:"#3a2a52"},
+  {key:"poison", label:"Gaz toxique", icon:SVG_ICONS.poison, color:"#4c7c3f"},
+  {key:"givre", label:"Givre / Glace", icon:SVG_ICONS.givre, color:"#6fa8c9"},
+  {key:"foudre", label:"Électricité", icon:SVG_ICONS.foudre, color:"#c9a227"},
+  {key:"acide", label:"Acide", icon:SVG_ICONS.acide, color:"#8fae1b"},
+  {key:"eau", label:"Eau profonde", icon:SVG_ICONS.eau, color:"#2e6f9e"},
+  {key:"lave", label:"Lave", icon:SVG_ICONS.lave, color:"#9e2e1f"},
+  {key:"epines", label:"Épines / Ronces", icon:SVG_ICONS.epines, color:"#3f6b3f"},
+  {key:"piege", label:"Piège", icon:SVG_ICONS.piege, color:"#c17a1f"},
+  {key:"sanctuaire", label:"Zone bénie", icon:SVG_ICONS.sanctuaire, color:"#c9a227"},
+  {key:"silence", label:"Silence", icon:SVG_ICONS.silence, color:"#5a5a6b"},
+  {key:"illusion", label:"Illusion", icon:SVG_ICONS.illusion, color:"#7a4f9e"}
 ];
 
 const boardRef = doc(db, "state", "board");
 const sceneRef = doc(db, "state", "scene");
 const initRef = doc(db, "state", "init");
+const diceRef = doc(db, "state", "dice");
+const combatLogRef = doc(db, "state", "combatLog");
 const moodsCol = collection(db, "moods");
 const mapsCol = collection(db, "maps");
-const tokenTemplatesCol = collection(db, "tokenTemplates");
+// Not to be confused with sceneRef/sceneData above (which just track "map or mood
+// overlay showing right now") — a "scene" here is a saved snapshot of the WHOLE board
+// (map + tokens + fog + effects + initiative), prepared ahead of time or paused mid-fight.
+const scenesCol = collection(db, "scenes");
+// Same Firestore project as the character creator ("personnage") — its validated
+// characters land here, so a token can point straight at a player's real sheet
+// (portrait, PV, notes) instead of a hand-made template with a plain image.
+const charactersCol = collection(db, "characters");
+// Just enough to show a readable summary on a character-linked token — not the full
+// game rules, which live in the character creator itself.
+const RACE_LABELS = {humain:"Humain", elfe:"Elfe (pur)", nain:"Nain", halfelin:"Halfelin", demiElfe:"Demi-elfe", demiOrque:"Demi-orque", gnome:"Gnome"};
+const CLASS_LABELS = {barbare:"Barbare", barde:"Barde", roublard:"Roublard", guerrier:"Guerrier", clerc:"Clerc", druide:"Druide", moine:"Moine", paladin:"Paladin", rodeur:"Rôdeur", ensorceleur:"Ensorceleur", occultiste:"Occultiste", magicien:"Magicien"};
+const BG_LABELS = {erudit:"Érudit", noble:"Noble", soldat:"Ancien Mercenaire", fermier:"Fermier(ère)"};
 
-let boardData = { tokens: JSON.parse(JSON.stringify(DEFAULT_TOKENS)), mapUrl:"", cols:12, rows:8, effects:{} };
+// Firestore silently rejects any write that would push a document over its 1 MiB
+// limit — the shared board doc holds the map background AND every token image AND
+// every effect, so a heavy image anywhere can quietly break every future edit with
+// no visible error. Route every board write through here so that failure surfaces
+// to the user instead of vanishing into a console.error nobody sees.
+async function saveBoard(fields){
+  try{
+    await updateDoc(boardRef, fields);
+  }catch(e){
+    console.error(e);
+    if(e && e.code === "invalid-argument"){
+      alert("Échec de l'enregistrement : la carte partagée dépasse la limite de 1 Mo. Retire une image lourde (carte ou pion) pour libérer de la place, puis réessaie.");
+    }
+  }
+}
+
+// Same silent-failure risk as the board (dropped wifi mid-session, etc.) but nothing
+// told the MJ when it happened — the initiative bar just quietly stayed stale.
+async function saveInit(data){
+  try{
+    await setDoc(initRef, data);
+  }catch(e){
+    console.error(e);
+    alert("Échec de l'enregistrement de l'initiative. Vérifie ta connexion et réessaie.");
+  }
+}
+async function saveDice(data){
+  try{
+    await setDoc(diceRef, data);
+  }catch(e){
+    console.error(e);
+    alert("Échec de l'enregistrement du jet de dés. Vérifie ta connexion et réessaie.");
+  }
+}
+async function saveCombatLog(data){
+  try{
+    await setDoc(combatLogRef, data);
+  }catch(e){
+    console.error(e);
+    alert("Échec de l'enregistrement du journal de combat. Vérifie ta connexion et réessaie.");
+  }
+}
+
+let boardData = { tokens: {}, mapId:null, mapUrl:"", cols:12, rows:8, effects:{}, fogHidden:{} };
 let sceneData = { active:"map", activeMoodId:null };
 let initData = { entries: [], currentIndex: -1, round: 1 };
-let moods = [], maps = [], tokenTemplates = [];
+let diceData = { rolls: [] };
+let combatLogData = { entries: [] };
+let moods = [], maps = [], characters = [], scenes = [];
 let isMJ = false;
 let selectedTokenId = null;
-let pendingMove = null; // {tokenId, startCol, startRow, path:[{col,row}], destCol, destRow}
+let dragState = null; // {id, el, startCol, startRow, col, row}
 let interactionMode = "move"; // "move" | "effect"
 let activeEffectKey = null;
+let zoomLevel = 1;
+const BASE_BOARD_WIDTH = 1280;
+const ZOOM_MIN = 0.4, ZOOM_MAX = 3;
+// 50x50 keeps the shared board doc's fogHidden map well under Firestore's 1 MiB limit
+// (a couple thousand tiny boolean entries, tens of KB at most) — plenty of headroom
+// for a very large battle map; zoom in (Ctrl+molette) to compensate for smaller cells.
+const MAX_GRID_SIZE = 50;
 
 const board = document.getElementById("board");
+const boardWrap = document.querySelector(".board-wrap");
 const dotDb = document.getElementById("dot-db");
 const txtDb = document.getElementById("txt-db");
 const chkMJ = document.getElementById("chk-mj");
 const mjMapControls = document.getElementById("mj-map-controls");
 const mjMoodControls = document.getElementById("mj-mood-controls");
-const mjInitControls = document.getElementById("mj-init-controls");
 const legend = document.getElementById("legend");
+const zoomRowEl = document.getElementById("zoom-row");
 const moodList = document.getElementById("mood-list");
 const mapList = document.getElementById("map-list");
-const tokenTemplateList = document.getElementById("token-template-list");
+const sceneList = document.getElementById("scene-list");
+const characterLibraryList = document.getElementById("character-library-list");
 const selectionInfo = document.getElementById("selection-info");
+const myCharacterSelect = document.getElementById("my-character-select");
+const myCharacterPanel = document.getElementById("my-character-panel");
+const CONDITION_NAMES = ["Agrippé","À terre","Aveuglé","Assourdi","Charmé","Effrayé","Empoisonné","Entravé","Étourdi","Incapacité","Inconscient","Invisible","Paralysé","Pétrifié","Épuisement"];
+let myCharacterId = "";
+let mjInspectedTokenId = null; // MJ-only: last pion clicked on the map/initiative bar, mirrored into the left panel
+try{ myCharacterId = localStorage.getItem("valbois-my-character-id") || ""; }catch(e){}
 const overlay = document.getElementById("ambiance-overlay");
 const overlayImg = document.getElementById("ambiance-img");
 const effectPaletteWrap = document.getElementById("effect-palette-wrap");
 const effectPalette = document.getElementById("effect-palette");
+const fogControls = document.getElementById("fog-controls");
 const moveBadge = document.getElementById("move-badge");
+const dragLine = document.getElementById("drag-line");
+const zoomLabel = document.getElementById("zoom-label");
 const METERS_PER_CELL = 1.5;
+
+document.getElementById("btn-zoom-in").addEventListener("click", () => setZoom(zoomLevel + 0.2));
+document.getElementById("btn-zoom-out").addEventListener("click", () => setZoom(zoomLevel - 0.2));
+document.getElementById("btn-zoom-reset").addEventListener("click", () => setZoom(1));
+function setZoom(v){
+  zoomLevel = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.round(v*100)/100));
+  zoomLabel.textContent = Math.round(zoomLevel*100) + "%";
+  renderBoard();
+}
 
 try{ isMJ = localStorage.getItem("valbois-role-mj") === "1"; }catch(e){}
 chkMJ.checked = isMJ;
@@ -418,28 +756,24 @@ chkMJ.addEventListener("change", () => {
 function applyRole(){
   mjMapControls.hidden = !isMJ;
   mjMoodControls.hidden = !isMJ;
-  mjInitControls.hidden = !isMJ;
-  if(!isMJ){ interactionMode = "move"; effectPaletteWrap.hidden = true; }
+  if(!isMJ){ interactionMode = "move"; effectPaletteWrap.hidden = true; fogControls.hidden = true; }
+  document.getElementById("dice-hidden-wrap").hidden = !isMJ;
+  document.getElementById("btn-combat-log-clear").hidden = !isMJ;
+  renderBoard();
   renderMoods();
+  renderInitiativeBar();
+  renderDiceHistory();
+  renderOverlay();
 }
 
-document.querySelectorAll(".tab-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-    const which = btn.dataset.tab;
-    document.getElementById("panel-map").hidden = which !== "map";
-    document.getElementById("panel-mood").hidden = which !== "mood";
-    document.getElementById("panel-init").hidden = which !== "init";
-  });
-});
 
 document.querySelectorAll(".mode-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     interactionMode = btn.dataset.mode;
     document.querySelectorAll(".mode-btn").forEach(b => b.classList.toggle("active", b===btn));
     effectPaletteWrap.hidden = interactionMode !== "effect";
-    clearPendingMove();
+    fogControls.hidden = interactionMode !== "fog";
+    clearDragState();
   });
 });
 
@@ -471,6 +805,62 @@ function loadImageSize(url){
 
 function clamp(v, max){ return Math.max(0, Math.min(max-1, v)); }
 
+// The board doc used to embed the map image directly, which shares Firestore's 1 MiB
+// document budget with every token image and effect — a single heavy map could eat
+// almost the whole budget by itself. Now the board only stores a reference (mapId)
+// into the "maps" library collection (each map gets its own separate 1 MiB budget),
+// so this resolves the actual URL to draw. Falls back to the raw mapUrl for older
+// boards saved before this existed.
+function getActiveMapUrl(){
+  if(boardData.mapId){
+    const m = maps.find(x => x.id === boardData.mapId);
+    if(m) return m.url;
+  }
+  return boardData.mapUrl || "";
+}
+
+// Same idea for tokens: a board token instance stores a templateId reference instead
+// of a copy of the template's image, so placing the same monster twenty times costs
+// twenty tiny {label,color,templateId,x,y} entries instead of twenty copies of a
+// 20-60 KB image — which is what was silently blocking new tokens once the shared
+// document crept past 1 MiB.
+function resolveTokenImage(t){
+  if(t.characterId){
+    const ch = characters.find(x => x.id === t.characterId);
+    if(ch) return ch.portrait || "";
+  }
+  return t.image || "";
+}
+
+async function placeCharacterAsToken(ch, pos){
+  const id = "tok" + Date.now();
+  boardData.tokens[id] = { label: ch.name || "Personnage", color: "#7c5e20", characterId: ch.id, x: pos.x, y: pos.y };
+  renderBoard();
+  await saveBoard({ ["tokens." + id]: boardData.tokens[id] });
+  await joinInitiativeIfVisible(id);
+}
+
+// A pion placed directly onto a still-fogged cell joins combat only once actually
+// revealed (see insertRevealedTokensIntoInitiative); one dropped in plain sight
+// should roll and join right away, same as any other reinforcement.
+async function joinInitiativeIfVisible(tokenId){
+  const tok = boardData.tokens[tokenId];
+  if(tok && !isTokenFogHidden(tok)) await insertRevealedTokensIntoInitiative([tokenId]);
+}
+
+// New token instances used to all land on cell (0,0), stacking invisibly on top of
+// each other — this finds the first free cell so placing the same template twice
+// actually shows two tokens.
+function findFreeCell(){
+  const occupied = new Set(Object.values(boardData.tokens).map(t => t.x + "_" + t.y));
+  for(let r=0; r<boardData.rows; r++){
+    for(let c=0; c<boardData.cols; c++){
+      if(!occupied.has(c + "_" + r)) return { x:c, y:r };
+    }
+  }
+  return { x:0, y:0 };
+}
+
 function cellFromEvent(e){
   const rect = board.getBoundingClientRect();
   const { w, h } = cellSize();
@@ -479,21 +869,60 @@ function cellFromEvent(e){
   return { col, row };
 }
 
-function computePath(x0,y0,x1,y1){
-  const path=[];
-  let x=x0, y=y0;
-  const dx = Math.sign(x1-x0), dy = Math.sign(y1-y0);
-  let guard = 0;
-  while((x!==x1 || y!==y1) && guard < 200){
-    if(x!==x1) x += dx;
-    if(y!==y1) y += dy;
-    path.push({col:x, row:y});
-    guard++;
-  }
-  return path;
+// Measured once and cached — how many CSS pixels a scrollbar actually takes on this
+// browser/OS (~17px on Windows' classic scrollbars, 0 on macOS' overlay ones). Reading
+// boardWrap.clientWidth to size the board, then having .board-wrap grow a vertical
+// scrollbar because the resulting height (via aspect-ratio) just barely exceeds its
+// max-height, narrows the wrapper's content box a few px AFTER that width was already
+// fixed — leaving a persistent sliver of horizontal scroll alongside it. Reserving
+// the scrollbar's width up front (only when a vertical one is actually about to
+// appear) avoids that without ever shrinking the map in the common case.
+function getScrollbarWidth(){
+  if(getScrollbarWidth._cached != null) return getScrollbarWidth._cached;
+  const outer = document.createElement("div");
+  outer.style.cssText = "visibility:hidden;overflow:scroll;position:absolute;top:-9999px;width:100px;height:100px;";
+  document.body.appendChild(outer);
+  const inner = document.createElement("div");
+  inner.style.width = "100%";
+  outer.appendChild(inner);
+  getScrollbarWidth._cached = outer.offsetWidth - inner.offsetWidth;
+  document.body.removeChild(outer);
+  return getScrollbarWidth._cached;
+}
+
+// A fixed "75vh"-style budget is always either too stingy (wastes width on a wide map
+// when the MJ controls above happen to be short) or still too tight (a 16:9 map at
+// 30 cols can easily need more height than even a generous fixed % allows, on an
+// ordinary window). Measuring the ACTUAL leftover room — assuming the page is
+// scrolled so the map's own toolbar row sits at the very top — uses every real pixel
+// instead of a guessed fraction: once the MJ scrolls the setup controls out of the
+// way, the map + its legend is sized to fill the rest of the window exactly.
+function computeAvailableBoardHeight(){
+  const zoomRowH = zoomRowEl ? zoomRowEl.offsetHeight + 8 : 0; // + its own margin-bottom
+  const legendH = legend ? legend.offsetHeight + 10 : 0; // + its own margin-top
+  const pageBottomMargin = 16; // a little breathing room below the legend
+  return Math.max(200, window.innerHeight - zoomRowH - legendH - pageBottomMargin);
 }
 
 function renderBoard(){
+  // clientWidth already excludes the wrapper's own border/padding — it's the exact
+  // content-box width available to the board, unlike getBoundingClientRect() (which
+  // is the border-box and would need the border subtracted back out to match).
+  const availWidth = boardWrap.clientWidth || BASE_BOARD_WIDTH;
+  const wrapBorderY = parseFloat(getComputedStyle(boardWrap).borderTopWidth||0) + parseFloat(getComputedStyle(boardWrap).borderBottomWidth||0);
+  const maxWrapHeight = computeAvailableBoardHeight() - wrapBorderY;
+  // Fit the map's real aspect ratio inside BOTH the width AND height budgets at 100%
+  // zoom — like object-fit:contain — instead of always filling the full width and
+  // letting a wide/short image (e.g. a 16:9 map) blow past the height budget and force
+  // a vertical scrollbar. A landscape map ends up a little narrower at 100% zoom so
+  // the whole thing is visible with no scrollbar at all; zooming in past 100% still
+  // scrolls, same as before — that's the point of zoom.
+  const widthFromHeight = maxWrapHeight * (boardData.cols / boardData.rows);
+  const fitWidth = Math.min(availWidth, widthFromHeight);
+  let targetWidth = fitWidth * zoomLevel;
+  const naturalHeight = targetWidth * (boardData.rows / boardData.cols);
+  if(naturalHeight > maxWrapHeight) targetWidth -= getScrollbarWidth();
+  board.style.width = Math.floor(targetWidth) + "px";
   board.style.setProperty("--cols", boardData.cols);
   board.style.setProperty("--rows", boardData.rows);
   // Grid lines are listed FIRST (top layer) so they stay visible drawn over the map image,
@@ -501,15 +930,21 @@ function renderBoard(){
   // Kept subtle (low opacity) so it doesn't overpower the artwork.
   const gridLines = "linear-gradient(rgba(255,255,255,.16) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.16) 1px, transparent 1px)";
   const plainGrid = "linear-gradient(var(--parchment-line) 1px, transparent 1px), linear-gradient(90deg, var(--parchment-line) 1px, transparent 1px)";
-  board.style.backgroundImage = boardData.mapUrl
-    ? gridLines + ", url('" + boardData.mapUrl.replace(/'/g,"") + "')"
+  const activeMapUrl = getActiveMapUrl();
+  board.style.backgroundImage = activeMapUrl
+    ? gridLines + ", url('" + activeMapUrl.replace(/'/g,"") + "')"
     : plainGrid;
   const cellBg = "calc(100% / " + boardData.cols + ") calc(100% / " + boardData.rows + ")";
-  board.style.backgroundSize = boardData.mapUrl ? cellBg + ", " + cellBg + ", 100% 100%" : cellBg;
+  board.style.backgroundSize = activeMapUrl ? cellBg + ", " + cellBg + ", 100% 100%" : cellBg;
+  // Always anchored top-left for every layer — "center" would shift the repeating grid lines
+  // by half a cell whenever cols/rows is even, landing tokens on line intersections instead
+  // of inside a cell.
+  board.style.backgroundPosition = "0 0";
 
-  board.querySelectorAll(".token, .cell-effect, .path-cell").forEach(el => el.remove());
+  board.querySelectorAll(".token, .token-hpbar, .cell-effect, .fog-tile").forEach(el => el.remove());
   const { w, h } = cellSize();
   const pad = Math.max(2, Math.min(w, h) * 0.1);
+  const tokenSize = Math.min(w, h) - pad*2;
 
   // Effects (behind tokens)
   Object.keys(boardData.effects || {}).forEach(key => {
@@ -523,34 +958,31 @@ function renderBoard(){
     el.style.height = h + "px";
     el.style.background = (fx.color||"#888") + "55";
     el.title = fx.label || "";
-    el.textContent = fx.icon || "•";
+    el.innerHTML = fx.icon || "";
     board.appendChild(el);
   });
-
-  // Path preview (behind tokens, above effects)
-  if(pendingMove){
-    pendingMove.path.forEach((c, i) => {
-      const el = document.createElement("div");
-      el.className = "path-cell" + (i === pendingMove.path.length-1 ? " dest" : "");
-      el.style.left = (c.col*w) + "px";
-      el.style.top = (c.row*h) + "px";
-      el.style.width = w + "px";
-      el.style.height = h + "px";
-      board.appendChild(el);
-    });
-  }
 
   legend.innerHTML = "";
   Object.keys(boardData.tokens).forEach(id => {
     const t = boardData.tokens[id];
+    // A token sitting on a fog-hidden cell doesn't exist for players at all — not on
+    // the board, not in the legend, not clickable — only visually painting over it
+    // left it selectable/nameable underneath. The MJ still sees and can move it.
+    if(!isMJ && isTokenFogHidden(t)) return;
+    const isDraggingThis = dragState && dragState.id === id;
+    const posCol = isDraggingThis ? dragState.col : t.x;
+    const posRow = isDraggingThis ? dragState.row : t.y;
+    const isCurrentTurn = initData.entries[initData.currentIndex] && initData.entries[initData.currentIndex].tokenId === id;
     const el = document.createElement("div");
-    el.className = "token" + (id === selectedTokenId ? " selected" : "");
-    el.style.width = (w - pad*2) + "px";
-    el.style.height = (h - pad*2) + "px";
-    el.style.left = (t.x * w + pad) + "px";
-    el.style.top = (t.y * h + pad) + "px";
-    if(t.image){
-      el.style.backgroundImage = "url('" + t.image.replace(/'/g,"") + "')";
+    el.className = "token" + (id === selectedTokenId ? " selected" : "") + (isDraggingThis ? " dragging" : "") + (isCurrentTurn ? " current-turn" : "");
+    el.style.width = tokenSize + "px";
+    el.style.height = tokenSize + "px";
+    el.style.left = (posCol * w + w/2 - tokenSize/2) + "px";
+    el.style.top = (posRow * h + h/2 - tokenSize/2) + "px";
+    el.style.zIndex = 6 + (id === selectedTokenId ? 1 : 0);
+    const image = resolveTokenImage(t);
+    if(image){
+      el.style.backgroundImage = "url('" + image.replace(/'/g,"") + "')";
       // Stretch to exactly fill the token circle — a cropping "cover" fit would zoom into
       // empty/transparent margins on a cut-out PNG instead of showing the whole artwork.
       el.style.backgroundSize = "100% 100%";
@@ -562,99 +994,381 @@ function renderBoard(){
     }
     el.title = t.label;
     el.dataset.id = id;
-    el.addEventListener("click", onTokenClick);
+    // A thin health bar under the pion itself — same PV everyone already sees in the
+    // side panels, just visible without having to click each combatant in turn. It's
+    // a CHILD of the token (not a separate sibling positioned to match) specifically
+    // so it rides along for free while the token is being dragged — dragging only
+    // repositions el.style.left/top directly, it never re-runs this whole render.
+    const ch = t.characterId ? characters.find(c => c.id === t.characterId) : null;
+    if(ch && ch.hpMax != null){
+      const hpCur = resolveInstanceHp(ch, id);
+      const pct = Math.max(0, Math.min(100, Math.round((hpCur / ch.hpMax) * 100)));
+      const color = pct > 50 ? "#4c7c3f" : pct > 25 ? "#a8862f" : "#8a3b2b";
+      const bar = document.createElement("div");
+      bar.className = "token-hpbar";
+      bar.innerHTML = '<div class="token-hpbar-fill" style="width:' + pct + '%;background:' + color + ';"></div>';
+      el.appendChild(bar);
+    }
+    el.addEventListener("pointerdown", onTokenPointerDown);
+    el.addEventListener("contextmenu", onTokenContextMenu);
     board.appendChild(el);
 
     const li = document.createElement("span");
-    const swatchStyle = t.image ? ("background-image:url('"+t.image.replace(/'/g,"")+"');background-size:100% 100%;") : ("background:"+t.color);
+    const swatchStyle = image ? ("background-image:url('"+image.replace(/'/g,"")+"');background-size:100% 100%;") : ("background:"+t.color);
     li.innerHTML = '<i style="' + swatchStyle + '"></i>' + t.label;
     legend.appendChild(li);
   });
 
-  if(pendingMove){
-    const dest = pendingMove.path[pendingMove.path.length-1] || {col:pendingMove.startCol,row:pendingMove.startRow};
-    const cells = pendingMove.path.length;
-    const meters = cells * METERS_PER_CELL;
-    moveBadge.textContent = (cells===0?"0 m":cells + (cells>1?" cases · ":" case · ") + meters.toString().replace(".", ",") + " m") + " — reclique pour valider";
-    moveBadge.style.left = (dest.col*w + w/2) + "px";
-    moveBadge.style.top = (dest.row*h) + "px";
-    moveBadge.hidden = false;
-  }else{
-    moveBadge.hidden = true;
-  }
+  // Fog of war: opaque for players (fully hides the cell), lightly greyed for the MJ
+  // (who still sees everything underneath, just marked as "not revealed to players").
+  Object.keys(boardData.fogHidden || {}).forEach(key => {
+    const [col, row] = key.split("_").map(Number);
+    const el = document.createElement("div");
+    el.className = "fog-tile" + (isMJ ? " mj" : "");
+    el.style.left = (col*w) + "px";
+    el.style.top = (row*h) + "px";
+    el.style.width = w + "px";
+    el.style.height = h + "px";
+    board.appendChild(el);
+  });
 
   if(selectedTokenId && boardData.tokens[selectedTokenId]) renderSelection(selectedTokenId);
 }
 
 function renderSelection(id){
+  renderInitiativeBar(); // reflect the new selection (highlighted chip) right away
+  renderCombatSetup(); // the right panel is "la cible" for the combat log
   const t = boardData.tokens[id];
   if(!t){
-    selectionInfo.innerHTML = '<p class="hint">Clique un pion pour le sélectionner, puis une case pour prévisualiser son déplacement.</p>';
+    selectionInfo.innerHTML = '<p class="hint">Glisse un pion pour le déplacer sur la carte.</p>';
     return;
   }
-  const swatch = t.image ? ("background-image:url('"+t.image.replace(/'/g,"")+"');background-size:cover;") : ("background:"+t.color+";");
-  let extra = "";
-  if(pendingMove && pendingMove.tokenId === id){
-    const cells = pendingMove.path.length;
-    extra = '<p class="hint" style="color:var(--gold-strong);">Déplacement prévisualisé : ' + cells + (cells>1?" cases (":" case (") + (cells*METERS_PER_CELL).toString().replace(".",",") + ' m). Reclique la case cible pour valider, ou choisis une autre case.</p>'+
-     '<button type="button" class="ghost btn-sm" id="btn-cancel-move" style="font-size:.68rem;padding:5px 10px;">Annuler le déplacement</button>';
-  }
+  const image = resolveTokenImage(t);
+  const swatch = image ? ("background-image:url('"+image.replace(/'/g,"")+"');background-size:cover;") : ("background:"+t.color+";");
+  const escaped = (t.sheet||"").replace(/</g,"&lt;");
+  const ch = t.characterId ? characters.find(c => c.id === t.characterId) : null;
+  const canManage = isMJ || (ch && ch.id === myCharacterId);
+  const charBlock = ch ? (characterCardHtml(ch, canManage, id) + (canManage ? openSheetButtonHtml : "")) : "";
+  // A real character already carries its own data (attacks, inventory, états actifs...)
+  // synced from the character tool — the free-text "Fiche" and cell/drag hints only
+  // make sense for plain template tokens (monsters, NPCs) that have no such sheet.
+  const genericBlock = ch ? "" : (
+    '<p class="hint" style="margin:0 0 4px;">Case : colonne ' + (t.x+1) + ', ligne ' + (t.y+1) + '.</p>'+
+    '<p class="hint">Glisse le pion sur la carte pour le déplacer.</p>'+
+    '<h3 class="sub" style="margin-top:10px;">Fiche</h3>'+
+    '<textarea id="f-token-sheet-edit" rows="6" placeholder="PV, capacités, notes..." style="width:100%;font-family:inherit;font-size:.82rem;padding:8px;border-radius:6px;border:1px solid var(--parchment-line);background:var(--panel);color:var(--ink);resize:vertical;">' + escaped + '</textarea>'+
+    '<button type="button" id="btn-save-sheet" style="margin-top:6px;font-size:.68rem;padding:6px 10px;">Enregistrer la fiche</button>'
+  );
   selectionInfo.innerHTML =
     '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'+
     '<span style="width:22px;height:22px;border-radius:50%;display:inline-block;flex:none;border:1px solid rgba(0,0,0,.2);' + swatch + '"></span>'+
-    '<strong style="font-family:\'Cinzel\',serif;">' + t.label + '</strong></div>'+
-    '<p class="hint" style="margin-bottom:4px;">Case : colonne ' + (t.x+1) + ', ligne ' + (t.y+1) + '.</p>'+
-    extra +
-    '<p class="hint">La fiche complète (PV, capacités...) s\'affichera ici une fois reliée à l\'outil de création de personnage.</p>';
-  const cancelBtn = document.getElementById("btn-cancel-move");
-  if(cancelBtn) cancelBtn.addEventListener("click", () => { clearPendingMove(); renderBoard(); });
+    '<strong style="font-family:\'Cinzel\',serif;flex:1;">' + t.label + '</strong>'+
+    (isMJ ? '<button type="button" class="ghost danger btn-sm" id="btn-delete-token" style="font-size:.68rem;padding:5px 8px;">Supprimer</button>' : '') +
+    '</div>'+
+    charBlock +
+    genericBlock;
+
+  if(ch){
+    wireCharacterCard(selectionInfo, ch, id);
+    if(canManage) wireOpenSheetButton(selectionInfo, ch);
+  }
+
+  const delBtn = document.getElementById("btn-delete-token");
+  if(delBtn) delBtn.addEventListener("click", () => deleteToken(id));
+
+  const saveSheetBtn = document.getElementById("btn-save-sheet");
+  if(saveSheetBtn) saveSheetBtn.addEventListener("click", async () => {
+    const sheet = document.getElementById("f-token-sheet-edit").value;
+    boardData.tokens[id].sheet = sheet;
+    await saveBoard({ ["tokens." + id + ".sheet"]: sheet });
+  });
 }
 
-function clearPendingMove(){
-  pendingMove = null;
+async function deleteToken(id){
+  if(!confirm("Supprimer ce pion de la carte ?")) return;
+  delete boardData.tokens[id];
+  if(selectedTokenId === id) selectedTokenId = null;
+  renderBoard();
+  renderSelection(null);
+  await saveBoard({ ["tokens." + id]: deleteField() });
+  await removeTokenFromInitiative(id);
+}
+
+async function removeTokenFromInitiative(tokenId){
+  const i = initData.entries.findIndex(e => e.tokenId === tokenId);
+  if(i === -1) return;
+  const entries = initData.entries.filter(e => e.tokenId !== tokenId);
+  let currentIndex = initData.currentIndex;
+  if(i < currentIndex) currentIndex--;
+  else if(i === currentIndex) currentIndex = entries.length ? currentIndex % entries.length : -1;
+  await saveInit({ entries, currentIndex, round: initData.round || 1 });
+}
+
+function clearDragState(){
+  if(dragState && dragState.el){
+    dragState.el.removeEventListener("pointermove", onTokenPointerMove);
+    dragState.el.removeEventListener("pointerup", onTokenPointerUp);
+    dragState.el.classList.remove("dragging");
+  }
+  dragState = null;
+  dragLine.style.display = "none";
   moveBadge.hidden = true;
 }
 
-function onTokenClick(e){
+function cellCenterPx(col, row){
+  const { w, h } = cellSize();
+  return { x: col * w + w/2, y: row * h + h/2 };
+}
+
+function updateDragLine(){
+  if(!dragState) return;
+  const start = cellCenterPx(dragState.startCol, dragState.startRow);
+  const cur = cellCenterPx(dragState.col, dragState.row);
+  dragLine.setAttribute("x1", start.x);
+  dragLine.setAttribute("y1", start.y);
+  dragLine.setAttribute("x2", cur.x);
+  dragLine.setAttribute("y2", cur.y);
+  const cells = Math.max(Math.abs(dragState.col - dragState.startCol), Math.abs(dragState.row - dragState.startRow));
+  if(cells > 0){
+    dragLine.style.display = "block";
+    const meters = (cells * METERS_PER_CELL).toString().replace(".",",");
+    moveBadge.textContent = cells + (cells>1?" cases (":" case (") + meters + " m)";
+    moveBadge.style.left = ((start.x + cur.x)/2) + "px";
+    moveBadge.style.top = ((start.y + cur.y)/2) + "px";
+    moveBadge.hidden = false;
+  }else{
+    dragLine.style.display = "none";
+    moveBadge.hidden = true;
+  }
+}
+
+function onTokenPointerDown(e){
+  if(e.button !== 0) return; // right/middle click: handled separately, see onTokenContextMenu
+  if(isMJ && interactionMode === "effect") return;
   e.stopPropagation();
   const id = e.currentTarget.dataset.id;
-  if(selectedTokenId === id){
-    clearPendingMove();
-    renderBoard();
-    return;
+  const t = boardData.tokens[id];
+  if(!t) return;
+  // Don't call renderBoard() here: it destroys/recreates every token element,
+  // which would detach e.currentTarget mid-drag and silently break the drag.
+  if(selectedTokenId && selectedTokenId !== id){
+    const prevEl = board.querySelector('.token[data-id="' + selectedTokenId + '"]');
+    if(prevEl) prevEl.classList.remove("selected");
   }
   selectedTokenId = id;
-  clearPendingMove();
-  renderBoard();
+  e.currentTarget.classList.add("selected");
+  renderSelection(id);
+  dragState = { id, el: e.currentTarget, startCol: t.x, startRow: t.y, col: t.x, row: t.y };
+  try{ e.currentTarget.setPointerCapture(e.pointerId); }catch(err){}
+  e.currentTarget.addEventListener("pointermove", onTokenPointerMove);
+  e.currentTarget.addEventListener("pointerup", onTokenPointerUp);
+  e.currentTarget.classList.add("dragging");
 }
 
-board.addEventListener("click", async (e) => {
+// Right-click a pion: MJ-only "show on the left" — separate from the normal
+// left-click (which drives the right "Sélection" panel), so the two panels can
+// eventually hold two different pions at once (e.g. attacker left, target right).
+// Suppressing the browser's own menu here is what left-click never needed to do.
+function onTokenContextMenu(e){
+  e.preventDefault();
+  if(!isMJ) return;
+  const id = e.currentTarget.dataset.id;
+  if(!boardData.tokens[id]) return;
+  mjInspectedTokenId = id;
+  renderMyCharacterPanel();
+}
+
+function onTokenPointerMove(e){
+  if(!dragState) return;
   const { col, row } = cellFromEvent(e);
-  if(isMJ && interactionMode === "effect"){
-    await toggleEffect(col, row);
-    return;
-  }
-  if(!selectedTokenId || !boardData.tokens[selectedTokenId]) return;
-  const t = boardData.tokens[selectedTokenId];
-  if(pendingMove && pendingMove.tokenId === selectedTokenId && pendingMove.destCol === col && pendingMove.destRow === row){
-    await confirmMove();
-    return;
-  }
-  if(col === t.x && row === t.y){ clearPendingMove(); renderBoard(); return; }
-  const path = computePath(t.x, t.y, col, row);
-  pendingMove = { tokenId: selectedTokenId, startCol: t.x, startRow: t.y, path, destCol: col, destRow: row };
+  if(col === dragState.col && row === dragState.row) return;
+  dragState.col = col;
+  dragState.row = row;
+  const { w, h } = cellSize();
+  const pad = Math.max(2, Math.min(w, h) * 0.1);
+  const tokenSize = Math.min(w, h) - pad*2;
+  dragState.el.style.left = (col * w + w/2 - tokenSize/2) + "px";
+  dragState.el.style.top = (row * h + h/2 - tokenSize/2) + "px";
+  updateDragLine();
+}
+
+async function onTokenPointerUp(e){
+  if(!dragState) return;
+  const { id, el, col, row, startCol, startRow } = dragState;
+  el.removeEventListener("pointermove", onTokenPointerMove);
+  el.removeEventListener("pointerup", onTokenPointerUp);
+  el.classList.remove("dragging");
+  dragState = null;
+  dragLine.style.display = "none";
+  moveBadge.hidden = true;
+  if(col === startCol && row === startRow) return;
+  boardData.tokens[id].x = col;
+  boardData.tokens[id].y = row;
   renderBoard();
+  await saveBoard({ ["tokens." + id + ".x"]: col, ["tokens." + id + ".y"]: row });
+}
+
+let panState = null;
+let suppressNextClick = false;
+const PAN_THRESHOLD = 4;
+
+// Fog of war brush: clicking cell-by-cell was too tedious for the MJ to manage during
+// play, so dragging now paints a square brush of adjustable size across many cells in
+// one stroke. Whether a stroke hides or reveals used to be guessed from the state of
+// the first cell touched, which made it easy to paint the wrong direction by mistake —
+// it's now an explicit Masquer/Révéler toggle instead.
+let fogPaintState = null; // {reveal}
+let brushSize = 1;
+document.getElementById("f-fog-brush").addEventListener("input", (e) => {
+  brushSize = Math.max(1, Math.min(5, Number(e.target.value) || 1));
 });
 
-async function confirmMove(){
-  if(!pendingMove) return;
-  const { tokenId, destCol, destRow } = pendingMove;
-  boardData.tokens[tokenId].x = destCol;
-  boardData.tokens[tokenId].y = destRow;
-  pendingMove = null;
-  renderBoard();
-  try{ await updateDoc(boardRef, { ["tokens." + tokenId + ".x"]: destCol, ["tokens." + tokenId + ".y"]: destRow }); }catch(e){ console.error(e); }
+let fogBrushMode = "hide";
+try{ fogBrushMode = localStorage.getItem("valbois-fog-brush-mode") || "hide"; }catch(e){}
+document.querySelectorAll(".fog-brush-btn").forEach(btn => {
+  btn.classList.toggle("active", btn.dataset.fogmode === fogBrushMode);
+  btn.addEventListener("click", () => {
+    fogBrushMode = btn.dataset.fogmode;
+    document.querySelectorAll(".fog-brush-btn").forEach(b => b.classList.toggle("active", b===btn));
+    try{ localStorage.setItem("valbois-fog-brush-mode", fogBrushMode); }catch(e){}
+  });
+});
+
+function cellsInBrush(col, row){
+  const r = brushSize - 1;
+  const cells = [];
+  for(let dy=-r; dy<=r; dy++){
+    for(let dx=-r; dx<=r; dx++){
+      const c = col+dx, rr = row+dy;
+      if(c>=0 && c<boardData.cols && rr>=0 && rr<boardData.rows) cells.push(c + "_" + rr);
+    }
+  }
+  return cells;
 }
+
+function paintFogAt(col, row){
+  boardData.fogHidden = boardData.fogHidden || {};
+  cellsInBrush(col, row).forEach(key => {
+    const wasHidden = !!boardData.fogHidden[key];
+    if(fogPaintState.reveal){
+      if(!wasHidden) return;
+      delete boardData.fogHidden[key];
+      const [c, r] = key.split("_").map(Number);
+      Object.keys(boardData.tokens).forEach(tid => {
+        const tok = boardData.tokens[tid];
+        if(tok.x === c && tok.y === r) fogPaintState.revealedTokenIds.add(tid);
+      });
+    }else{
+      boardData.fogHidden[key] = true;
+    }
+  });
+  renderBoard();
+}
+
+function startFogPaint(e){
+  const { col, row } = cellFromEvent(e);
+  fogPaintState = { reveal: fogBrushMode === "reveal", revealedTokenIds: new Set() };
+  paintFogAt(col, row);
+  try{ board.setPointerCapture(e.pointerId); }catch(err){}
+}
+
+async function endFogPaint(){
+  if(!fogPaintState) return;
+  const revealedTokenIds = [...fogPaintState.revealedTokenIds];
+  fogPaintState = null;
+  await saveBoard({ fogHidden: boardData.fogHidden });
+  if(revealedTokenIds.length) await insertRevealedTokensIntoInitiative(revealedTokenIds);
+}
+
+board.addEventListener("pointerdown", (e) => {
+  if(e.target.closest(".token")) return; // tokens handle their own drag
+  if(isMJ && interactionMode === "fog"){
+    startFogPaint(e);
+    return;
+  }
+  panState = {
+    pointerId: e.pointerId,
+    startX: e.clientX, startY: e.clientY,
+    startScrollLeft: boardWrap.scrollLeft, startScrollTop: boardWrap.scrollTop,
+    moved: false
+  };
+  board.setPointerCapture(e.pointerId);
+});
+
+board.addEventListener("pointermove", (e) => {
+  if(fogPaintState){
+    const { col, row } = cellFromEvent(e);
+    paintFogAt(col, row);
+    return;
+  }
+  if(!panState || e.pointerId !== panState.pointerId) return;
+  const dx = e.clientX - panState.startX;
+  const dy = e.clientY - panState.startY;
+  if(!panState.moved && (Math.abs(dx) > PAN_THRESHOLD || Math.abs(dy) > PAN_THRESHOLD)){
+    panState.moved = true;
+    board.classList.add("panning");
+  }
+  if(panState.moved){
+    boardWrap.scrollLeft = panState.startScrollLeft - dx;
+    boardWrap.scrollTop = panState.startScrollTop - dy;
+  }
+});
+
+function endPan(e){
+  if(!panState || (e && e.pointerId !== panState.pointerId)) return;
+  if(panState.moved) suppressNextClick = true;
+  board.classList.remove("panning");
+  panState = null;
+}
+board.addEventListener("pointerup", async (e) => {
+  if(fogPaintState){ await endFogPaint(); return; }
+  endPan(e);
+});
+board.addEventListener("pointercancel", () => {
+  if(fogPaintState){ fogPaintState = null; return; }
+  endPan();
+});
+
+board.addEventListener("click", async (e) => {
+  if(suppressNextClick){ suppressNextClick = false; return; }
+  if(!isMJ) return;
+  if(interactionMode === "effect"){
+    const { col, row } = cellFromEvent(e);
+    await toggleEffect(col, row);
+  }
+});
+
+// Drag a card from "Personnages (créés dans l'outil de personnage)" straight onto a
+// specific cell, instead of always landing on the next free cell near the top-left.
+board.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "copy";
+});
+board.addEventListener("drop", async (e) => {
+  e.preventDefault();
+  const payload = e.dataTransfer.getData("text/plain");
+  const { col, row } = cellFromEvent(e);
+  if(payload.startsWith("char:")){
+    const ch = characters.find(c => c.id === payload.slice(5));
+    if(ch) await placeCharacterAsToken(ch, { x: col, y: row });
+  }
+});
+
+document.getElementById("btn-fog-hide-all").addEventListener("click", async () => {
+  const fogHidden = {};
+  for(let r=0; r<boardData.rows; r++) for(let c=0; c<boardData.cols; c++) fogHidden[c + "_" + r] = true;
+  boardData.fogHidden = fogHidden;
+  renderBoard();
+  await saveBoard({ fogHidden });
+});
+
+document.getElementById("btn-fog-reveal-all").addEventListener("click", async () => {
+  const revealedTokenIds = Object.keys(boardData.tokens).filter(tid => isTokenFogHidden(boardData.tokens[tid]));
+  boardData.fogHidden = {};
+  renderBoard();
+  await saveBoard({ fogHidden: {} });
+  if(revealedTokenIds.length) await insertRevealedTokensIntoInitiative(revealedTokenIds);
+});
 
 async function toggleEffect(col, row){
   const key = col + "_" + row;
@@ -663,28 +1377,233 @@ async function toggleEffect(col, row){
   if(existing && (!fx || existing.key === fx.key)){
     delete boardData.effects[key];
     renderBoard();
-    try{ await updateDoc(boardRef, { ["effects." + key]: deleteField() }); }catch(e){ console.error(e); }
+    await saveBoard({ ["effects." + key]: deleteField() });
     return;
   }
   if(!fx) return;
   boardData.effects = boardData.effects || {};
   boardData.effects[key] = { key: fx.key };
   renderBoard();
-  try{ await updateDoc(boardRef, { ["effects." + key]: { key: fx.key } }); }catch(e){ console.error(e); }
+  await saveBoard({ ["effects." + key]: { key: fx.key } });
 }
 
-async function applyMap(url, cols){
+function resizeImageFileToDataUrl(file, maxDim, mimeType, quality){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error || new Error("lecture impossible"));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("image invalide"));
+      img.onload = () => {
+        const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+        const w = Math.max(1, Math.round(img.naturalWidth * scale));
+        const h = Math.max(1, Math.round(img.naturalHeight * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL(mimeType, quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImageAny(source){
+  return new Promise((resolve, reject) => {
+    if(source instanceof File){
+      const reader = new FileReader();
+      reader.onerror = () => reject(reader.error || new Error("lecture impossible"));
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error("image invalide"));
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(source);
+    }else{
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("image invalide ou inaccessible"));
+      img.src = source;
+    }
+  });
+}
+
+function findOpaqueBounds(ctx, w, h, alphaThreshold){
+  const data = ctx.getImageData(0, 0, w, h).data;
+  let minX=w, minY=h, maxX=-1, maxY=-1;
+  for(let y=0; y<h; y++){
+    for(let x=0; x<w; x++){
+      if(data[(y*w+x)*4+3] > alphaThreshold){
+        if(x<minX) minX=x;
+        if(x>maxX) maxX=x;
+        if(y<minY) minY=y;
+        if(y>maxY) maxY=y;
+      }
+    }
+  }
+  return maxX < 0 ? null : { minX, minY, maxX, maxY };
+}
+
+// Crops the transparent margins that surround the actual artwork on cut-out token
+// images (e.g. a wolf head PNG with lots of empty padding around it), then stretches
+// just the opaque content to fill a square canvas so the subject fills the token
+// instead of floating in a sea of transparency.
+async function processTokenImage(source, maxDim){
+  maxDim = maxDim || 256;
+  const img = await loadImageAny(source);
+  try{
+    const full = document.createElement("canvas");
+    full.width = img.naturalWidth; full.height = img.naturalHeight;
+    const fctx = full.getContext("2d");
+    fctx.drawImage(img, 0, 0);
+
+    let sx = 0, sy = 0, sw = full.width, sh = full.height;
+    const bounds = findOpaqueBounds(fctx, full.width, full.height, 10);
+    if(bounds){
+      // A cut-out subject (e.g. a wolf head bust) rarely fills its own bounding box —
+      // it's usually round-ish, leaving faint corners even after cropping to the box
+      // exactly. Zoom in past the raw box, centered, so the artwork itself fills the
+      // token instead of just its silhouette's outer extent.
+      const bw = bounds.maxX - bounds.minX;
+      const bh = bounds.maxY - bounds.minY;
+      const cx = (bounds.minX + bounds.maxX) / 2;
+      const cy = (bounds.minY + bounds.maxY) / 2;
+      const INSET = 0.18;
+      const w2 = bw * (1 - INSET);
+      const h2 = bh * (1 - INSET);
+      sx = Math.max(0, Math.round(cx - w2 / 2));
+      sy = Math.max(0, Math.round(cy - h2 / 2));
+      sw = Math.min(full.width, Math.round(cx + w2 / 2)) - sx;
+      sh = Math.min(full.height, Math.round(cy + h2 / 2)) - sy;
+    }
+
+    const out = document.createElement("canvas");
+    out.width = maxDim; out.height = maxDim;
+    out.getContext("2d").drawImage(full, sx, sy, sw, sh, 0, 0, maxDim, maxDim);
+    return out.toDataURL("image/png", 0.92);
+  }catch(err){
+    // A cross-origin image without permissive CORS headers taints the canvas and
+    // blocks pixel reads — fall back to the original URL rather than failing outright.
+    console.error(err);
+    if(typeof source === "string") return source;
+    throw new Error("Impossible de traiter cette image.");
+  }
+}
+
+const DATA_URL_WARN_BYTES = 700000;
+function warnIfHeavy(dataUrl){
+  if(dataUrl.length > DATA_URL_WARN_BYTES){
+    alert("Image assez lourde une fois encodée (~" + Math.round(dataUrl.length/1024) + " Ko). Elle s'affichera très bien sur cet ordinateur pour les tests, mais pourrait échouer à se synchroniser vers la base partagée pour les autres joueurs.");
+  }
+}
+
+// A map's own library entry has its own separate 1 MiB Firestore document budget
+// (the board doc only stores a lightweight mapId reference to it — see applyMap),
+// so this only needs to fit a single map image, not share space with every token
+// and effect. Still shrinks automatically if needed, or refuses outright rather than
+// let a single map blow even its own document's budget.
+const MAP_HARD_LIMIT_BYTES = 950000;
+async function resizeMapFileToSafeDataUrl(file){
+  const attempts = [[2200,0.9],[1800,0.85],[1400,0.78],[1000,0.7]];
+  let last = null;
+  for(const [maxDim, quality] of attempts){
+    last = await resizeImageFileToDataUrl(file, maxDim, "image/jpeg", quality);
+    if(last.length <= MAP_HARD_LIMIT_BYTES) return last;
+  }
+  return null; // still too heavy even at the smallest/lowest-quality attempt
+}
+
+// Cells beyond [0,cols)x[0,rows) don't exist — a fogHidden/effects entry or a token
+// still sitting past that edge gets re-positioned using whatever the CURRENT (possibly
+// very different) cell size is, landing way outside the board and silently ballooning
+// it with invisible overflow (the "map looks huge, needs scrollbars" bug). Used both
+// when the grid is resized on the same map, and when loading a prepared scene whose
+// saved cols/rows might not match what it saved for tokens/fog/effects.
+function filterToGrid(obj, cols, rows){
+  const out = {};
+  Object.keys(obj || {}).forEach(key => {
+    const [c, r] = key.split("_").map(Number);
+    if(c < cols && r < rows) out[key] = obj[key];
+  });
+  return out;
+}
+function clampTokensToGrid(cols, rows){
+  const movedTokenIds = [];
+  Object.keys(boardData.tokens || {}).forEach(id => {
+    const t = boardData.tokens[id];
+    const x = Math.min(t.x, cols - 1), y = Math.min(t.y, rows - 1);
+    if(x !== t.x || y !== t.y){ t.x = x; t.y = y; movedTokenIds.push(id); }
+  });
+  return movedTokenIds;
+}
+
+async function applyMap(url, cols, mapId){
   const size = await loadImageSize(url);
   if(!size) return false;
-  const finalCols = Math.max(4, Math.min(30, cols || boardData.cols || 12));
-  const finalRows = Math.max(4, Math.min(30, Math.round(finalCols * (size.h / size.w))));
-  boardData.mapUrl = url;
+  const finalCols = Math.max(4, Math.min(MAX_GRID_SIZE, cols || boardData.cols || 30));
+  const finalRows = Math.max(4, Math.min(MAX_GRID_SIZE, Math.round(finalCols * (size.h / size.w))));
+  // Only a genuinely different map (new upload, new URL, or switching to another saved
+  // map) starts under fog — re-applying the grid to the map already active (same
+  // mapId/url) must not wipe out whatever the MJ has already revealed.
+  const isNewMap = (boardData.mapId || boardData.mapUrl) !== (mapId || url);
+  boardData.mapId = mapId || null;
+  // Once the map has a library entry (mapId), the board only stores that reference —
+  // not the raw bytes — so heavy maps stop competing with tokens/effects for space.
+  boardData.mapUrl = mapId ? "" : url;
   boardData.cols = finalCols;
   boardData.rows = finalRows;
   document.getElementById("f-cols").value = finalCols;
+  const fields = { mapId: boardData.mapId, mapUrl: boardData.mapUrl, cols: finalCols, rows: finalRows };
+  if(isNewMap){
+    const fogHidden = {};
+    for(let r = 0; r < finalRows; r++) for(let c = 0; c < finalCols; c++) fogHidden[c + "_" + r] = true;
+    boardData.fogHidden = fogHidden;
+    fields.fogHidden = fogHidden;
+    boardData.effects = {};
+    fields.effects = {};
+  }else{
+    // Same map, just a different column count (e.g. shrinking a 50-col grid down to
+    // 15) — re-applying the grid to the map already active must not wipe out what's
+    // still on it, just drop whatever no longer fits (see filterToGrid above).
+    boardData.fogHidden = filterToGrid(boardData.fogHidden, finalCols, finalRows);
+    fields.fogHidden = boardData.fogHidden;
+    boardData.effects = filterToGrid(boardData.effects, finalCols, finalRows);
+    fields.effects = boardData.effects;
+  }
+  clampTokensToGrid(finalCols, finalRows).forEach(id => {
+    fields["tokens." + id + ".x"] = boardData.tokens[id].x;
+    fields["tokens." + id + ".y"] = boardData.tokens[id].y;
+  });
   renderBoard();
-  try{ await updateDoc(boardRef, { mapUrl: url, cols: finalCols, rows: finalRows }); }catch(e){ console.error(e); }
+  await saveBoard(fields);
   return true;
+}
+
+// Suggest a fresh "classic map" default the moment the MJ starts entering a new map —
+// otherwise the field kept showing whatever cols the PREVIOUS map ended up with, so a
+// new map silently inherited an unrelated grid size unless the MJ remembered to change
+// it by hand. Still fully overridable (e.g. 50 for a big fight, 15-20 for a tight room)
+// before clicking "Appliquer et enregistrer".
+document.getElementById("f-map-url").addEventListener("input", () => {
+  document.getElementById("f-cols").value = 30;
+});
+
+// Clicking "Appliquer et enregistrer" without changing anything (or re-uploading the
+// exact same file) used to addDoc() a fresh library entry every time — the same image
+// piling up as several near-identical cards. Reuse the existing entry when the URL
+// already matches one, only renaming it if a different name was typed.
+async function ensureMapDoc(url, name){
+  const existing = maps.find(m => m.url === url);
+  if(existing){
+    if(name && name !== existing.name){
+      try{ await updateDoc(doc(db, "maps", existing.id), { name }); }catch(e){ console.error(e); }
+    }
+    return existing.id;
+  }
+  try{ const ref = await addDoc(mapsCol, { url, name, addedAt: Date.now() }); return ref.id; }catch(e){ console.error(e); return null; }
 }
 
 document.getElementById("btn-set-map").addEventListener("click", async () => {
@@ -693,31 +1612,59 @@ document.getElementById("btn-set-map").addEventListener("click", async () => {
   const setBtn = document.getElementById("btn-set-map");
   if(!url) return;
   setBtn.disabled = true;
-  const ok = await applyMap(url, Number(document.getElementById("f-cols").value));
+  const size = await loadImageSize(url);
+  if(!size){ alert("Impossible de charger cette image — vérifie l'adresse."); setBtn.disabled = false; return; }
+  const mapId = await ensureMapDoc(url, name);
+  await applyMap(url, Number(document.getElementById("f-cols").value), mapId);
   setBtn.disabled = false;
-  if(!ok){ alert("Impossible de charger cette image — vérifie l'adresse."); return; }
-  try{ await addDoc(mapsCol, { url, name, addedAt: Date.now() }); }catch(e){ console.error(e); }
   document.getElementById("f-map-name").value = "";
 });
 
+document.getElementById("f-map-file").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  e.target.value = "";
+  if(!file) return;
+  document.getElementById("f-cols").value = 30; // see the "f-map-url" input listener above
+  const setBtn = document.getElementById("btn-set-map");
+  setBtn.disabled = true;
+  try{
+    const dataUrl = await resizeMapFileToSafeDataUrl(file);
+    if(!dataUrl){
+      alert("Cette image reste trop lourde même très compressée et risquerait de casser la carte partagée pour tout le monde. Utilise une image plus simple, ou héberge-la en ligne (ex. GitHub) et colle son URL à la place.");
+      return;
+    }
+    document.getElementById("f-map-url").value = dataUrl;
+    const name = document.getElementById("f-map-name").value.trim() || file.name.replace(/\.[^.]+$/, "");
+    const mapId = await ensureMapDoc(dataUrl, name);
+    const ok = await applyMap(dataUrl, Number(document.getElementById("f-cols").value), mapId);
+    if(!ok){ alert("Impossible de charger cette image."); return; }
+    document.getElementById("f-map-name").value = "";
+  }catch(err){
+    console.error(err);
+    alert("Impossible de lire ce fichier image.");
+  }finally{
+    setBtn.disabled = false;
+  }
+});
+
 document.getElementById("btn-set-grid").addEventListener("click", async () => {
-  const cols = Math.max(4, Math.min(30, Number(document.getElementById("f-cols").value) || 12));
-  if(boardData.mapUrl){
-    await applyMap(boardData.mapUrl, cols);
+  const cols = Math.max(4, Math.min(MAX_GRID_SIZE, Number(document.getElementById("f-cols").value) || 30));
+  if(boardData.mapId || boardData.mapUrl){
+    await applyMap(getActiveMapUrl(), cols, boardData.mapId);
   }else{
     boardData.cols = cols;
     renderBoard();
-    try{ await updateDoc(boardRef, { cols }); }catch(e){ console.error(e); }
+    await saveBoard({ cols });
   }
 });
 
 document.getElementById("btn-reset-map").addEventListener("click", async () => {
-  if(!confirm("Réinitialiser la carte tactique ? L'image de fond et les effets seront retirés, les pions remis à leur position de départ.")) return;
-  boardData = { tokens: JSON.parse(JSON.stringify(DEFAULT_TOKENS)), mapUrl:"", cols:12, rows:8, effects:{} };
+  if(!confirm("Réinitialiser la carte tactique ? L'image de fond, les effets et tous les pions seront retirés.")) return;
+  boardData = { tokens: {}, mapId:null, mapUrl:"", cols:12, rows:8, effects:{}, fogHidden:{} };
   document.getElementById("f-map-url").value = "";
   document.getElementById("f-cols").value = 12;
   selectedTokenId = null;
-  clearPendingMove();
+  clearDragState();
   renderBoard();
   renderSelection(null);
   try{ await setDoc(boardRef, boardData); }catch(e){ console.error(e); }
@@ -732,16 +1679,18 @@ function renderMapLibrary(){
   const grid = document.createElement("div");
   grid.className = "mood-grid";
   maps.forEach(m => {
+    const isActive = boardData.mapId ? boardData.mapId === m.id : boardData.mapUrl === m.url;
     const card = document.createElement("div");
-    card.className = "mood-card" + (boardData.mapUrl === m.url ? " active" : "");
+    card.className = "mood-card" + (isActive ? " active" : "");
     card.innerHTML = '<img src="' + m.url.replace(/"/g,"") + '" alt="' + (m.name||"") + '">' +
       '<span class="mood-name">' + (m.name||"Sans nom") + '</span>' +
       '<button type="button" class="card-del" title="Retirer de la bibliothèque">✕</button>';
     card.querySelector("img").addEventListener("click", async () => {
-      await applyMap(m.url, boardData.cols);
+      await applyMap(m.url, boardData.cols, m.id);
     });
     card.querySelector(".card-del").addEventListener("click", async (ev) => {
       ev.stopPropagation();
+      if(isActive && !confirm("Cette carte est actuellement affichée sur la table. La retirer de la bibliothèque va aussi la faire disparaître de la carte tactique. Continuer ?")) return;
       try{ await deleteDoc(doc(db, "maps", m.id)); }catch(e){ console.error(e); }
     });
     grid.appendChild(card);
@@ -749,40 +1698,508 @@ function renderMapLibrary(){
   mapList.appendChild(grid);
 }
 
-document.getElementById("btn-save-token-template").addEventListener("click", async () => {
-  const name = document.getElementById("f-token-name").value.trim();
-  const color = document.getElementById("f-token-color").value;
-  const image = document.getElementById("f-token-image").value.trim();
-  if(!name) return;
-  try{
-    await addDoc(tokenTemplatesCol, { name, color, image, addedAt: Date.now() });
-    document.getElementById("f-token-name").value = "";
-    document.getElementById("f-token-image").value = "";
-  }catch(e){ console.error(e); }
+function sceneThumbnailUrl(scene){
+  if(scene.mapId){
+    const m = maps.find(x => x.id === scene.mapId);
+    if(m) return m.url;
+  }
+  return scene.mapUrl || "";
+}
+function renderScenes(){
+  if(!scenes.length){
+    sceneList.innerHTML = '<p class="mood-empty">Aucune scène enregistrée pour l\'instant.</p>';
+    return;
+  }
+  sceneList.innerHTML = "";
+  const grid = document.createElement("div");
+  grid.className = "mood-grid";
+  scenes.slice().sort((a,b) => (b.updatedAt||0) - (a.updatedAt||0)).forEach(s => {
+    const image = sceneThumbnailUrl(s);
+    const card = document.createElement("div");
+    card.className = "mood-card";
+    card.title = "Charger cette scène — remplace ce que les joueurs voient actuellement.";
+    card.innerHTML = (image ? ('<img src="' + image.replace(/"/g,"") + '" alt="">') : '<div style="width:100%;height:100%;background:#7c5e20;"></div>') +
+      '<span class="mood-name">' + (s.name||"Sans nom") + '</span>' +
+      '<button type="button" class="card-del" title="Supprimer cette scène">✕</button>';
+    card.addEventListener("click", () => loadScene(s));
+    card.querySelector(".card-del").addEventListener("click", async (ev) => {
+      ev.stopPropagation();
+      if(!confirm("Supprimer définitivement la scène « " + (s.name||"Sans nom") + " » ?")) return;
+      try{ await deleteDoc(doc(db, "scenes", s.id)); }catch(e){ console.error(e); }
+    });
+    grid.appendChild(card);
+  });
+  sceneList.appendChild(grid);
+}
+
+async function saveCurrentScene(name){
+  const snapshot = {
+    name,
+    mapId: boardData.mapId || null,
+    mapUrl: boardData.mapId ? "" : (boardData.mapUrl || ""),
+    cols: boardData.cols, rows: boardData.rows,
+    tokens: boardData.tokens || {}, effects: boardData.effects || {}, fogHidden: boardData.fogHidden || {},
+    initEntries: initData.entries || [], initCurrentIndex: initData.currentIndex==null?-1:initData.currentIndex, initRound: initData.round || 1,
+    updatedAt: Date.now()
+  };
+  try{ await addDoc(scenesCol, snapshot); }catch(e){ console.error(e); alert("Échec de l'enregistrement de la scène. Vérifie ta connexion et réessaie."); }
+}
+
+async function loadScene(s){
+  if(!confirm("Charger la scène « " + (s.name||"Sans nom") + " » ? Ça remplace d'un coup la carte, les pions, le brouillard et l'initiative actuellement affichés aux joueurs.")) return;
+  const cols = s.cols || 30, rows = s.rows || 20;
+  boardData = {
+    tokens: JSON.parse(JSON.stringify(s.tokens||{})),
+    mapId: s.mapId || null, mapUrl: s.mapUrl || "",
+    cols, rows,
+    effects: JSON.parse(JSON.stringify(s.effects||{})), fogHidden: JSON.parse(JSON.stringify(s.fogHidden||{}))
+  };
+  // A scene saved mid-resize (or hand-edited) could have tokens/fog/effects that don't
+  // match its own cols/rows — same fix as applyMap's grid-resize guard, applied here
+  // too so loading a scene can't reproduce the "board balloons with invisible overflow"
+  // bug on a whole-board scale.
+  boardData.fogHidden = filterToGrid(boardData.fogHidden, cols, rows);
+  boardData.effects = filterToGrid(boardData.effects, cols, rows);
+  clampTokensToGrid(cols, rows);
+  selectedTokenId = null;
+  clearDragState();
+  document.getElementById("f-map-url").value = "";
+  document.getElementById("f-cols").value = boardData.cols;
+  renderBoard();
+  renderSelection(null);
+  try{ await setDoc(boardRef, boardData); }catch(e){ console.error(e); }
+  initData = { entries: s.initEntries||[], currentIndex: s.initCurrentIndex==null?-1:s.initCurrentIndex, round: s.initRound||1 };
+  await saveInit(initData);
+}
+
+document.getElementById("btn-save-scene").addEventListener("click", async () => {
+  const nameEl = document.getElementById("f-scene-name");
+  const name = nameEl.value.trim();
+  if(!name){ alert("Donne un nom à cette scène avant de l'enregistrer."); return; }
+  await saveCurrentScene(name);
+  nameEl.value = "";
 });
 
-function renderTokenTemplates(){
-  tokenTemplateList.innerHTML = "";
-  tokenTemplates.forEach(tpl => {
+function renderCharacterLibrary(){
+  characterLibraryList.innerHTML = "";
+  // NPCs clutter this library fast (a whole campaign's bestiary), so only the ones
+  // the MJ has explicitly flagged "disponible" via the PNJ manager show up here —
+  // player characters are always shown, there are only ever a handful of those.
+  const visible = characters.filter(ch => ch.kind !== "npc" || ch.activeOnMap);
+  if(!visible.length){
+    characterLibraryList.innerHTML = '<p class="mood-empty">Aucun personnage disponible pour l\'instant.</p>';
+    return;
+  }
+  visible.forEach(ch => {
     const card = document.createElement("div");
-    card.className = "token-template-card";
-    const swatchStyle = tpl.image ? ("background-image:url('"+tpl.image.replace(/'/g,"")+"');background-size:100% 100%;") : ("background:"+tpl.color);
+    card.className = "char-library-card";
+    card.draggable = true;
+    card.title = "Clique pour poser sur une case libre, ou glisse-dépose directement sur la carte.";
+    const swatchStyle = ch.portrait ? ("background-image:url('"+ch.portrait.replace(/'/g,"")+"');background-size:100% 100%;") : "background:#7c5e20";
+    const isNpc = ch.kind === "npc";
+    const race = RACE_LABELS[ch.raceKey] || "";
+    const cls = CLASS_LABELS[ch.classKey] || "";
+    const label = isNpc ? '<span class="hint" style="margin:0;font-size:.65rem;">PNJ</span> ' : "";
     card.innerHTML = '<span class="swatch" style="' + swatchStyle + '"></span>' +
-      '<span>' + tpl.name + '</span>' +
-      '<button type="button" class="del" title="Supprimer ce modèle">✕</button>';
-    card.addEventListener("click", async () => {
-      const id = "tok" + Date.now();
-      boardData.tokens[id] = { label: tpl.name, color: tpl.color, image: tpl.image||"", x:0, y:0 };
-      renderBoard();
-      try{ await updateDoc(boardRef, { ["tokens." + id]: boardData.tokens[id] }); }catch(e){ console.error(e); }
+      '<span>' + label + (ch.name || "Sans nom") + (ch.playerName ? " (" + ch.playerName + ")" : "") + '</span>';
+    card.title += isNpc ? (ch.descriptor ? " — " + ch.descriptor : "") : (race || cls ? " — " + [race, cls].filter(Boolean).join(" ") : "");
+    card.addEventListener("click", () => {
+      placeCharacterAsToken(ch, findFreeCell());
     });
-    card.querySelector(".del").addEventListener("click", async (ev) => {
-      ev.stopPropagation();
-      try{ await deleteDoc(doc(db, "tokenTemplates", tpl.id)); }catch(e){ console.error(e); }
+    card.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData("text/plain", "char:" + ch.id);
+      e.dataTransfer.effectAllowed = "copy";
     });
-    tokenTemplateList.appendChild(card);
+    characterLibraryList.appendChild(card);
   });
 }
+
+function renderNpcPicker(){
+  const list = document.getElementById("npc-picker-list");
+  const npcList = characters.filter(ch => ch.kind === "npc");
+  if(!npcList.length){
+    list.innerHTML = '<p class="hint">Aucun PNJ créé pour l\'instant — utilise l\'outil personnage (mode MJ) pour en ajouter.</p>';
+    return;
+  }
+  list.innerHTML = npcList.map(ch => {
+    const swatchStyle = ch.portrait ? ("background-image:url('"+ch.portrait.replace(/'/g,"")+"');") : "background:#7c5e20;";
+    return '<label class="npc-picker-row">'+
+      '<input type="checkbox" data-npc-toggle="'+ch.id+'" '+(ch.activeOnMap?"checked":"")+'>'+
+      '<span class="swatch" style="'+swatchStyle+'"></span>'+
+      '<span class="name">'+(ch.name||"Sans nom")+(ch.descriptor?' <span class="hint" style="margin:0;">— '+ch.descriptor.slice(0,50)+'</span>':'')+'</span>'+
+    '</label>';
+  }).join("");
+  list.querySelectorAll("[data-npc-toggle]").forEach(cb => {
+    cb.addEventListener("change", async () => {
+      try{ await updateDoc(doc(charactersCol, cb.dataset.npcToggle), { activeOnMap: cb.checked }); }catch(e){ console.error(e); }
+    });
+  });
+}
+
+document.getElementById("btn-npc-picker").addEventListener("click", () => {
+  renderNpcPicker();
+  document.getElementById("npc-picker-modal").hidden = false;
+});
+document.getElementById("npc-picker-close").addEventListener("click", () => {
+  document.getElementById("npc-picker-modal").hidden = true;
+});
+document.getElementById("npc-picker-backdrop").addEventListener("click", () => {
+  document.getElementById("npc-picker-modal").hidden = true;
+});
+
+function personnageUrl(docId){
+  const isLocalDev = location.hostname === "localhost" && location.port === "8981";
+  const base = isLocalDev ? "http://localhost:8982/index.html" : "../personnage/index.html";
+  return base + "?docId=" + encodeURIComponent(docId);
+}
+
+function abilityMod(ch, key){
+  const base = (ch.baseScores && ch.baseScores[key]) || 10;
+  const asi = (ch.asiBonuses && ch.asiBonuses[key]) || 0;
+  return Math.floor(((base + asi) - 10) / 2);
+}
+
+function renderMyCharacterSelect(){
+  const pcs = characters.filter(ch => ch.kind !== "npc");
+  myCharacterSelect.innerHTML = '<option value="">— Choisis ton personnage —</option>' +
+    pcs.map(ch => '<option value="' + ch.id + '">' + (ch.name || "Sans nom") + (ch.playerName ? " (" + ch.playerName + ")" : "") + '</option>').join("");
+  myCharacterSelect.value = pcs.some(ch => ch.id === myCharacterId) ? myCharacterId : "";
+}
+
+async function patchCharacter(id, fields){
+  if(!id) return;
+  try{
+    await updateDoc(doc(charactersCol, id), fields);
+  }catch(e){
+    console.error(e);
+    alert("Échec de l'enregistrement sur la fiche du personnage. Vérifie ta connexion et réessaie.");
+  }
+}
+
+function fmtSigned(n){ return (n>=0?"+":"") + n; }
+
+// Shared read-only + interactive character summary, reused by the left "Personnage"
+// panel (always your own, full detail) and the right "Sélection" panel when a token
+// is linked to a real character (full detail for the MJ or the owner, a lighter
+// summary for everyone else — see [[project_valbois_table_de_jeu]] design notes).
+// Attacks/equipment/inventory/gold are the "crunchy" private info; états actifs stay
+// clickable for everyone since in a friendly game anyone may need to flag one on you.
+// Collapsible sections (compétences/inventaire/détails) remember open/closed per
+// character+section here — characterCardHtml() re-renders from scratch on every
+// Firestore snapshot (someone's HP changing, a condition toggling...), and without
+// this the "hidden" attribute it bakes in would silently reset every time, making a
+// just-opened panel snap shut a moment later for no reason the user clicked.
+let cardTogglesOpen = {};
+function toggleKey(ch, section){ return ch.id + ":" + section; }
+
+// Placing the same NPC on the board several times (a wolf pack...) used to make every
+// copy share one Firestore character doc — hurting one "forked" all of them to the
+// same HP/conditions instantly, with no visual way to tell the pack apart. PCs never
+// have this problem in practice (one player, one token) so it's scoped to kind==="npc"
+// specifically, to avoid touching the well-tested PC HP path at all. Once a placed
+// token's own PV/états diverge from the template, they live on the token itself
+// (tokens.<id>.hpCurrent / .conditions on the shared board doc) and take over from the
+// character doc for that one instance only — every other copy keeps reading the
+// template until it, too, gets touched.
+function resolveInstanceHp(ch, tokenId){
+  const t = (ch.kind === "npc" && tokenId) ? boardData.tokens[tokenId] : null;
+  if(t && t.hpCurrent != null) return t.hpCurrent;
+  return ch.hpCurrent == null ? (ch.hpMax || 0) : ch.hpCurrent;
+}
+function resolveInstanceConditions(ch, tokenId){
+  const t = (ch.kind === "npc" && tokenId) ? boardData.tokens[tokenId] : null;
+  return (t && t.conditions != null) ? t.conditions : (ch.activeConditions || []);
+}
+// Mutates the in-memory copy (ch, or the token) synchronously before the await so a
+// second rapid click reads the just-applied value instead of the stale one captured
+// when the card was rendered — otherwise two quick clicks on hp-minus only counted once.
+async function patchInstanceHp(ch, tokenId, hpNext){
+  if(ch.kind === "npc" && tokenId && boardData.tokens[tokenId]){
+    boardData.tokens[tokenId].hpCurrent = hpNext;
+    renderBoard();
+    renderMyCharacterPanel();
+    await saveBoard({ ["tokens." + tokenId + ".hpCurrent"]: hpNext });
+  }else{
+    ch.hpCurrent = hpNext;
+    await patchCharacter(ch.id, { hpCurrent: hpNext });
+  }
+}
+async function patchInstanceConditions(ch, tokenId, nextConditions){
+  if(ch.kind === "npc" && tokenId && boardData.tokens[tokenId]){
+    boardData.tokens[tokenId].conditions = nextConditions;
+    renderBoard();
+    renderMyCharacterPanel();
+    await saveBoard({ ["tokens." + tokenId + ".conditions"]: nextConditions });
+  }else{
+    ch.activeConditions = nextConditions;
+    await patchCharacter(ch.id, { activeConditions: nextConditions });
+  }
+}
+
+function characterCardHtml(ch, canManage, tokenId){
+  const isNpc = ch.kind === "npc";
+  // A player looking at a PNJ they don't control gets the name + short descriptor
+  // (already given away by the token's portrait anyway) and a visual-only HP bar —
+  // everything else (exact PV, CA, carac, attaques, états) stays MJ/owner-only. If
+  // the MJ wants real mystery, they place a "???" token instead of relying on this.
+  const publicView = !canManage && isNpc;
+  const race = RACE_LABELS[ch.raceKey] || "";
+  const cls = CLASS_LABELS[ch.classKey] || "";
+  const bg = BG_LABELS[ch.bgKey] || "";
+  const swatchStyle = ch.portrait ? ("background-image:url('"+ch.portrait.replace(/'/g,"")+"');background-size:cover;") : "background:#7c5e20";
+  const hasHpOverride = ch.kind === "npc" && tokenId && boardData.tokens[tokenId] && boardData.tokens[tokenId].hpCurrent != null;
+  const hpCur = hasHpOverride ? boardData.tokens[tokenId].hpCurrent : ((ch.hpCurrent == null) ? (ch.hpMax != null ? ch.hpMax : "?") : ch.hpCurrent);
+  const hpMax = ch.hpMax != null ? ch.hpMax : "?";
+  const abilities = ["FOR","DEX","CON","INT","SAG","CHA"];
+  const abilityRow = abilities.map(k => {
+    const m = abilityMod(ch, k);
+    const save = ch.saveBonuses ? ch.saveBonuses[k] : m;
+    return '<div class="my-ability" title="Jet de sauvegarde : ' + fmtSigned(save) + '"><span class="my-ability-k">' + k + '</span><span class="my-ability-v">' + fmtSigned(m) + '</span></div>';
+  }).join("");
+  const active = resolveInstanceConditions(ch, tokenId);
+  const condChips = CONDITION_NAMES.map(n => {
+    const on = active.includes(n);
+    return '<button type="button" class="cond-chip' + (on?" active":"") + '" data-cond="' + n + '">' + n + '</button>';
+  }).join("");
+  const activeBadgesHtml = active.length
+    ? '<div class="cond-active-badges">' + active.map(n => '<span class="cond-badge">' + n + '</span>').join("") + '</div>'
+    : '';
+  const condOpen = !!cardTogglesOpen[toggleKey(ch,"cond")];
+  const hpPct = (typeof hpMax === "number" && hpMax > 0 && typeof hpCur === "number")
+    ? Math.max(0, Math.min(100, Math.round((hpCur / hpMax) * 100))) : 100;
+  const hpColor = hpPct > 50 ? "#4c7c3f" : hpPct > 25 ? "#a8862f" : "#8a3b2b";
+  const hpBar = publicView
+    ? '<div class="hp-bar"><div class="hp-bar-fill" style="width:' + hpPct + '%;background:' + hpColor + ';"></div></div>'
+    : '<div class="hp-bar"><div class="hp-bar-fill" style="width:' + hpPct + '%;background:' + hpColor + ';"></div>'+
+      '<span class="hp-bar-label"><span class="hp-value">' + hpCur + '</span> / ' + hpMax + '</span></div>';
+  const hpControls = canManage
+    ? ('<button type="button" class="ghost btn-sm hp-minus" style="padding:2px 8px;">−</button>' + hpBar + '<button type="button" class="ghost btn-sm hp-plus" style="padding:2px 8px;">+</button>')
+    : hpBar;
+
+  let managedBlock = "";
+  if(canManage){
+    const attacks = ch.attacks || [];
+    const attackRows = attacks.length
+      ? attacks.map(a => '<div class="atk-weapon-row"><div class="atk-weapon-head"><span>' + a.name + '</span><span class="mono">' + fmtSigned(a.atk) + ' · ' + a.dmgText + '</span></div>' + (a.props ? ('<div class="atk-weapon-props">' + a.props + '</div>') : '') + '</div>').join("")
+      : '<p class="hint" style="margin:0 0 6px;">Aucune arme équipée.</p>';
+    // Skills: PCs get a real computed bonus per skill (synced from the character
+    // tool); NPCs only ever had a free-text "Discrétion +4, Perception +3" line —
+    // showing that verbatim under the same toggle is good enough for now.
+    const skillsOpen = !!cardTogglesOpen[toggleKey(ch,"skills")];
+    let skillsBlock = "";
+    if(ch.skillBonuses){
+      const rows = Object.entries(ch.skillBonuses).map(([name,b]) =>
+        '<div class="atk-row"><span>' + name + '</span><span class="mono">' + fmtSigned(b) + '</span></div>'
+      ).join("");
+      skillsBlock =
+        '<button type="button" class="ghost btn-sm skills-toggle" style="margin-top:6px;">' + (skillsOpen?"▾ Masquer les compétences":"▸ Voir les compétences") + '</button>'+
+        '<div class="atk-block skills-block"' + (skillsOpen?"":" hidden") + '>' + rows + '</div>';
+    }else if(ch.skillsText){
+      skillsBlock =
+        '<button type="button" class="ghost btn-sm skills-toggle" style="margin-top:6px;">' + (skillsOpen?"▾ Masquer les compétences":"▸ Voir les compétences") + '</button>'+
+        '<p class="hint skills-block" style="margin-top:4px;"' + (skillsOpen?"":" hidden") + '>' + ch.skillsText + '</p>';
+    }
+    if(isNpc){
+      const details = [
+        ch.sensesText ? ("Sens : " + ch.sensesText) : "",
+        ch.languagesText ? ("Langues : " + ch.languagesText) : "",
+        ch.equipmentText ? ("Équipement : " + ch.equipmentText) : "",
+        ch.traitsText ? ("Traits : " + ch.traitsText) : "",
+        ch.reactionsText ? ("Réactions : " + ch.reactionsText) : "",
+        ch.bonusActionText ? ("Action bonus : " + ch.bonusActionText) : "",
+        ch.notesMjText ? ("Notes MJ : " + ch.notesMjText) : ""
+      ].filter(Boolean);
+      const detailsOpen = !!cardTogglesOpen[toggleKey(ch,"details")];
+      managedBlock =
+        '<h3 class="sub" style="margin-top:8px;">Attaques</h3>'+
+        '<div class="atk-block">' + attackRows + '</div>'+
+        skillsBlock +
+        (details.length ? (
+          '<button type="button" class="ghost btn-sm npc-details-toggle" style="margin-top:6px;">' + (detailsOpen?"▾ Masquer les détails":"▸ Voir les détails (traits, actions...)") + '</button>'+
+          '<div class="npc-details-block"' + (detailsOpen?"":" hidden") + '>' + details.map(d => '<p class="hint" style="margin:2px 0;">'+d+'</p>').join("") + '</div>'
+        ) : '');
+    }else{
+      const inv = ch.inventory || [];
+      const invRows = inv.length
+        ? inv.map(it => '<li>' + (it.name||"") + (it.qty>1?(" ×"+it.qty):"") + '</li>').join("")
+        : '<li class="hint">Inventaire vide.</li>';
+      const invOpen = !!cardTogglesOpen[toggleKey(ch,"inv")];
+      managedBlock =
+        '<h3 class="sub" style="margin-top:8px;">Attaques</h3>'+
+        (ch.equippedArmor ? ('<p class="hint" style="margin:0 0 6px;">' + ch.equippedArmor + '</p>') : '') +
+        '<div class="atk-block">' + attackRows + '</div>'+
+        (ch.gold!=null ? ('<p class="hint" style="margin:6px 0 2px;">Or : ' + ch.gold + ' po</p>') : '') +
+        skillsBlock +
+        '<button type="button" class="ghost btn-sm inv-toggle" style="margin-top:6px;">' + (invOpen?"▾ Masquer l'inventaire":"▸ Voir l'inventaire") + '</button>'+
+        '<ul class="my-inventory-list"' + (invOpen?"":" hidden") + '>' + invRows + '</ul>';
+    }
+  }
+
+  const subtitle = isNpc
+    ? (ch.descriptor || "")
+    : ([race,cls].filter(Boolean).join(" ") + (bg?" — "+bg:"") + ' · Niveau ' + (ch.level||1));
+
+  if(publicView){
+    return (
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'+
+      '<span style="width:36px;height:36px;border-radius:50%;display:inline-block;flex:none;border:1px solid rgba(0,0,0,.2);' + swatchStyle + '"></span>'+
+      '<div><strong style="font-family:\'Cinzel\',serif;display:block;">' + (ch.name||"Sans nom") + '</strong>'+
+      '<span class="hint" style="margin:0;">' + subtitle + '</span></div>'+
+      '</div>'+
+      '<div class="hp-row">' + hpBar + '</div>'
+    );
+  }
+
+  return (
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'+
+    '<span style="width:36px;height:36px;border-radius:50%;display:inline-block;flex:none;border:1px solid rgba(0,0,0,.2);' + swatchStyle + '"></span>'+
+    '<div><strong style="font-family:\'Cinzel\',serif;display:block;">' + (ch.name||"Sans nom") + (isNpc?' <span class="hint" style="margin:0;">(PNJ)</span>':'') + '</strong>'+
+    (ch.playerName ? ('<span class="hint" style="margin:0;display:block;">Joueur : ' + ch.playerName + '</span>') : '') +
+    '<span class="hint" style="margin:0;">' + subtitle + '</span></div>'+
+    '</div>'+
+    '<div class="hp-row">' + hpControls + '</div>'+
+    activeBadgesHtml +
+    '<div class="field-row" style="align-items:center;gap:10px;margin-bottom:6px;">'+
+    (ch.ac!=null ? ('<span>CA ' + ch.ac + '</span>') : '') +
+    (ch.speed!=null ? ('<span>Vitesse ' + ch.speed + ' m</span>') : '') +
+    '</div>'+
+    '<div class="my-ability-row">' + abilityRow + '</div>'+
+    managedBlock +
+    '<button type="button" class="ghost btn-sm cond-toggle" style="margin-top:6px;">' + (condOpen ? "▾ Masquer les états actifs" : ("▸ États actifs" + (active.length ? " (" + active.length + ")" : ""))) + '</button>'+
+    '<div class="cond-chip-wrap"' + (condOpen?"":" hidden") + '>' + condChips + '</div>'
+  );
+}
+
+// Wires up the interactive bits of characterCardHtml() within whichever container
+// rendered it — scoped by container so the left panel and the right "Sélection"
+// panel can each show a card at the same time without id collisions.
+function wireCharacterCard(container, ch, tokenId){
+  const hpMinus = container.querySelector(".hp-minus");
+  const hpPlus = container.querySelector(".hp-plus");
+  const applyHpDelta = (delta) => {
+    const cur = resolveInstanceHp(ch, tokenId);
+    const max = ch.hpMax != null ? ch.hpMax : Infinity;
+    const next = Math.max(0, Math.min(max, cur + delta));
+    const valEl = container.querySelector(".hp-value");
+    if(valEl) valEl.textContent = next;
+    const fillEl = container.querySelector(".hp-bar-fill");
+    if(fillEl && ch.hpMax){
+      const pct = Math.max(0, Math.min(100, Math.round((next / ch.hpMax) * 100)));
+      fillEl.style.width = pct + "%";
+      fillEl.style.background = pct > 50 ? "#4c7c3f" : pct > 25 ? "#a8862f" : "#8a3b2b";
+    }
+    patchInstanceHp(ch, tokenId, next);
+  };
+  if(hpMinus) hpMinus.addEventListener("click", () => applyHpDelta(-1));
+  if(hpPlus) hpPlus.addEventListener("click", () => applyHpDelta(1));
+
+  container.querySelectorAll(".cond-chip").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const name = btn.dataset.cond;
+      const active = resolveInstanceConditions(ch, tokenId);
+      const next = active.includes(name) ? active.filter(n => n !== name) : active.concat([name]);
+      patchInstanceConditions(ch, tokenId, next);
+    });
+  });
+
+  const invToggle = container.querySelector(".inv-toggle");
+  if(invToggle){
+    invToggle.addEventListener("click", () => {
+      const list = container.querySelector(".my-inventory-list");
+      const willShow = list.hidden;
+      list.hidden = !willShow;
+      cardTogglesOpen[toggleKey(ch,"inv")] = willShow;
+      invToggle.textContent = (willShow ? "▾ Masquer " : "▸ Voir ") + "l'inventaire";
+    });
+  }
+  const detailsToggle = container.querySelector(".npc-details-toggle");
+  if(detailsToggle){
+    detailsToggle.addEventListener("click", () => {
+      const block = container.querySelector(".npc-details-block");
+      const willShow = block.hidden;
+      block.hidden = !willShow;
+      cardTogglesOpen[toggleKey(ch,"details")] = willShow;
+      detailsToggle.textContent = willShow ? "▾ Masquer les détails" : "▸ Voir les détails (traits, actions...)";
+    });
+  }
+  const skillsToggle = container.querySelector(".skills-toggle");
+  if(skillsToggle){
+    skillsToggle.addEventListener("click", () => {
+      const block = container.querySelector(".skills-block");
+      const willShow = block.hidden;
+      block.hidden = !willShow;
+      cardTogglesOpen[toggleKey(ch,"skills")] = willShow;
+      skillsToggle.textContent = willShow ? "▾ Masquer les compétences" : "▸ Voir les compétences";
+    });
+  }
+  const condToggle = container.querySelector(".cond-toggle");
+  if(condToggle){
+    condToggle.addEventListener("click", () => {
+      const wrap = container.querySelector(".cond-chip-wrap");
+      const willShow = wrap.hidden;
+      wrap.hidden = !willShow;
+      cardTogglesOpen[toggleKey(ch,"cond")] = willShow;
+      const activeCount = resolveInstanceConditions(ch, tokenId).length;
+      condToggle.textContent = willShow ? "▾ Masquer les états actifs" : ("▸ États actifs" + (activeCount ? " (" + activeCount + ")" : ""));
+    });
+  }
+}
+
+const openSheetButtonHtml = '<button type="button" class="btn-open-sheet" style="margin-top:10px;width:100%;">Ouvrir la fiche complète (niveau, équipement...)</button>';
+function wireOpenSheetButton(container, ch){
+  const openBtn = container.querySelector(".btn-open-sheet");
+  if(openBtn) openBtn.addEventListener("click", () => window.open(personnageUrl(ch.id), "_blank"));
+}
+
+// MJ inspecting a pion on the map/initiative bar takes over the left panel — that's
+// the whole point (see mjInspectedTokenId) — until the MJ picks from the dropdown
+// again, or a non-character token (no linked sheet) is clicked, in which case we
+// fall back to whatever PJ is chosen below. Also doubles as "l'attaquant" for the
+// combat log, since it's already exactly "whichever character is on the left".
+function getLeftPanelCharacter(){
+  if(isMJ && mjInspectedTokenId){
+    const tok = boardData.tokens[mjInspectedTokenId];
+    if(tok && tok.characterId) return characters.find(c => c.id === tok.characterId);
+  }
+  return characters.find(c => c.id === myCharacterId) || null;
+}
+// The token id backing getLeftPanelCharacter(), when there is one — null for the
+// plain "my character" dropdown case, where PV/états live on the character doc itself.
+function getLeftPanelTokenId(){
+  if(isMJ && mjInspectedTokenId){
+    const tok = boardData.tokens[mjInspectedTokenId];
+    if(tok && tok.characterId) return mjInspectedTokenId;
+  }
+  return null;
+}
+// "La cible" for the combat log: whichever character the right "Sélection" panel
+// currently shows (i.e. the last left-clicked token, if it's linked to a character).
+function getRightPanelCharacter(){
+  const tok = boardData.tokens[selectedTokenId];
+  if(tok && tok.characterId) return characters.find(c => c.id === tok.characterId);
+  return null;
+}
+
+function renderMyCharacterPanel(){
+  const ch = getLeftPanelCharacter();
+  if(!ch){
+    myCharacterPanel.innerHTML = '<p class="hint">Choisis ton personnage dans la liste, ou (MJ) clique un pion sur la carte, pour voir sa fiche ici.</p>';
+    renderCombatSetup();
+    return;
+  }
+  const tokenId = getLeftPanelTokenId();
+  myCharacterPanel.innerHTML = characterCardHtml(ch, true, tokenId) + openSheetButtonHtml;
+  wireCharacterCard(myCharacterPanel, ch, tokenId);
+  wireOpenSheetButton(myCharacterPanel, ch);
+  renderCombatSetup();
+}
+
+myCharacterSelect.addEventListener("change", () => {
+  myCharacterId = myCharacterSelect.value;
+  mjInspectedTokenId = null;
+  try{ localStorage.setItem("valbois-my-character-id", myCharacterId); }catch(e){}
+  renderMyCharacterPanel();
+});
 
 function renderMoods(){
   if(!moods.length){
@@ -824,79 +2241,439 @@ document.getElementById("btn-add-mood").addEventListener("click", async () => {
   }catch(e){ console.error(e); }
 });
 
-document.getElementById("btn-close-ambiance").addEventListener("click", async () => {
+async function closeAmbiance(){
   if(!isMJ) return;
   try{ await setDoc(sceneRef, { active:"map", activeMoodId:null }, { merge:true }); }catch(e){ console.error(e); }
-});
+}
+document.getElementById("btn-close-ambiance-indicator").addEventListener("click", closeAmbiance);
 
+// The MJ triggers an ambiance image for the players but must keep working the
+// tactical map underneath — so only players (and the MJ's close button, kept for
+// the rare case someone wants to double-check what's showing) get the actual
+// full-screen overlay; the MJ instead gets a small non-blocking reminder that it's up.
 function renderOverlay(){
+  const indicator = document.getElementById("ambiance-indicator");
   if(sceneData.active === "mood" && sceneData.activeMoodId){
     const m = moods.find(x => x.id === sceneData.activeMoodId);
     if(m){
-      overlay.hidden = false;
-      overlayImg.src = m.url;
-      document.getElementById("btn-close-ambiance").style.display = isMJ ? "" : "none";
+      if(isMJ){
+        overlay.hidden = true;
+        document.getElementById("ambiance-indicator-img").src = m.url;
+        indicator.hidden = false;
+      }else{
+        overlay.hidden = false;
+        overlayImg.src = m.url;
+        indicator.hidden = true;
+      }
       return;
     }
   }
   overlay.hidden = true;
+  indicator.hidden = true;
 }
 
-function renderInitiative(){
-  const label = document.getElementById("init-round-label");
-  const list = document.getElementById("init-list");
+// Initiative: rolled once per encounter and the order stays fixed for its whole
+// duration (D&D 5e RAW — "Order of Combat") — the only thing that changes it is a
+// new participant joining, which we insert at its rolled position without disturbing
+// anyone else's slot (see insertRevealedTokensIntoInitiative()).
+function rollD20(){ return Math.floor(Math.random()*20)+1; }
+function isTokenFogHidden(tok){
+  return !!(boardData.fogHidden && boardData.fogHidden[tok.x + "_" + tok.y]);
+}
+function rollInitiativeEntry(tokenId, tok){
+  const ch = tok.characterId ? characters.find(c => c.id === tok.characterId) : null;
+  const dexMod = ch ? abilityMod(ch, "DEX") : 0;
+  return {
+    id: "e" + Date.now() + Math.random().toString(36).slice(2,7),
+    tokenId, name: tok.label, score: rollD20() + dexMod,
+    characterId: tok.characterId || null
+  };
+}
+
+async function startInitiative(){
+  const entries = Object.keys(boardData.tokens)
+    .filter(tid => !isTokenFogHidden(boardData.tokens[tid]))
+    .map(tid => rollInitiativeEntry(tid, boardData.tokens[tid]))
+    .sort((a,b) => b.score - a.score);
+  initData = { entries, currentIndex: entries.length ? 0 : -1, round: 1 };
+  await saveInit(initData);
+}
+
+// Both this and insertRevealedTokensIntoInitiative() read-then-write the initiative
+// doc — "Fin de tour" clicked right as a fog reveal brings in a reinforcement could
+// otherwise have one write silently clobber the other, since both would compute their
+// change against the same stale in-memory initData. A transaction re-reads the actual
+// current server state at write time instead, so the two can never step on each other.
+async function endTurn(){
+  if(!initData.entries.length) return;
+  try{
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(initRef);
+      const data = snap.exists() ? snap.data() : initData;
+      const entries = data.entries || [];
+      if(!entries.length) return;
+      let currentIndex = (data.currentIndex==null?-1:data.currentIndex) + 1;
+      let round = data.round || 1;
+      if(currentIndex >= entries.length){ currentIndex = 0; round++; }
+      tx.set(initRef, { entries, currentIndex, round });
+    });
+  }catch(e){
+    console.error(e);
+    alert("Échec de l'enregistrement de l'initiative. Vérifie ta connexion et réessaie.");
+  }
+}
+
+// A token revealed mid-round (fog lifted) joins the fixed order at its rolled slot —
+// D&D 5e's rule for reinforcements. If that slot hasn't come up yet this round, it
+// still acts this round; otherwise it waits for the next one. Either way nobody
+// else's turn shifts, so we only ever need to nudge currentIndex forward by one per
+// insertion made ahead of it.
+async function insertRevealedTokensIntoInitiative(tokenIds){
+  if(!initData.entries.length) return;
+  try{
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(initRef);
+      const data = snap.exists() ? snap.data() : initData;
+      const entries = (data.entries || []).slice();
+      let currentIndex = data.currentIndex==null?-1:data.currentIndex;
+      let changed = false;
+      tokenIds.forEach(tid => {
+        if(entries.some(e => e.tokenId === tid)) return;
+        const tok = boardData.tokens[tid];
+        if(!tok) return;
+        const entry = rollInitiativeEntry(tid, tok);
+        let pos = entries.findIndex(e => e.score < entry.score);
+        if(pos === -1) pos = entries.length;
+        entries.splice(pos, 0, entry);
+        if(pos <= currentIndex) currentIndex++;
+        changed = true;
+      });
+      if(!changed) return;
+      tx.set(initRef, { entries, currentIndex, round: data.round || 1 });
+    });
+  }catch(e){
+    console.error(e);
+    alert("Échec de l'enregistrement de l'initiative. Vérifie ta connexion et réessaie.");
+  }
+}
+
+function selectTokenById(id){
+  if(!id || !boardData.tokens[id]) return;
+  selectedTokenId = id;
+  renderBoard();
+  renderSelection(id);
+}
+
+function renderInitiativeBar(){
+  const bar = document.getElementById("init-bar");
   if(!initData.entries.length){
-    label.textContent = "";
-    list.innerHTML = '<p class="init-empty">Personne dans l\'ordre d\'initiative pour l\'instant.</p>';
+    bar.innerHTML = isMJ ? '<button type="button" class="ghost btn-sm" id="btn-init-start" style="padding:3px 10px;">Lancer l\'initiative</button>' : "";
+    const startBtn = document.getElementById("btn-init-start");
+    if(startBtn) startBtn.addEventListener("click", startInitiative);
     return;
   }
-  label.textContent = "Round " + (initData.round||1);
-  list.innerHTML = "";
-  initData.entries.forEach((entry, i) => {
-    const row = document.createElement("div");
-    row.className = "init-row" + (i === initData.currentIndex ? " current" : "");
-    row.innerHTML = '<span class="score">' + entry.score + '</span>' +
-      '<span style="flex:1;padding:0 10px;">' + entry.name + '</span>' +
-      (isMJ ? '<button type="button" class="del" title="Retirer">✕</button>' : '');
-    const delBtn = row.querySelector(".del");
-    if(delBtn) delBtn.addEventListener("click", async () => {
-      const entries = initData.entries.filter(e2 => e2.id !== entry.id);
-      let currentIndex = initData.currentIndex;
-      if(i < currentIndex) currentIndex--;
-      else if(i === currentIndex) currentIndex = Math.min(currentIndex, entries.length-1);
-      try{ await setDoc(initRef, { entries, currentIndex, round: initData.round||1 }); }catch(e){ console.error(e); }
+  const chips = initData.entries.map((entry, i) => {
+    const cur = i === initData.currentIndex;
+    const sel = entry.tokenId === selectedTokenId;
+    const safeName = (entry.name||"?").replace(/</g,"&lt;").replace(/"/g,"&quot;");
+    const tok = boardData.tokens[entry.tokenId];
+    const image = tok ? resolveTokenImage(tok) : "";
+    const avatarStyle = image
+      ? ("background-image:url('" + image.replace(/'/g,"") + "');")
+      : ("background:" + (tok ? tok.color : "#7c5e20") + ";");
+    return '<span class="init-chip' + (cur?" current":"") + (sel?" selected":"") + '" data-token-id="' + entry.tokenId + '" title="' + safeName + '">' +
+      '<span class="init-avatar" style="' + avatarStyle + '">' + (image ? "" : safeName.charAt(0).toUpperCase()) + '</span>' +
+      '<span class="init-score-badge">' + entry.score + '</span>' +
+    '</span>';
+  }).join("");
+  bar.innerHTML =
+    '<span class="hint" style="margin:0;">R' + (initData.round||1) + '</span>' +
+    chips +
+    (isMJ ? (
+      '<button type="button" class="ghost btn-sm" id="btn-init-end-turn" style="padding:3px 10px;">Fin de tour</button>' +
+      '<button type="button" class="ghost btn-sm" id="btn-init-clear" title="Effacer l\'initiative" style="padding:3px 8px;">↺</button>'
+    ) : "");
+  bar.querySelectorAll(".init-chip").forEach(chip => {
+    chip.addEventListener("click", () => selectTokenById(chip.dataset.tokenId));
+    chip.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      if(!isMJ) return;
+      const id = chip.dataset.tokenId;
+      if(!boardData.tokens[id]) return;
+      mjInspectedTokenId = id;
+      renderMyCharacterPanel();
     });
-    list.appendChild(row);
+  });
+  const endBtn = document.getElementById("btn-init-end-turn");
+  if(endBtn) endBtn.addEventListener("click", endTurn);
+  const clearBtn = document.getElementById("btn-init-clear");
+  if(clearBtn) clearBtn.addEventListener("click", async () => {
+    if(!confirm("Effacer l'ordre d'initiative ?")) return;
+    initData = { entries: [], currentIndex: -1, round: 1 };
+    await saveInit(initData);
   });
 }
 
-document.getElementById("btn-add-init").addEventListener("click", async () => {
-  const name = document.getElementById("f-init-name").value.trim();
-  const score = Number(document.getElementById("f-init-score").value);
-  if(!name || isNaN(score)) return;
-  const entries = [...initData.entries, { id: "e"+Date.now(), name, score }].sort((a,b)=>b.score-a.score);
-  try{ await setDoc(initRef, { entries, currentIndex: initData.currentIndex, round: initData.round||1 }); }catch(e){ console.error(e); }
-  document.getElementById("f-init-name").value = "";
-  document.getElementById("f-init-score").value = "";
+// ============ Lancer de dés ============
+// Shared history capped at 40 rolls (kept small on purpose — this is a quick combat
+// log, not a permanent record — so the doc never gets anywhere near Firestore's
+// 1 MiB limit). A "caché" roll stays in the same log but only the MJ sees its
+// formula/result; everyone else just sees that the MJ rolled something.
+const DICE_HISTORY_MAX = 40;
+function rollDie(sides){ return Math.floor(Math.random()*sides) + 1; }
+function currentRollerName(){
+  if(isMJ) return "MJ";
+  const ch = characters.find(c => c.id === myCharacterId);
+  return ch ? (ch.name || "Joueur") : "Joueur";
+}
+function parseDiceFormula(str){
+  const m = (str||"").trim().match(/^(\d*)d(\d+)\s*([+-]\s*\d+)?$/i);
+  if(!m) return null;
+  const count = m[1] ? parseInt(m[1],10) : 1;
+  const sides = parseInt(m[2],10);
+  const modifier = m[3] ? parseInt(m[3].replace(/\s+/g,""),10) : 0;
+  if(!count || count > 100 || !sides) return null;
+  return { count, sides, modifier };
+}
+// Avantage/désavantage here means "roll this whole formula twice, keep the better
+// (or worse) total" — for a single d20 that's exactly the D&D rule; for anything
+// else it's the same idea generalized, since the plain roller isn't only used for
+// d20 checks.
+let diceAdvMode = "normal";
+function rollDiceSet(count, sides, modifier){
+  const results = [];
+  for(let i=0;i<count;i++) results.push(rollDie(sides));
+  return { results, total: results.reduce((a,b)=>a+b,0) + modifier };
+}
+async function performRoll(count, sides, modifier, hidden){
+  const first = rollDiceSet(count, sides, modifier);
+  let { results, total } = first;
+  let altResults = null, altTotal = null;
+  if(diceAdvMode !== "normal"){
+    const second = rollDiceSet(count, sides, modifier);
+    const firstIsKept = diceAdvMode === "adv" ? first.total >= second.total : first.total <= second.total;
+    const kept = firstIsKept ? first : second;
+    const other = firstIsKept ? second : first;
+    results = kept.results; total = kept.total;
+    altResults = other.results; altTotal = other.total;
+  }
+  const formula = count + "d" + sides + (modifier ? (modifier>0?"+":"")+modifier : "");
+  const entry = {
+    id: "r" + Date.now() + Math.random().toString(36).slice(2,6),
+    who: currentRollerName(), formula, results, total, advMode: diceAdvMode, altResults, altTotal,
+    hidden: !!(hidden && isMJ), ts: Date.now()
+  };
+  const rolls = [entry, ...diceData.rolls].slice(0, DICE_HISTORY_MAX);
+  diceData = { rolls };
+  await saveDice(diceData);
+}
+
+function renderDiceHistory(){
+  const el = document.getElementById("dice-history");
+  if(!diceData.rolls.length){
+    el.innerHTML = '<p class="hint" style="margin:0;">Aucun jet pour l\'instant.</p>';
+    return;
+  }
+  el.innerHTML = diceData.rolls.map(r => {
+    if(r.hidden && !isMJ){
+      return '<div class="dice-roll-row secret"><span class="who">MJ</span><span>a lancé des dés en secret</span><span></span></div>';
+    }
+    const detail = r.results.length > 1 ? (" (" + r.results.join(", ") + ")") : "";
+    const advDetail = (r.advMode === "adv" || r.advMode === "dis")
+      ? (" — " + (r.advMode==="adv"?"avantage":"désavantage") + " (autre jet : " + r.altTotal + ")")
+      : "";
+    return '<div class="dice-roll-row' + (r.hidden?" secret":"") + '">'+
+      '<span class="who">' + r.who + (r.hidden?" 🔒":"") + '</span>'+
+      '<span class="hint" style="margin:0;">' + r.formula + detail + advDetail + '</span>'+
+      '<span class="total">' + r.total + '</span>'+
+    '</div>';
+  }).join("");
+}
+
+document.querySelectorAll(".dice-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const hidden = document.getElementById("f-dice-hidden").checked;
+    performRoll(1, Number(btn.dataset.die), 0, hidden);
+  });
+});
+document.getElementById("btn-dice-roll-formula").addEventListener("click", () => {
+  const parsed = parseDiceFormula(document.getElementById("f-dice-formula").value);
+  if(!parsed){ alert("Formule invalide — utilise par exemple 2d6+3, d20 ou 1d8-1."); return; }
+  const hidden = document.getElementById("f-dice-hidden").checked;
+  performRoll(parsed.count, parsed.sides, parsed.modifier, hidden);
 });
 
-document.getElementById("btn-init-next").addEventListener("click", async () => {
-  if(!initData.entries.length) return;
-  let currentIndex = initData.currentIndex + 1;
-  let round = initData.round || 1;
-  if(currentIndex >= initData.entries.length){ currentIndex = 0; round++; }
-  try{ await setDoc(initRef, { entries: initData.entries, currentIndex, round }); }catch(e){ console.error(e); }
+// ============ Journal de combat ============
+// A weapon's dmgText comes in two different shapes depending on who wrote it: a PC's
+// own tool prints bare dice ("1d8-1 tranchant"), an imported monster stat block
+// prints a flat total first ("11 (2d6+4) dégâts tranchants"). Either way the actual
+// NdM(+/-K) formula appears somewhere in the string, so one regex covers both.
+function parseDiceFormulaFromDmgText(dmgText){
+  const m = (dmgText||"").match(/(\d+)d(\d+)\s*([+-]\s*\d+)?/);
+  if(!m) return null;
+  return { count: parseInt(m[1],10), sides: parseInt(m[2],10), modifier: m[3] ? parseInt(m[3].replace(/\s+/g,""),10) : 0 };
+}
+function rollDamage(formula, crit){
+  const count = crit ? formula.count * 2 : formula.count;
+  const rolls = [];
+  for(let i=0;i<count;i++) rolls.push(rollDie(formula.sides));
+  return { rolls, modifier: formula.modifier, total: rolls.reduce((a,b)=>a+b,0) + formula.modifier };
+}
+// 1d20 for the attack roll, or 2d20 keeping the higher (avantage) / lower
+// (désavantage) — both raw rolls are kept so the log can show which one counted.
+function rollD20WithMode(mode){
+  const a = rollDie(20);
+  if(mode !== "adv" && mode !== "dis") return { kept: a, rolls: [a] };
+  const b = rollDie(20);
+  const kept = mode === "adv" ? Math.max(a,b) : Math.min(a,b);
+  return { kept, rolls: [a,b] };
+}
+let combatAdvMode = "normal";
+
+function damageRangeText(weapon){
+  const formula = parseDiceFormulaFromDmgText(weapon.dmgText);
+  if(!formula) return "";
+  const min = formula.count * 1 + formula.modifier;
+  const max = formula.count * formula.sides + formula.modifier;
+  return "Dégâts : " + min + "–" + max + " (" + formula.count + "d" + formula.sides + (formula.modifier?fmtSigned(formula.modifier):"") + ")";
+}
+function renderCombatWeaponRange(){
+  const attacker = getLeftPanelCharacter();
+  const weaponSelect = document.getElementById("f-combat-weapon");
+  const weapon = attacker && attacker.attacks && attacker.attacks[Number(weaponSelect.value)];
+  document.getElementById("combat-weapon-range").textContent = weapon ? damageRangeText(weapon) : "";
+}
+function renderCombatSetup(){
+  const attacker = getLeftPanelCharacter();
+  const target = getRightPanelCharacter();
+  document.getElementById("combat-attacker-name").textContent = attacker ? (attacker.name||"Sans nom") : "—";
+  document.getElementById("combat-target-name").textContent = target ? (target.name||"Sans nom") : "—";
+  const weaponSelect = document.getElementById("f-combat-weapon");
+  const attacks = (attacker && attacker.attacks) || [];
+  weaponSelect.innerHTML = attacks.map((a,i) => '<option value="'+i+'">'+a.name+' ('+fmtSigned(a.atk)+')</option>').join("");
+  weaponSelect.disabled = !attacks.length;
+  const hint = document.getElementById("combat-setup-hint");
+  const btn = document.getElementById("btn-combat-attack");
+  if(!attacker){ hint.textContent = "Clic droit sur un pion lié à un personnage pour choisir l'attaquant."; btn.disabled = true; }
+  else if(!target){ hint.textContent = "Clic gauche sur un pion lié à un personnage pour choisir la cible."; btn.disabled = true; }
+  else if(!attacks.length){ hint.textContent = attacker.name + " n'a aucune arme équipée."; btn.disabled = true; }
+  else { hint.textContent = ""; btn.disabled = false; }
+  renderCombatWeaponRange();
+}
+
+async function performAttack(){
+  const attacker = getLeftPanelCharacter();
+  const target = getRightPanelCharacter();
+  const targetTokenId = selectedTokenId; // getRightPanelCharacter() is always derived from this token
+  const weaponIdx = Number(document.getElementById("f-combat-weapon").value);
+  const weapon = attacker && attacker.attacks && attacker.attacks[weaponIdx];
+  if(!attacker || !target || !weapon) return;
+
+  const d20Roll = rollD20WithMode(combatAdvMode);
+  const d20 = d20Roll.kept;
+  const atkTotal = d20 + (weapon.atk||0);
+  const isCrit = d20 === 20;
+  const isFumble = d20 === 1;
+  const targetAc = target.ac != null ? target.ac : null;
+  const hit = isCrit || (!isFumble && targetAc != null && atkTotal >= targetAc);
+
+  let dmg = null;
+  let hpBefore = null, hpAfter = null;
+  if(hit){
+    const formula = parseDiceFormulaFromDmgText(weapon.dmgText);
+    if(formula){
+      dmg = rollDamage(formula, isCrit);
+      hpBefore = resolveInstanceHp(target, targetTokenId);
+      hpAfter = Math.max(0, hpBefore - dmg.total);
+      // Only this pion takes the hit, not every other copy of the same PNJ sharing
+      // its fiche (see resolveInstanceHp/patchInstanceHp above the character card).
+      await patchInstanceHp(target, targetTokenId, hpAfter);
+    }
+  }
+
+  const entry = {
+    id: "c" + Date.now() + Math.random().toString(36).slice(2,6),
+    ts: Date.now(),
+    attackerName: attacker.name || "Sans nom",
+    targetId: target.id, targetTokenId, targetName: target.name || "Sans nom",
+    weaponName: weapon.name,
+    d20, d20Rolls: d20Roll.rolls, advMode: combatAdvMode, atkBonus: weapon.atk||0, atkTotal, targetAc, isCrit, isFumble, hit,
+    dmgTotal: dmg ? dmg.total : null, dmgRolls: dmg ? dmg.rolls : null, dmgModifier: dmg ? dmg.modifier : null,
+    hpBefore, hpAfter, undone: false
+  };
+  const entries = [entry, ...combatLogData.entries].slice(0, 30);
+  combatLogData = { entries };
+  await saveCombatLog(combatLogData);
+}
+
+async function undoCombatEntry(entryId){
+  const entry = combatLogData.entries.find(e => e.id === entryId);
+  if(!entry || entry.undone || entry.hpBefore == null) return;
+  const target = characters.find(c => c.id === entry.targetId) || { id: entry.targetId, kind: "npc" };
+  await patchInstanceHp(target, entry.targetTokenId || null, entry.hpBefore);
+  const entries = combatLogData.entries.map(e => e.id === entryId ? {...e, undone:true} : e);
+  combatLogData = { entries };
+  await saveCombatLog(combatLogData);
+}
+
+function renderCombatLog(){
+  const el = document.getElementById("combat-log-list");
+  if(!combatLogData.entries.length){
+    el.innerHTML = '<p class="hint" style="margin:0;">Aucune attaque pour l\'instant.</p>';
+    return;
+  }
+  el.innerHTML = combatLogData.entries.map(e => {
+    const rollDetail = e.isCrit ? " — critique !" : e.isFumble ? " — échec critique" : "";
+    const acText = e.targetAc != null ? (" vs CA " + e.targetAc) : "";
+    const advLabel = e.advMode === "adv" ? " (avantage)" : e.advMode === "dis" ? " (désavantage)" : "";
+    const d20Detail = (e.d20Rolls && e.d20Rolls.length > 1) ? (" [" + e.d20Rolls.join(", ") + "]") : "";
+    const line1 = e.attackerName + " → " + e.targetName + " (" + e.weaponName + ")";
+    const line2 = "Jet : " + e.d20 + d20Detail + fmtSigned(e.atkBonus) + " = " + e.atkTotal + acText + advLabel + rollDetail;
+    const dmgBreakdown = e.dmgTotal != null
+      ? ("(" + e.dmgRolls.join("+") + ")" + (e.dmgModifier ? fmtSigned(e.dmgModifier) : "") + " = " + e.dmgTotal)
+      : "";
+    const dmgLine = e.hit
+      ? (e.dmgTotal != null ? ("Touché — " + dmgBreakdown + " dégâts · PV " + e.hpBefore + " → " + e.hpAfter) : "Touché — dégâts non calculables (arme sans dés reconnus)")
+      : "Manqué";
+    const undoBtn = (!e.undone && e.hpBefore != null) ? ('<button type="button" class="undo-btn" data-undo="'+e.id+'">annuler</button>') : (e.undone ? '<span class="hint" style="margin:0;">(annulé)</span>' : '');
+    return '<div class="dice-roll-row' + (e.isCrit?" crit":"") + (!e.hit?" miss":"") + '" style="flex-direction:column;align-items:stretch;gap:2px;">'+
+      '<div style="display:flex;justify-content:space-between;"><span class="who">' + line1 + '</span>' + undoBtn + '</div>'+
+      '<span class="hint" style="margin:0;">' + line2 + '</span>'+
+      '<span class="hint" style="margin:0;">' + dmgLine + '</span>'+
+    '</div>';
+  }).join("");
+  el.querySelectorAll("[data-undo]").forEach(btn => {
+    btn.addEventListener("click", () => undoCombatEntry(btn.dataset.undo));
+  });
+}
+
+document.getElementById("btn-combat-attack").addEventListener("click", performAttack);
+document.getElementById("btn-combat-log-clear").addEventListener("click", async () => {
+  if(!confirm("Vider le journal de combat ?")) return;
+  combatLogData = { entries: [] };
+  await saveCombatLog(combatLogData);
 });
-document.getElementById("btn-init-prev").addEventListener("click", async () => {
-  if(!initData.entries.length) return;
-  let currentIndex = initData.currentIndex - 1;
-  let round = initData.round || 1;
-  if(currentIndex < 0){ currentIndex = initData.entries.length-1; round = Math.max(1, round-1); }
-  try{ await setDoc(initRef, { entries: initData.entries, currentIndex, round }); }catch(e){ console.error(e); }
+document.getElementById("f-combat-weapon").addEventListener("change", renderCombatWeaponRange);
+document.getElementById("dice-drawer-toggle").addEventListener("click", () => {
+  document.getElementById("dice-drawer").classList.toggle("open");
 });
-document.getElementById("btn-init-reset").addEventListener("click", async () => {
-  if(!confirm("Réinitialiser complètement l'ordre d'initiative ?")) return;
-  try{ await setDoc(initRef, { entries: [], currentIndex: -1, round: 1 }); }catch(e){ console.error(e); }
+document.getElementById("combat-drawer-toggle").addEventListener("click", () => {
+  document.getElementById("combat-drawer").classList.toggle("open");
+});
+document.getElementById("mood-drawer-toggle").addEventListener("click", () => {
+  document.getElementById("mood-drawer").classList.toggle("open");
+});
+document.querySelectorAll(".combat-adv-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    combatAdvMode = btn.dataset.adv;
+    document.querySelectorAll(".combat-adv-btn").forEach(b => b.classList.toggle("active", b===btn));
+  });
+});
+document.querySelectorAll(".dice-adv-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    diceAdvMode = btn.dataset.adv;
+    document.querySelectorAll(".dice-adv-btn").forEach(b => b.classList.toggle("active", b===btn));
+  });
 });
 
 async function init(){
@@ -921,17 +2698,15 @@ async function init(){
     if(!snap.exists()) return;
     const d = snap.data();
     boardData.tokens = d.tokens || boardData.tokens;
+    boardData.mapId = d.mapId || null;
     boardData.mapUrl = d.mapUrl || "";
     boardData.cols = d.cols || 12;
     boardData.rows = d.rows || 8;
     boardData.effects = d.effects || {};
-    if(pendingMove){
-      const t = boardData.tokens[pendingMove.tokenId];
-      if(!t || t.x !== pendingMove.startCol || t.y !== pendingMove.startRow) clearPendingMove();
-    }
+    boardData.fogHidden = d.fogHidden || {};
     if(document.getElementById("f-cols")) document.getElementById("f-cols").value = boardData.cols;
     if(document.getElementById("f-map-url") && document.activeElement.id !== "f-map-url"){
-      document.getElementById("f-map-url").value = boardData.mapUrl;
+      document.getElementById("f-map-url").value = getActiveMapUrl();
     }
     renderBoard();
     renderMapLibrary();
@@ -949,7 +2724,18 @@ async function init(){
 
   onSnapshot(initRef, (snap) => {
     initData = snap.exists() ? snap.data() : { entries: [], currentIndex: -1, round: 1 };
-    renderInitiative();
+    renderInitiativeBar();
+    renderBoard();
+  });
+
+  onSnapshot(diceRef, (snap) => {
+    diceData = snap.exists() ? snap.data() : { rolls: [] };
+    renderDiceHistory();
+  });
+
+  onSnapshot(combatLogRef, (snap) => {
+    combatLogData = snap.exists() ? snap.data() : { entries: [] };
+    renderCombatLog();
   });
 
   onSnapshot(moodsCol, (snap) => {
@@ -961,11 +2747,21 @@ async function init(){
   onSnapshot(mapsCol, (snap) => {
     maps = snap.docs.map(d => ({ id:d.id, ...d.data() }));
     renderMapLibrary();
+    renderScenes(); // scene thumbnails resolve a mapId against this same list
+    renderBoard();
   });
 
-  onSnapshot(tokenTemplatesCol, (snap) => {
-    tokenTemplates = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-    renderTokenTemplates();
+  onSnapshot(scenesCol, (snap) => {
+    scenes = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    renderScenes();
+  });
+
+  onSnapshot(charactersCol, (snap) => {
+    characters = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    renderCharacterLibrary();
+    renderMyCharacterSelect();
+    renderMyCharacterPanel();
+    renderBoard();
   });
 }
 
