@@ -3312,7 +3312,7 @@ function syncHeader(){
   const playerEl=document.getElementById("f-player");
   if(playerEl)playerEl.value=state.playerName||"";
   const preview=document.getElementById("portrait-preview");
-  if(preview)preview.style.backgroundImage=state.portrait?"url('"+state.portrait.replace(/'/g,"")+"')":"none";
+  if(preview)preview.style.backgroundImage=state.portrait?"url('"+state.portrait.replace(/'/g,"%27")+"')":"none";
 }
 function bindHeader(){
   const nameEl=document.getElementById("f-name");
@@ -3407,7 +3407,7 @@ function rosterCardHtml(id,data){
   const meta=(data.playerName?esc(data.playerName)+" · ":"")+
     (race&&cls?race.label+" "+cls.label+" · ":"")+
     "Niveau "+(data.level||1)+(data.validated?"":" · en cours de création");
-  const swatch=data.portrait?"background-image:url('"+data.portrait.replace(/'/g,"")+"');":"";
+  const swatch=data.portrait?"background-image:url('"+data.portrait.replace(/'/g,"%27")+"');":"";
   return '<div class="roster-card" data-roster-id="'+id+'">'+
     '<div class="portrait" style="'+swatch+'"></div>'+
     '<div class="rinfo"><div class="rname">'+esc(data.name||"Sans nom")+'</div><div class="rmeta">'+meta+'</div></div>'+
@@ -3454,7 +3454,7 @@ function closeRoster(){
 function readOnlyCharacterHtml(data){
   const race=RACES[data.raceKey],cls=CLASSES[data.classKey],bg=BACKGROUNDS[data.bgKey];
   const subtitle=[race&&race.label,cls&&cls.label].filter(Boolean).join(" ")+(bg?" — "+bg.label:"")+" · Niveau "+(data.level||1);
-  const swatchStyle=data.portrait?"background-image:url('"+data.portrait.replace(/'/g,"")+"');background-size:cover;":"background:#7c5e20;";
+  const swatchStyle=data.portrait?"background-image:url('"+data.portrait.replace(/'/g,"%27")+"');background-size:cover;":"background:#7c5e20;";
   const attacks=data.attacks||[];
   const attackRows=attacks.length
     ? attacks.map(a=>'<div class="roster-card" style="cursor:default;"><div class="rinfo"><div class="rname">'+esc(a.name||"")+'</div><div class="rmeta">'+(a.atk>=0?"+":"")+a.atk+' · '+esc(a.dmgText||"")+'</div></div></div>').join("")
@@ -3563,7 +3563,7 @@ async function renderNpcListView(){
   body.innerHTML='<p class="sheet-text">Chargement...</p>';
   await loadNpcs();
   const cards=npcs.map(n=>{
-    const swatch=n.data.portrait?"background-image:url('"+n.data.portrait.replace(/'/g,"")+"');":"";
+    const swatch=n.data.portrait?"background-image:url('"+n.data.portrait.replace(/'/g,"%27")+"');":"";
     return '<div class="roster-card" data-npc-id="'+n.id+'">'+
       '<div class="portrait" style="'+swatch+'"></div>'+
       '<div class="rinfo"><div class="rname">'+esc(n.data.name||"Sans nom")+
@@ -3648,7 +3648,7 @@ function renderNpcEditView(){
     '<div style="display:flex;gap:12px;align-items:flex-end;margin-bottom:14px;">'+
       '<div class="field" style="flex:none;"><label>Portrait</label>'+
         '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'+
-          '<div id="npc-portrait-preview" style="width:44px;height:44px;border-radius:50%;background-color:var(--bg-alt);border:1px solid var(--line-soft);background-size:cover;background-position:center;'+(n.portrait?"background-image:url('"+n.portrait.replace(/'/g,"")+"');":"")+'"></div>'+
+          '<div id="npc-portrait-preview" style="width:44px;height:44px;border-radius:50%;background-color:var(--bg-alt);border:1px solid var(--line-soft);background-size:cover;background-position:center;'+(n.portrait?"background-image:url('"+n.portrait.replace(/'/g,"%27")+"');":"")+'"></div>'+
           '<label class="btn btn-ghost btn-sm" style="cursor:pointer;margin:0;">Choisir<input type="file" id="npc-f-portrait-file" accept="image/*" hidden></label>'+
           '<input type="url" id="npc-f-portrait-url" placeholder="ou URL d\'image" style="min-width:140px;flex:1;">'+
         '</div>'+
@@ -3660,7 +3660,7 @@ function renderNpcEditView(){
       '<div id="npc-portrait-variants" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;">'+
         (n.portraitVariants||[]).map((v,i)=>(
           '<div style="position:relative;width:44px;height:44px;">'+
-            '<div style="width:44px;height:44px;border-radius:50%;background-color:var(--bg-alt);border:1px solid var(--line-soft);background-size:cover;background-position:center;background-image:url(\''+v.replace(/'/g,"")+'\');"></div>'+
+            '<div style="width:44px;height:44px;border-radius:50%;background-color:var(--bg-alt);border:1px solid var(--line-soft);background-size:cover;background-position:center;background-image:url(\''+v.replace(/'/g,"%27")+'\');"></div>'+
             '<button type="button" data-remove-variant="'+i+'" title="Supprimer cette variante" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;border:none;background:#a33;color:#fff;font-size:11px;line-height:18px;padding:0;cursor:pointer;">×</button>'+
           '</div>'
         )).join("")+
