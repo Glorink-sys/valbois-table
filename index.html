@@ -944,7 +944,7 @@ function openPortraitPicker(ch, pos){
   pendingPortraitPlacement = { ch, pos };
   const list = characterPortraitList(ch);
   document.getElementById("portrait-picker-list").innerHTML = list.map((img, i) =>
-    '<button type="button" data-idx="' + i + '" style="width:64px;height:64px;border-radius:50%;border:2px solid var(--parchment-line);background-size:cover;background-position:center;cursor:pointer;padding:0;background-image:url(\'' + img.replace(/'/g,"") + '\');"></button>'
+    '<button type="button" data-idx="' + i + '" style="width:64px;height:64px;border-radius:50%;border:2px solid var(--parchment-line);background-size:cover;background-position:center;cursor:pointer;padding:0;background-image:url(\'' + img.replace(/'/g,"%27") + '\');"></button>'
   ).join("");
   document.getElementById("portrait-picker-modal").hidden = false;
 }
@@ -1059,7 +1059,7 @@ function renderBoard(){
   const plainGrid = "linear-gradient(var(--parchment-line) 1px, transparent 1px), linear-gradient(90deg, var(--parchment-line) 1px, transparent 1px)";
   const activeMapUrl = getActiveMapUrl();
   board.style.backgroundImage = activeMapUrl
-    ? gridLines + ", url('" + activeMapUrl.replace(/'/g,"") + "')"
+    ? gridLines + ", url('" + activeMapUrl.replace(/'/g,"%27") + "')"
     : plainGrid;
   const cellBg = "calc(100% / " + boardData.cols + ") calc(100% / " + boardData.rows + ")";
   board.style.backgroundSize = activeMapUrl ? cellBg + ", " + cellBg + ", 100% 100%" : cellBg;
@@ -1109,7 +1109,7 @@ function renderBoard(){
     el.style.zIndex = 6 + (id === selectedTokenId ? 1 : 0);
     const image = resolveTokenImage(t);
     if(image){
-      el.style.backgroundImage = "url('" + image.replace(/'/g,"") + "')";
+      el.style.backgroundImage = "url('" + image.replace(/'/g,"%27") + "')";
       // Stretch to exactly fill the token circle — a cropping "cover" fit would zoom into
       // empty/transparent margins on a cut-out PNG instead of showing the whole artwork.
       el.style.backgroundSize = "100% 100%";
@@ -1141,7 +1141,7 @@ function renderBoard(){
     board.appendChild(el);
 
     const li = document.createElement("span");
-    const swatchStyle = image ? ("background-image:url('"+image.replace(/'/g,"")+"');background-size:100% 100%;") : ("background:"+t.color);
+    const swatchStyle = image ? ("background-image:url('"+image.replace(/'/g,"%27")+"');background-size:100% 100%;") : ("background:"+t.color);
     li.innerHTML = '<i style="' + swatchStyle + '"></i>' + t.label;
     legend.appendChild(li);
   });
@@ -1172,7 +1172,7 @@ function renderSelection(id){
     return;
   }
   const image = resolveTokenImage(t);
-  const swatch = image ? ("background-image:url('"+image.replace(/'/g,"")+"');background-size:cover;") : ("background:"+t.color+";");
+  const swatch = image ? ("background-image:url('"+image.replace(/'/g,"%27")+"');background-size:cover;") : ("background:"+t.color+";");
   const escaped = (t.sheet||"").replace(/</g,"&lt;");
   const ch = t.characterId ? characters.find(c => c.id === t.characterId) : null;
   const canManage = isMJ || (ch && ch.id === myCharacterId);
@@ -1937,7 +1937,7 @@ function renderCharacterLibrary(){
     card.className = "char-library-card";
     card.draggable = true;
     card.title = "Clique pour poser sur une case libre, ou glisse-dépose directement sur la carte.";
-    const swatchStyle = ch.portrait ? ("background-image:url('"+ch.portrait.replace(/'/g,"")+"');background-size:100% 100%;") : "background:#7c5e20";
+    const swatchStyle = ch.portrait ? ("background-image:url('"+ch.portrait.replace(/'/g,"%27")+"');background-size:100% 100%;") : "background:#7c5e20";
     const isNpc = ch.kind === "npc";
     const race = RACE_LABELS[ch.raceKey] || "";
     const cls = CLASS_LABELS[ch.classKey] || "";
@@ -1964,7 +1964,7 @@ function renderNpcPicker(){
     return;
   }
   list.innerHTML = npcList.map(ch => {
-    const swatchStyle = ch.portrait ? ("background-image:url('"+ch.portrait.replace(/'/g,"")+"');") : "background:#7c5e20;";
+    const swatchStyle = ch.portrait ? ("background-image:url('"+ch.portrait.replace(/'/g,"%27")+"');") : "background:#7c5e20;";
     return '<label class="npc-picker-row">'+
       '<input type="checkbox" data-npc-toggle="'+ch.id+'" '+(ch.activeOnMap?"checked":"")+'>'+
       '<span class="swatch" style="'+swatchStyle+'"></span>'+
@@ -2092,7 +2092,7 @@ function characterCardHtml(ch, canManage, tokenId){
   // token (portraitIndex), not on the character doc — show that exact image here
   // instead of always the profile's default, so this panel matches the board.
   const cardImage = (tokenId && boardData.tokens[tokenId]) ? resolveTokenImage(boardData.tokens[tokenId]) : ch.portrait;
-  const swatchStyle = cardImage ? ("background-image:url('"+cardImage.replace(/'/g,"")+"');background-size:cover;") : "background:#7c5e20";
+  const swatchStyle = cardImage ? ("background-image:url('"+cardImage.replace(/'/g,"%27")+"');background-size:cover;") : "background:#7c5e20";
   const hasHpOverride = ch.kind === "npc" && tokenId && boardData.tokens[tokenId] && boardData.tokens[tokenId].hpCurrent != null;
   const hpCur = hasHpOverride ? boardData.tokens[tokenId].hpCurrent : ((ch.hpCurrent == null) ? (ch.hpMax != null ? ch.hpMax : "?") : ch.hpCurrent);
   const hpMax = ch.hpMax != null ? ch.hpMax : "?";
@@ -2525,7 +2525,7 @@ function renderInitiativeBar(){
     const tok = boardData.tokens[entry.tokenId];
     const image = tok ? resolveTokenImage(tok) : "";
     const avatarStyle = image
-      ? ("background-image:url('" + image.replace(/'/g,"") + "');")
+      ? ("background-image:url('" + image.replace(/'/g,"%27") + "');")
       : ("background:" + (tok ? tok.color : "#7c5e20") + ";");
     return '<span class="init-chip' + (cur?" current":"") + (sel?" selected":"") + '" data-token-id="' + entry.tokenId + '" title="' + safeName + '">' +
       '<span class="init-avatar" style="' + avatarStyle + '">' + (image ? "" : safeName.charAt(0).toUpperCase()) + '</span>' +
