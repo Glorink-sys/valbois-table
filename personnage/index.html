@@ -1330,6 +1330,35 @@ function fmtSpeed(n){return (Number.isInteger(n)?n:String(n).replace(".",","))+"
 function profBonus(level){return level<=4?2:level<=8?3:level<=12?4:level<=16?5:6;}
 function esc(s){return (s||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
 
+// Firestore rejects a write past ~1 MiB per document — with portraits stored as base64
+// inline, a PNJ with several image variants can hit that ceiling. The SDK reports it as
+// a plain write failure (same shape as a dropped connection), so without this check the
+// user sees "Vérifie ta connexion" and goes hunting for a network problem that doesn't
+// exist — tell them it's the images instead.
+function isDocTooLargeError(e){
+  const msg=(e&&e.message)||"";
+  return /longer than|exceeds the maximum|maximum.*size|too large/i.test(msg);
+}
+
+// Firestore's document-size limit counts the STORED string as-is (the base64 text
+// itself, not the image bytes it decodes to), so the character count is the right
+// estimate here — decoding back to binary size would understate it by ~25%.
+function dataUrlSizeBytes(s){ return s?s.length:0; }
+const NPC_DOC_SOFT_LIMIT_BYTES=900*1024; // headroom below Firestore's ~1 MiB hard cap
+function npcImagesSizeHint(n){
+  const total=dataUrlSizeBytes(n.portrait)+(n.portraitVariants||[]).reduce((sum,v)=>sum+dataUrlSizeBytes(v),0);
+  const ko=Math.round(total/1024);
+  const warn=total>NPC_DOC_SOFT_LIMIT_BYTES;
+  return '<p class="hint" id="npc-portrait-size-hint" style="margin:4px 0 0;'+(warn?'color:var(--warn,#c0392b);':'')+'">Poids des images : '+ko+' Ko'+(warn?' — proche de la limite, supprime une variante ou utilise des images plus légères.':'.')+'</p>';
+}
+// Re-renders just the size line, for the portrait handlers below which (unlike the
+// variant handlers) intentionally skip a full renderNpcEditView() to avoid losing
+// focus/scroll elsewhere in the long NPC form over a single-field edit.
+function refreshNpcImagesSizeHint(){
+  const el=document.getElementById("npc-portrait-size-hint");
+  if(el) el.outerHTML=npcImagesSizeHint(npcDraft);
+}
+
 function defaultState(){
   return {
     docId:null,
@@ -1447,7 +1476,11 @@ async function syncToFirestore(){
     await setDoc(doc(charactersCol,state.docId),{...state,kind:"pc",hpMax:derived.hp,ac:derived.ac,speed:derived.speed,attacks,equippedArmor:armorLineText(),saveBonuses:computeSaveBonuses(),skillBonuses:computeSkillBonuses(),updatedAt:Date.now()});
   }catch(e){
     console.error(e);
-    alert("Échec de l'enregistrement de la fiche. Vérifie ta connexion et réessaie — sinon la modification ne sera vue ni par le MJ, ni sur la table de jeu.");
+    if(isDocTooLargeError(e)){
+      alert("La fiche dépasse la taille maximale autorisée (probablement à cause du portrait). Utilise une image plus légère, puis réessaie.");
+    }else{
+      alert("Échec de l'enregistrement de la fiche. Vérifie ta connexion et réessaie — sinon la modification ne sera vue ni par le MJ, ni sur la table de jeu.");
+    }
   }
 }
 
@@ -1490,6 +1523,11 @@ function loadImageAny(source){
     }
   });
 }
+function canvasHasTransparency(ctx,w,h){
+  const data=ctx.getImageData(0,0,w,h).data;
+  for(let i=3;i<data.length;i+=4){ if(data[i]<250) return true; }
+  return false;
+}
 function findOpaqueBounds(ctx,w,h,alphaThreshold){
   const data=ctx.getImageData(0,0,w,h).data;
   let minX=w,minY=h,maxX=-1,maxY=-1;
@@ -1527,8 +1565,13 @@ async function processPortraitImage(source,maxDim){
     }
     const out=document.createElement("canvas");
     out.width=maxDim;out.height=maxDim;
-    out.getContext("2d").drawImage(full,sx,sy,sw,sh,0,0,maxDim,maxDim);
-    return out.toDataURL("image/png",0.92);
+    const octx=out.getContext("2d");
+    octx.drawImage(full,sx,sy,sw,sh,0,0,maxDim,maxDim);
+    // PNG preserves transparency (cut-out character art) but is 3-10x heavier than JPEG
+    // for an opaque photo-like portrait — and with images stored inline in the Firestore
+    // doc, that difference is what decides how many variants fit under its ~1 Mo cap.
+    // Only pay the PNG cost when the image actually needs the alpha channel.
+    return canvasHasTransparency(octx,maxDim,maxDim) ? out.toDataURL("image/png",0.92) : out.toDataURL("image/jpeg",0.85);
   }catch(err){
     console.error(err);
     if(typeof source==="string")return source;
@@ -3492,7 +3535,11 @@ async function syncNpcToFirestore(){
     await setDoc(doc(charactersCol,npcDraft.docId),{...npcDraft,kind:"npc",updatedAt:Date.now()});
   }catch(e){
     console.error(e);
-    alert("Échec de l'enregistrement du PNJ. Vérifie ta connexion et réessaie.");
+    if(isDocTooLargeError(e)){
+      alert("Ce PNJ a trop d'images (portrait + variantes) : la fiche dépasse la taille maximale autorisée. Supprime une variante ou utilise des images plus légères, puis réessaie.");
+    }else{
+      alert("Échec de l'enregistrement du PNJ. Vérifie ta connexion et réessaie.");
+    }
   }
 }
 
@@ -3553,6 +3600,7 @@ async function renderNpcListView(){
     const parsed=parseBestiaryText(text).map(buildNpcFromParsed);
     if(!parsed.length){ resultEl.textContent="Aucun PNJ reconnu dans ce texte (il faut au moins une ligne «CA» par bloc)."; return; }
     const failed=[];
+    let tooLargeCount=0;
     let updatedCount=0;
     for(const p of parsed){
       // Re-pasting the same (or an updated) bestiary text used to spawn a brand-new
@@ -3565,12 +3613,16 @@ async function renderNpcListView(){
       try{
         await setDoc(doc(charactersCol,id),{...full,kind:"npc",updatedAt:Date.now()});
         if(existing)updatedCount++;
-      }catch(e){ console.error(e); failed.push(p.name); }
+      }catch(e){
+        console.error(e);
+        failed.push(p.name);
+        if(isDocTooLargeError(e)) tooLargeCount++;
+      }
     }
     const okCount=parsed.length-failed.length;
     const newCount=okCount-updatedCount;
     lastNpcImportMsg=okCount+" PNJ traités ("+newCount+" créés, "+updatedCount+" mis à jour) : "+parsed.filter(p=>!failed.includes(p.name)).map(p=>esc(p.name)).join(", ")+
-      (failed.length ? (" — échec pour "+failed.length+" (vérifie ta connexion et réessaie) : "+failed.map(esc).join(", ")) : "");
+      (failed.length ? (" — échec pour "+failed.length+" ("+(tooLargeCount===failed.length?"fiche trop volumineuse (trop d'images) — supprime une variante ou allège les images":"vérifie ta connexion et réessaie")+") : "+failed.map(esc).join(", ")) : "");
     await renderNpcListView();
   });
 }
@@ -3618,6 +3670,7 @@ function renderNpcEditView(){
         '<input type="url" id="npc-f-variant-url" placeholder="ou URL d\'image" style="min-width:140px;flex:1;">'+
       '</div>'+
       '<p class="hint" style="margin:6px 0 0;">Quand plusieurs pions de ce PNJ sont posés sur la carte, une apparence est tirée au hasard parmi le portrait principal et ces variantes.</p>'+
+      npcImagesSizeHint(n)+
     '</div>'+
     '<div class="npc-form-grid">'+
       '<div class="field"><label>CA</label><input id="npc-f-ac" type="number" value="'+(n.ac!=null?n.ac:"")+'"></div>'+
@@ -3702,6 +3755,7 @@ function bindNpcEditView(){
     try{
       npcDraft.portrait=await processPortraitImage(file,256);
       document.getElementById("npc-portrait-preview").style.backgroundImage="url('"+npcDraft.portrait+"')";
+      refreshNpcImagesSizeHint();
       scheduleNpcSync();
     }catch(err){
       console.error(err);
@@ -3716,6 +3770,7 @@ function bindNpcEditView(){
       npcDraft.portrait=await processPortraitImage(url,256);
       document.getElementById("npc-portrait-preview").style.backgroundImage="url('"+npcDraft.portrait+"')";
       npcPortraitUrlEl.value="";
+      refreshNpcImagesSizeHint();
       scheduleNpcSync();
     }catch(err){
       console.error(err);
