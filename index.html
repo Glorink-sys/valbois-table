@@ -469,7 +469,17 @@ button:disabled{opacity:.5;cursor:not-allowed;}
   </main>
 
   <aside class="side-panel" id="panel-right">
-    <h2>Sélection</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+      <h2 style="margin:0;">Sélection</h2>
+      <button type="button" class="ghost danger btn-sm" id="btn-delete-token" title="Supprimer ce pion" aria-label="Supprimer ce pion" hidden style="padding:6px 9px;line-height:1;">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 7h16"/>
+          <path d="M9 7V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V7"/>
+          <path d="M6 7l1 12.5A1.5 1.5 0 0 0 8.5 21h7a1.5 1.5 0 0 0 1.5-1.5L18 7"/>
+          <path d="M10 11v6M14 11v6"/>
+        </svg>
+      </button>
+    </div>
     <div id="selection-info"><p class="hint">Glisse un pion pour le déplacer sur la carte.</p></div>
   </aside>
 </div>
@@ -493,6 +503,18 @@ button:disabled{opacity:.5;cursor:not-allowed;}
     </div>
     <p class="hint">Coche les PNJ que les joueurs peuvent voir apparaître comme pions posables cette session — les autres restent rangés dans le bestiaire de l'outil personnage.</p>
     <div id="npc-picker-list"></div>
+  </div>
+</div>
+
+<div id="portrait-picker-modal" class="simple-modal" hidden>
+  <div class="simple-modal-backdrop" id="portrait-picker-backdrop"></div>
+  <div class="simple-modal-panel" style="max-width:360px;">
+    <div class="simple-modal-head">
+      <h2>Choisir l'apparence</h2>
+      <button type="button" class="ghost btn-sm" id="portrait-picker-close">Annuler</button>
+    </div>
+    <p class="hint">Ce PNJ a plusieurs images — choisis celle de ce pion.</p>
+    <div id="portrait-picker-list" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;"></div>
   </div>
 </div>
 
@@ -755,6 +777,7 @@ const dragLine = document.getElementById("drag-line");
 const zoomLabel = document.getElementById("zoom-label");
 const METERS_PER_CELL = 1.5;
 
+document.getElementById("btn-delete-token").addEventListener("click", () => { if(selectedTokenId) deleteToken(selectedTokenId); });
 document.getElementById("btn-zoom-in").addEventListener("click", () => setZoom(zoomLevel + 0.2));
 document.getElementById("btn-zoom-out").addEventListener("click", () => setZoom(zoomLevel - 0.2));
 document.getElementById("btn-zoom-reset").addEventListener("click", () => setZoom(1));
@@ -902,15 +925,46 @@ function resolveTokenImage(t){
   return t.image || "";
 }
 
-async function placeCharacterAsToken(ch, pos){
+async function placeCharacterAsToken(ch, pos, portraitIndex){
   const id = "tok" + Date.now();
   const token = { label: ch.name || "Personnage", color: "#7c5e20", characterId: ch.id, x: pos.x, y: pos.y };
   const list = characterPortraitList(ch);
-  if(list.length > 1) token.portraitIndex = Math.floor(Math.random() * list.length);
+  if(list.length > 1) token.portraitIndex = (typeof portraitIndex === "number") ? portraitIndex : 0;
   boardData.tokens[id] = token;
   renderBoard();
   await saveBoard({ ["tokens." + id]: boardData.tokens[id] });
   await joinInitiativeIfVisible(id);
+}
+
+// Several images on one PNJ profile exist so the same monster can look different
+// pion to pion — asked for explicitly after trying the earlier random-pick behaviour
+// and preferring to choose each time instead.
+let pendingPortraitPlacement = null;
+function openPortraitPicker(ch, pos){
+  pendingPortraitPlacement = { ch, pos };
+  const list = characterPortraitList(ch);
+  document.getElementById("portrait-picker-list").innerHTML = list.map((img, i) =>
+    '<button type="button" data-idx="' + i + '" style="width:64px;height:64px;border-radius:50%;border:2px solid var(--parchment-line);background-size:cover;background-position:center;cursor:pointer;padding:0;background-image:url(\'' + img.replace(/'/g,"") + '\');"></button>'
+  ).join("");
+  document.getElementById("portrait-picker-modal").hidden = false;
+}
+function closePortraitPicker(){
+  document.getElementById("portrait-picker-modal").hidden = true;
+  pendingPortraitPlacement = null;
+}
+document.getElementById("portrait-picker-list").addEventListener("click", async (e) => {
+  const btn = e.target.closest("[data-idx]");
+  if(!btn || !pendingPortraitPlacement) return;
+  const idx = Number(btn.dataset.idx);
+  const { ch, pos } = pendingPortraitPlacement;
+  closePortraitPicker();
+  await placeCharacterAsToken(ch, pos, idx);
+});
+document.getElementById("portrait-picker-close").addEventListener("click", closePortraitPicker);
+document.getElementById("portrait-picker-backdrop").addEventListener("click", closePortraitPicker);
+async function placeCharacterPickingPortrait(ch, pos){
+  if(characterPortraitList(ch).length > 1) openPortraitPicker(ch, pos);
+  else await placeCharacterAsToken(ch, pos);
 }
 
 // A pion placed directly onto a still-fogged cell joins combat only once actually
@@ -1114,6 +1168,7 @@ function renderSelection(id){
   const t = boardData.tokens[id];
   if(!t){
     selectionInfo.innerHTML = '<p class="hint">Glisse un pion pour le déplacer sur la carte.</p>';
+    document.getElementById("btn-delete-token").hidden = true;
     return;
   }
   const image = resolveTokenImage(t);
@@ -1122,6 +1177,15 @@ function renderSelection(id){
   const ch = t.characterId ? characters.find(c => c.id === t.characterId) : null;
   const canManage = isMJ || (ch && ch.id === myCharacterId);
   const charBlock = ch ? (characterCardHtml(ch, canManage, id) + (canManage ? openSheetButtonHtml : "")) : "";
+  // A real character already carries its own name + portrait header (bigger swatch,
+  // subtitle, player name) via characterCardHtml — showing this plain header too would
+  // just repeat the same name and image a second time, smaller.
+  const headerRow = ch ? "" : (
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'+
+    '<span style="width:22px;height:22px;border-radius:50%;display:inline-block;flex:none;border:1px solid rgba(0,0,0,.2);' + swatch + '"></span>'+
+    '<strong style="font-family:\'Cinzel\',serif;flex:1;">' + t.label + '</strong>'+
+    '</div>'
+  );
   // A real character already carries its own data (attacks, inventory, états actifs...)
   // synced from the character tool — the free-text "Fiche" and cell/drag hints only
   // make sense for plain template tokens (monsters, NPCs) that have no such sheet.
@@ -1132,22 +1196,13 @@ function renderSelection(id){
     '<textarea id="f-token-sheet-edit" rows="6" placeholder="PV, capacités, notes..." style="width:100%;font-family:inherit;font-size:.82rem;padding:8px;border-radius:6px;border:1px solid var(--parchment-line);background:var(--panel);color:var(--ink);resize:vertical;">' + escaped + '</textarea>'+
     '<button type="button" id="btn-save-sheet" style="margin-top:6px;font-size:.68rem;padding:6px 10px;">Enregistrer la fiche</button>'
   );
-  selectionInfo.innerHTML =
-    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'+
-    '<span style="width:22px;height:22px;border-radius:50%;display:inline-block;flex:none;border:1px solid rgba(0,0,0,.2);' + swatch + '"></span>'+
-    '<strong style="font-family:\'Cinzel\',serif;flex:1;">' + t.label + '</strong>'+
-    (isMJ ? '<button type="button" class="ghost danger btn-sm" id="btn-delete-token" style="font-size:.68rem;padding:5px 8px;">Supprimer</button>' : '') +
-    '</div>'+
-    charBlock +
-    genericBlock;
+  selectionInfo.innerHTML = headerRow + charBlock + genericBlock;
+  document.getElementById("btn-delete-token").hidden = !isMJ;
 
   if(ch){
     wireCharacterCard(selectionInfo, ch, id);
     if(canManage) wireOpenSheetButton(selectionInfo, ch);
   }
-
-  const delBtn = document.getElementById("btn-delete-token");
-  if(delBtn) delBtn.addEventListener("click", () => deleteToken(id));
 
   const saveSheetBtn = document.getElementById("btn-save-sheet");
   if(saveSheetBtn) saveSheetBtn.addEventListener("click", async () => {
@@ -1423,7 +1478,7 @@ board.addEventListener("drop", async (e) => {
   const { col, row } = cellFromEvent(e);
   if(payload.startsWith("char:")){
     const ch = characters.find(c => c.id === payload.slice(5));
-    if(ch) await placeCharacterAsToken(ch, { x: col, y: row });
+    if(ch) await placeCharacterPickingPortrait(ch, { x: col, y: row });
   }
 });
 
@@ -1891,7 +1946,7 @@ function renderCharacterLibrary(){
       '<span>' + label + (ch.name || "Sans nom") + (ch.playerName ? " (" + ch.playerName + ")" : "") + '</span>';
     card.title += isNpc ? (ch.descriptor ? " — " + ch.descriptor : "") : (race || cls ? " — " + [race, cls].filter(Boolean).join(" ") : "");
     card.addEventListener("click", () => {
-      placeCharacterAsToken(ch, findFreeCell());
+      placeCharacterPickingPortrait(ch, findFreeCell());
     });
     card.addEventListener("dragstart", (e) => {
       e.dataTransfer.setData("text/plain", "char:" + ch.id);
@@ -2033,7 +2088,11 @@ function characterCardHtml(ch, canManage, tokenId){
   const race = RACE_LABELS[ch.raceKey] || "";
   const cls = CLASS_LABELS[ch.classKey] || "";
   const bg = BG_LABELS[ch.bgKey] || "";
-  const swatchStyle = ch.portrait ? ("background-image:url('"+ch.portrait.replace(/'/g,"")+"');background-size:cover;") : "background:#7c5e20";
+  // A PNJ with several portrait variants has its pion-specific pick stored on the
+  // token (portraitIndex), not on the character doc — show that exact image here
+  // instead of always the profile's default, so this panel matches the board.
+  const cardImage = (tokenId && boardData.tokens[tokenId]) ? resolveTokenImage(boardData.tokens[tokenId]) : ch.portrait;
+  const swatchStyle = cardImage ? ("background-image:url('"+cardImage.replace(/'/g,"")+"');background-size:cover;") : "background:#7c5e20";
   const hasHpOverride = ch.kind === "npc" && tokenId && boardData.tokens[tokenId] && boardData.tokens[tokenId].hpCurrent != null;
   const hpCur = hasHpOverride ? boardData.tokens[tokenId].hpCurrent : ((ch.hpCurrent == null) ? (ch.hpMax != null ? ch.hpMax : "?") : ch.hpCurrent);
   const hpMax = ch.hpMax != null ? ch.hpMax : "?";
@@ -2128,8 +2187,8 @@ function characterCardHtml(ch, canManage, tokenId){
 
   if(publicView){
     return (
-      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'+
-      '<span style="width:36px;height:36px;border-radius:50%;display:inline-block;flex:none;border:1px solid rgba(0,0,0,.2);' + swatchStyle + '"></span>'+
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'+
+      '<span style="width:64px;height:64px;border-radius:50%;display:inline-block;flex:none;border:1px solid rgba(0,0,0,.2);' + swatchStyle + '"></span>'+
       '<div><strong style="font-family:\'Cinzel\',serif;display:block;">' + (ch.name||"Sans nom") + '</strong>'+
       '<span class="hint" style="margin:0;">' + subtitle + '</span></div>'+
       '</div>'+
@@ -2138,8 +2197,8 @@ function characterCardHtml(ch, canManage, tokenId){
   }
 
   return (
-    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'+
-    '<span style="width:36px;height:36px;border-radius:50%;display:inline-block;flex:none;border:1px solid rgba(0,0,0,.2);' + swatchStyle + '"></span>'+
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'+
+    '<span style="width:64px;height:64px;border-radius:50%;display:inline-block;flex:none;border:1px solid rgba(0,0,0,.2);' + swatchStyle + '"></span>'+
     '<div><strong style="font-family:\'Cinzel\',serif;display:block;">' + (ch.name||"Sans nom") + (isNpc?' <span class="hint" style="margin:0;">(PNJ)</span>':'') + '</strong>'+
     (ch.playerName ? ('<span class="hint" style="margin:0;display:block;">Joueur : ' + ch.playerName + '</span>') : '') +
     '<span class="hint" style="margin:0;">' + subtitle + '</span></div>'+
