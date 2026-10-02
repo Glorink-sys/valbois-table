@@ -3508,7 +3508,7 @@ function defaultNpc(){
     saveBonuses:{FOR:0,DEX:0,CON:0,INT:0,SAG:0,CHA:0},
     skillsText:"", sensesText:"", languagesText:"", equipmentText:"", traitsText:"",
     attacks:[], actionsRaw:"", reactionsText:"", bonusActionText:"", notesMjText:"",
-    activeOnMap:false
+    activeOnMap:false, hostile:false
   };
 }
 let npcs=[];
@@ -3699,8 +3699,11 @@ function renderNpcEditView(){
     '<div class="field" style="margin-bottom:10px;"><label>Réactions</label><textarea id="npc-f-reactions" rows="2">'+esc(n.reactionsText)+'</textarea></div>'+
     '<div class="field" style="margin-bottom:10px;"><label>Action bonus</label><textarea id="npc-f-bonusaction" rows="2">'+esc(n.bonusActionText)+'</textarea></div>'+
     '<div class="field" style="margin-bottom:10px;"><label>Notes MJ</label><textarea id="npc-f-notesmj" rows="2">'+esc(n.notesMjText)+'</textarea></div>'+
-    '<label style="display:flex;align-items:center;gap:6px;font-size:.82rem;margin:16px 0;">'+
+    '<label style="display:flex;align-items:center;gap:6px;font-size:.82rem;margin:16px 0 8px;">'+
       '<input type="checkbox" id="npc-f-active" '+(n.activeOnMap?"checked":"")+'> Disponible sur la table de jeu'+
+    '</label>'+
+    '<label style="display:flex;align-items:center;gap:6px;font-size:.82rem;margin:0 0 16px;">'+
+      '<input type="checkbox" id="npc-f-hostile" '+(n.hostile?"checked":"")+'> Hostile (halo rouge sur la table de jeu)'+
     '</label>'+
     '<div class="actions-row" style="justify-content:space-between;">'+
       '<button type="button" class="btn btn-ghost" id="btn-npc-delete" style="color:#a33;">Supprimer ce PNJ</button>'+
@@ -3746,6 +3749,10 @@ function bindNpcEditView(){
   });
   document.getElementById("npc-f-active").addEventListener("change",(e)=>{
     npcDraft.activeOnMap=e.target.checked;
+    scheduleNpcSync();
+  });
+  document.getElementById("npc-f-hostile").addEventListener("change",(e)=>{
+    npcDraft.hostile=e.target.checked;
     scheduleNpcSync();
   });
   document.getElementById("npc-f-portrait-file").addEventListener("change",async(e)=>{
