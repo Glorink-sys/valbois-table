@@ -236,8 +236,8 @@ button:disabled{opacity:.5;cursor:not-allowed;}
 }
 
 #ambiance-overlay{
-  position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;
-  z-index:50;
+  position:absolute;inset:0;background:#000;display:flex;align-items:center;justify-content:center;
+  z-index:50;border-radius:6px;
 }
 #ambiance-overlay[hidden]{display:none;}
 #ambiance-overlay img{max-width:100%;max-height:100%;object-fit:contain;}
@@ -264,6 +264,7 @@ button:disabled{opacity:.5;cursor:not-allowed;}
 .dice-drawer-toggle{right:18px;}
 .combat-drawer-toggle{left:18px;}
 .mood-drawer-toggle{left:50%;margin-left:-26px;}
+.mood-drawer-toggle[hidden]{display:none;}
 /* Centered via left+margin (not transform) since .floating-drawer/.open already
    use transform for the slide-up animation — a transform here would win on
    specificity (ID beats class) and silently break that animation. */
@@ -459,10 +460,15 @@ button:disabled{opacity:.5;cursor:not-allowed;}
         <button type="button" class="zoom-btn" id="btn-zoom-reset" title="Réinitialiser le zoom" style="width:auto;padding:0 8px;font-size:.68rem;">100%</button>
         <div id="init-bar" class="init-bar"></div>
       </div>
-      <div class="board-wrap"><div id="board">
-        <svg id="drag-line-svg"><line id="drag-line" x1="0" y1="0" x2="0" y2="0" stroke="#d9a53f" stroke-width="3" stroke-dasharray="7,5" style="display:none;"/></svg>
-        <div class="move-badge" id="move-badge" hidden></div>
-      </div></div>
+      <div class="board-stage" style="position:relative;">
+        <div class="board-wrap"><div id="board">
+          <svg id="drag-line-svg"><line id="drag-line" x1="0" y1="0" x2="0" y2="0" stroke="#d9a53f" stroke-width="3" stroke-dasharray="7,5" style="display:none;"/></svg>
+          <div class="move-badge" id="move-badge" hidden></div>
+        </div></div>
+        <div id="ambiance-overlay" hidden>
+          <img id="ambiance-img" src="" alt="Carte d'ambiance">
+        </div>
+      </div>
       <div class="legend" id="legend"></div>
     </div>
 
@@ -482,10 +488,6 @@ button:disabled{opacity:.5;cursor:not-allowed;}
     </div>
     <div id="selection-info"><p class="hint">Glisse un pion pour le déplacer sur la carte.</p></div>
   </aside>
-</div>
-
-<div id="ambiance-overlay" hidden>
-  <img id="ambiance-img" src="" alt="Carte d'ambiance">
 </div>
 
 <div id="ambiance-indicator" hidden>
@@ -838,6 +840,10 @@ document.getElementById("f-mj-password").addEventListener("keydown", (e) => { if
 function applyRole(){
   mjMapControls.hidden = !isMJ;
   mjMoodControls.hidden = !isMJ;
+  // Only the MJ picks which ambiance image everyone sees — players get no button or
+  // gallery at all, just the image appearing over the map when the MJ triggers it.
+  document.getElementById("mood-drawer-toggle").hidden = !isMJ;
+  if(!isMJ) document.getElementById("mood-drawer").classList.remove("open");
   if(!isMJ){ interactionMode = "move"; effectPaletteWrap.hidden = true; fogControls.hidden = true; }
   document.getElementById("dice-hidden-wrap").hidden = !isMJ;
   document.getElementById("btn-combat-log-clear").hidden = !isMJ;
