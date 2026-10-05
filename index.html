@@ -161,12 +161,6 @@ button:disabled{opacity:.5;cursor:not-allowed;}
   50%{box-shadow:0 3px 6px rgba(0,0,0,.45),0 0 0 3px rgba(224,89,42,.5),0 0 20px 8px rgba(224,89,42,.25);}
 }
 .token.current-turn{animation:turn-pulse 1.4s ease-in-out infinite;}
-/* At-a-glance friend/foe: a steady colored ring around the pion itself (distinct from
-   the gold "selected" outline and the orange "current-turn" pulse) — turquoise for a
-   player's own character, red for an NPC the MJ has flagged hostile. Plain monsters/NPCs
-   with no flag keep just the base token look. */
-.token.halo-ally{box-shadow:0 3px 6px rgba(0,0,0,.45), 0 0 0 3px #2fb6c4, 0 0 10px 2px rgba(47,182,196,.55);}
-.token.halo-hostile{box-shadow:0 3px 6px rgba(0,0,0,.45), 0 0 0 3px #b03a2e, 0 0 10px 2px rgba(176,58,46,.55);}
 .token-hpbar{
   position:absolute;left:0;bottom:-6px;width:100%;height:4px;border-radius:2px;
   background:rgba(20,15,8,.55);overflow:hidden;pointer-events:none;z-index:1;
@@ -1113,9 +1107,12 @@ function renderBoard(){
     const posRow = isDraggingThis ? dragState.row : t.y;
     const isCurrentTurn = initData.entries[initData.currentIndex] && initData.entries[initData.currentIndex].tokenId === id;
     const tokenCh = t.characterId ? characters.find(c => c.id === t.characterId) : null;
-    const haloClass = tokenCh ? (tokenCh.kind !== "npc" ? " halo-ally" : (tokenCh.hostile ? " halo-hostile" : "")) : "";
+    // At-a-glance friend/foe: the pion's own contour (not an added glow) — a muted
+    // teal for a player's own character, a muted red for an NPC the MJ has flagged
+    // hostile. Plain monsters/NPCs with no flag keep the token's own color.
+    const factionColor = tokenCh ? (tokenCh.kind !== "npc" ? "#4d8a86" : (tokenCh.hostile ? "#8a3b2b" : null)) : null;
     const el = document.createElement("div");
-    el.className = "token" + (id === selectedTokenId ? " selected" : "") + (isDraggingThis ? " dragging" : "") + (isCurrentTurn ? " current-turn" : "") + haloClass;
+    el.className = "token" + (id === selectedTokenId ? " selected" : "") + (isDraggingThis ? " dragging" : "") + (isCurrentTurn ? " current-turn" : "");
     el.style.width = tokenSize + "px";
     el.style.height = tokenSize + "px";
     el.style.left = (posCol * w + w/2 - tokenSize/2) + "px";
@@ -1128,9 +1125,10 @@ function renderBoard(){
       // empty/transparent margins on a cut-out PNG instead of showing the whole artwork.
       el.style.backgroundSize = "100% 100%";
       el.style.backgroundPosition = "center";
-      el.style.border = "2px solid " + t.color;
+      el.style.border = "2px solid " + (factionColor || t.color);
     }else{
       el.style.background = t.color;
+      if(factionColor) el.style.border = "2px solid " + factionColor;
       el.textContent = t.label;
     }
     el.title = t.label;
@@ -2005,7 +2003,10 @@ document.getElementById("npc-picker-backdrop").addEventListener("click", () => {
 
 function personnageUrl(docId){
   const isLocalDev = location.hostname === "localhost" && location.port === "8981";
-  const base = isLocalDev ? "http://localhost:8982/index.html" : "../personnage/index.html";
+  // On the live site, table-de-jeu is served as the repo's own root index.html (not
+  // from a "table-de-jeu/" subfolder) while personnage/ is a real subfolder next to
+  // it — so the right relative link is "personnage/index.html", not "../personnage/...".
+  const base = isLocalDev ? "http://localhost:8982/index.html" : "personnage/index.html";
   return base + "?docId=" + encodeURIComponent(docId);
 }
 
