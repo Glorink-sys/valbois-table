@@ -134,6 +134,16 @@ button:disabled{opacity:.5;cursor:not-allowed;}
   display:flex;align-items:center;justify-content:center;
 }
 .zoom-btn:hover{border-color:var(--gold-strong);}
+.zoom-btn.active{background:var(--gold-strong);color:#fff;border-color:var(--gold-strong);}
+.ping-marker{
+  position:absolute;width:36px;height:36px;margin:-18px 0 0 -18px;border-radius:50%;
+  border:3px solid var(--warn);pointer-events:none;z-index:50;
+  animation:ping-pulse 1.4s ease-out forwards;
+}
+@keyframes ping-pulse{
+  0%{transform:scale(.3);opacity:1;}
+  100%{transform:scale(2.4);opacity:0;}
+}
 .board-wrap{overflow:auto;border:1px solid var(--parchment-line);border-radius:6px;background:var(--panel);max-height:96vh;max-width:100%;}
 #board{
   position:relative;
@@ -353,6 +363,8 @@ button:disabled{opacity:.5;cursor:not-allowed;}
 .atk-block{display:flex;flex-direction:column;gap:4px;margin-bottom:6px;}
 .atk-block[hidden]{display:none;}
 .atk-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:.82rem;}
+.skill-row{width:100%;border:none;background:none;color:inherit;font-family:inherit;padding:2px 4px;margin:0 -4px;border-radius:4px;cursor:pointer;text-align:left;}
+.skill-row:hover{background:var(--parchment-line);}
 .atk-weapon-row{display:flex;flex-direction:column;gap:2px;padding:2px 0;}
 .atk-weapon-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:.82rem;}
 .atk-weapon-props{font-style:italic;color:var(--ink-soft);font-size:.78rem;width:100%;}
@@ -458,6 +470,8 @@ button:disabled{opacity:.5;cursor:not-allowed;}
         <span id="zoom-label">100%</span>
         <button type="button" class="zoom-btn" id="btn-zoom-in" title="Zoomer">+</button>
         <button type="button" class="zoom-btn" id="btn-zoom-reset" title="Réinitialiser le zoom" style="width:auto;padding:0 8px;font-size:.68rem;">100%</button>
+        <button type="button" class="zoom-btn" id="btn-ping-mode" title="Cliquer puis cliquer sur la carte pour signaler un endroit à tous">📍</button>
+        <button type="button" class="zoom-btn" id="btn-measure-mode" title="Cliquer puis glisser sur la carte pour mesurer une distance">📏</button>
         <div id="init-bar" class="init-bar"></div>
       </div>
       <div class="board-stage" style="position:relative;">
@@ -734,6 +748,7 @@ let boardData = { tokens: {}, mapId:null, mapUrl:"", cols:12, rows:8, effects:{}
 let sceneData = { active:"map", activeMoodId:null };
 let initData = { entries: [], currentIndex: -1, round: 1 };
 let diceData = { rolls: [] };
+let lastShownPingTs = 0;
 let combatLogData = { entries: [] };
 let moods = [], maps = [], characters = [], scenes = [];
 let isMJ = false;
@@ -1282,6 +1297,47 @@ function updateDragLine(){
   }
 }
 
+// Reuses the same line+badge token-drag already draws to preview move distance — the
+// two never run at once, so sharing the DOM elements avoids a second near-identical
+// pair just for the measure tool.
+function updateMeasureVisual(startCol, startRow, col, row){
+  const start = cellCenterPx(startCol, startRow);
+  const cur = cellCenterPx(col, row);
+  dragLine.setAttribute("x1", start.x);
+  dragLine.setAttribute("y1", start.y);
+  dragLine.setAttribute("x2", cur.x);
+  dragLine.setAttribute("y2", cur.y);
+  const cells = Math.max(Math.abs(col - startCol), Math.abs(row - startRow));
+  if(cells > 0){
+    dragLine.style.display = "block";
+    const meters = (cells * METERS_PER_CELL).toString().replace(".",",");
+    moveBadge.textContent = cells + (cells>1?" cases (":" case (") + meters + " m)";
+    moveBadge.style.left = ((start.x + cur.x)/2) + "px";
+    moveBadge.style.top = ((start.y + cur.y)/2) + "px";
+    moveBadge.hidden = false;
+  }else{
+    dragLine.style.display = "none";
+    moveBadge.hidden = true;
+  }
+}
+function clearMeasureVisual(){
+  dragLine.style.display = "none";
+  moveBadge.hidden = true;
+}
+
+// A ping is fire-and-forget: it never lives in boardData (every renderBoard() would
+// have to know to prune it), just a one-shot DOM animation triggered the moment each
+// client sees ping.ts change on the shared board doc — see the onSnapshot handler.
+function showPingMarker(ping){
+  const pos = cellCenterPx(ping.x, ping.y);
+  const el = document.createElement("div");
+  el.className = "ping-marker";
+  el.style.left = pos.x + "px";
+  el.style.top = pos.y + "px";
+  board.appendChild(el);
+  setTimeout(() => el.remove(), 1500);
+}
+
 function onTokenPointerDown(e){
   if(e.button !== 0) return; // right/middle click: handled separately, see onTokenContextMenu
   if(isMJ && interactionMode === "effect") return;
@@ -1420,8 +1476,34 @@ async function endFogPaint(){
   if(revealedTokenIds.length) await insertRevealedTokensIntoInitiative(revealedTokenIds);
 }
 
+// Ping and measure are available to everyone (not just the MJ) — pointing something
+// out or checking a distance isn't a GM-only action — so both are armed/fired ahead
+// of (and independent from) the isMJ-gated fog/effect modes below.
+let pingArmed = false;
+let measureArmed = false;
+let measureState = null;
+document.getElementById("btn-ping-mode").addEventListener("click", (e) => {
+  e.stopPropagation();
+  pingArmed = !pingArmed;
+  if(pingArmed){ measureArmed = false; document.getElementById("btn-measure-mode").classList.remove("active"); }
+  document.getElementById("btn-ping-mode").classList.toggle("active", pingArmed);
+});
+document.getElementById("btn-measure-mode").addEventListener("click", (e) => {
+  e.stopPropagation();
+  measureArmed = !measureArmed;
+  if(measureArmed){ pingArmed = false; document.getElementById("btn-ping-mode").classList.remove("active"); }
+  else clearMeasureVisual();
+  document.getElementById("btn-measure-mode").classList.toggle("active", measureArmed);
+});
+
 board.addEventListener("pointerdown", (e) => {
   if(e.target.closest(".token")) return; // tokens handle their own drag
+  if(measureArmed){
+    const { col, row } = cellFromEvent(e);
+    measureState = { startCol: col, startRow: row };
+    board.setPointerCapture(e.pointerId);
+    return;
+  }
   if(isMJ && interactionMode === "fog"){
     startFogPaint(e);
     return;
@@ -1436,6 +1518,11 @@ board.addEventListener("pointerdown", (e) => {
 });
 
 board.addEventListener("pointermove", (e) => {
+  if(measureState){
+    const { col, row } = cellFromEvent(e);
+    updateMeasureVisual(measureState.startCol, measureState.startRow, col, row);
+    return;
+  }
   if(fogPaintState){
     const { col, row } = cellFromEvent(e);
     paintFogAt(col, row);
@@ -1461,16 +1548,27 @@ function endPan(e){
   panState = null;
 }
 board.addEventListener("pointerup", async (e) => {
+  // The line/badge stay up after release so the MJ/player can actually read the
+  // result — they're only cleared by starting a new measurement or un-arming the tool.
+  if(measureState){ measureState = null; suppressNextClick = true; return; }
   if(fogPaintState){ await endFogPaint(); return; }
   endPan(e);
 });
 board.addEventListener("pointercancel", () => {
+  if(measureState){ measureState = null; return; }
   if(fogPaintState){ fogPaintState = null; return; }
   endPan();
 });
 
 board.addEventListener("click", async (e) => {
   if(suppressNextClick){ suppressNextClick = false; return; }
+  if(pingArmed){
+    const { col, row } = cellFromEvent(e);
+    pingArmed = false;
+    document.getElementById("btn-ping-mode").classList.remove("active");
+    await saveBoard({ ping: { x: col, y: row, by: currentRollerName(), ts: Date.now() } });
+    return;
+  }
   if(!isMJ) return;
   if(interactionMode === "effect"){
     const { col, row } = cellFromEvent(e);
@@ -2011,6 +2109,11 @@ function personnageUrl(docId){
 }
 
 function abilityMod(ch, key){
+  // PCs sync a precomputed, race-aware modifier (personnage.html owns race data; this
+  // tool doesn't) — recomputing from raw baseScores here used to silently drop every
+  // racial bonus (e.g. Demi-elfe's +2 CHA). NPCs have no race layer, so their flat
+  // baseScores-only formula below is already correct and has nothing to fall back from.
+  if(ch.abilityMods && typeof ch.abilityMods[key] === "number") return ch.abilityMods[key];
   const base = (ch.baseScores && ch.baseScores[key]) || 10;
   const asi = (ch.asiBonuses && ch.asiBonuses[key]) || 0;
   return Math.floor(((base + asi) - 10) / 2);
@@ -2149,8 +2252,11 @@ function characterCardHtml(ch, canManage, tokenId){
     const skillsOpen = !!cardTogglesOpen[toggleKey(ch,"skills")];
     let skillsBlock = "";
     if(ch.skillBonuses){
+      // Clicking a skill rolls 1d20 + that skill's bonus for this exact character,
+      // straight into the shared dice log — the point being one click instead of
+      // "MJ asks for the roll, player finds the bonus, types a formula by hand".
       const rows = Object.entries(ch.skillBonuses).map(([name,b]) =>
-        '<div class="atk-row"><span>' + name + '</span><span class="mono">' + fmtSigned(b) + '</span></div>'
+        '<button type="button" class="atk-row skill-row" data-skill="' + name + '" title="Lancer 1d20' + fmtSigned(b) + ' pour ' + name + '"><span>' + name + '</span><span class="mono">' + fmtSigned(b) + '</span></button>'
       ).join("");
       skillsBlock =
         '<button type="button" class="ghost btn-sm skills-toggle" style="margin-top:6px;">' + (skillsOpen?"▾ Masquer les compétences":"▸ Voir les compétences") + '</button>'+
@@ -2182,17 +2288,37 @@ function characterCardHtml(ch, canManage, tokenId){
     }else{
       const inv = ch.inventory || [];
       const invRows = inv.length
-        ? inv.map(it => '<li>' + (it.name||"") + (it.qty>1?(" ×"+it.qty):"") + '</li>').join("")
+        ? inv.map(it => '<li data-inv-id="' + it.id + '">' + (it.name||"") + (it.qty>1?(" ×"+it.qty):"") +
+            (canManage ? ' <button type="button" class="ghost inv-item-del" data-inv-id="' + it.id + '" title="Retirer cet objet" style="padding:0 5px;font-size:.72rem;float:right;">✕</button>' : '') +
+          '</li>').join("")
         : '<li class="hint">Inventaire vide.</li>';
       const invOpen = !!cardTogglesOpen[toggleKey(ch,"inv")];
+      // MJ (or the player on their own character) can grant/spend gold and add/remove
+      // items right from the board — same direct-patch pattern as the HP stepper above,
+      // instead of having to relay it to the player so they update their own sheet.
+      const goldBlock = canManage ? (
+        '<div class="field-row" style="align-items:center;gap:6px;margin:6px 0 2px;">'+
+        '<button type="button" class="ghost btn-sm gold-minus" style="padding:2px 8px;">−</button>'+
+        '<span class="hint" style="margin:0;">Or : <strong class="gold-value">' + (ch.gold||0) + '</strong> po</span>'+
+        '<button type="button" class="ghost btn-sm gold-plus" style="padding:2px 8px;">+</button>'+
+        '</div>'
+      ) : (ch.gold!=null ? ('<p class="hint" style="margin:6px 0 2px;">Or : ' + ch.gold + ' po</p>') : '');
+      const invAddRow = canManage ? (
+        '<div class="field-row" style="margin-top:6px;gap:6px;">'+
+        '<input type="text" class="inv-add-name" placeholder="Nom de l\'objet" style="flex:1;min-width:90px;font-size:.78rem;padding:4px 6px;">'+
+        '<input type="number" class="inv-add-qty" value="1" min="1" style="width:46px;font-size:.78rem;padding:4px 6px;">'+
+        '<button type="button" class="ghost btn-sm inv-add-btn" style="padding:4px 8px;">Ajouter</button>'+
+        '</div>'
+      ) : '';
       managedBlock =
         '<h3 class="sub" style="margin-top:8px;">Attaques</h3>'+
         (ch.equippedArmor ? ('<p class="hint" style="margin:0 0 6px;">' + ch.equippedArmor + '</p>') : '') +
         '<div class="atk-block">' + attackRows + '</div>'+
-        (ch.gold!=null ? ('<p class="hint" style="margin:6px 0 2px;">Or : ' + ch.gold + ' po</p>') : '') +
+        goldBlock +
         skillsBlock +
         '<button type="button" class="ghost btn-sm inv-toggle" style="margin-top:6px;">' + (invOpen?"▾ Masquer l'inventaire":"▸ Voir l'inventaire") + '</button>'+
-        '<ul class="my-inventory-list"' + (invOpen?"":" hidden") + '>' + invRows + '</ul>';
+        '<ul class="my-inventory-list"' + (invOpen?"":" hidden") + '>' + invRows + '</ul>'+
+        '<div class="inv-add-row-wrap"' + (invOpen?"":" hidden") + '>' + invAddRow + '</div>';
     }
   }
 
@@ -2267,10 +2393,76 @@ function wireCharacterCard(container, ch, tokenId){
   if(invToggle){
     invToggle.addEventListener("click", () => {
       const list = container.querySelector(".my-inventory-list");
+      const addWrap = container.querySelector(".inv-add-row-wrap");
       const willShow = list.hidden;
       list.hidden = !willShow;
+      if(addWrap) addWrap.hidden = !willShow;
       cardTogglesOpen[toggleKey(ch,"inv")] = willShow;
       invToggle.textContent = (willShow ? "▾ Masquer " : "▸ Voir ") + "l'inventaire";
+    });
+  }
+
+  const goldMinus = container.querySelector(".gold-minus");
+  const goldPlus = container.querySelector(".gold-plus");
+  const applyGoldDelta = (delta) => {
+    const next = Math.max(0, (ch.gold||0) + delta);
+    ch.gold = next;
+    const valEl = container.querySelector(".gold-value");
+    if(valEl) valEl.textContent = next;
+    patchCharacter(ch.id, { gold: next });
+  };
+  if(goldMinus) goldMinus.addEventListener("click", () => applyGoldDelta(-1));
+  if(goldPlus) goldPlus.addEventListener("click", () => applyGoldDelta(1));
+
+  container.querySelectorAll(".inv-item-del").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const itemId = btn.dataset.invId;
+      const nextInv = (ch.inventory||[]).filter(it => String(it.id) !== String(itemId));
+      ch.inventory = nextInv;
+      const li = container.querySelector('[data-inv-id="' + itemId + '"]');
+      if(li) li.remove();
+      patchCharacter(ch.id, { inventory: nextInv });
+    });
+  });
+
+  const invAddBtn = container.querySelector(".inv-add-btn");
+  if(invAddBtn){
+    invAddBtn.addEventListener("click", () => {
+      const nameEl = container.querySelector(".inv-add-name");
+      const qtyEl = container.querySelector(".inv-add-qty");
+      const name = (nameEl.value||"").trim();
+      if(!name) return;
+      const qty = Math.max(1, Number(qtyEl.value)||1);
+      const nextId = (ch.inventory||[]).reduce((m,it)=>Math.max(m, Number(it.id)||0), 0) + 1;
+      const newItem = { id: nextId, name, qty, cat: "other", refKey: null };
+      const nextInv = (ch.inventory||[]).concat([newItem]);
+      ch.inventory = nextInv;
+      nameEl.value = "";
+      qtyEl.value = "1";
+      const list = container.querySelector(".my-inventory-list");
+      if(list){
+        const emptyHint = list.querySelector(".hint");
+        if(emptyHint) emptyHint.closest("li").remove();
+        const li = document.createElement("li");
+        li.dataset.invId = nextId;
+        li.appendChild(document.createTextNode(newItem.name + (newItem.qty>1?(" ×"+newItem.qty):"")));
+        const delBtn = document.createElement("button");
+        delBtn.type = "button";
+        delBtn.className = "ghost inv-item-del";
+        delBtn.dataset.invId = nextId;
+        delBtn.title = "Retirer cet objet";
+        delBtn.style.cssText = "padding:0 5px;font-size:.72rem;float:right;";
+        delBtn.textContent = "✕";
+        delBtn.addEventListener("click", () => {
+          const nextInv2 = (ch.inventory||[]).filter(it => String(it.id) !== String(nextId));
+          ch.inventory = nextInv2;
+          li.remove();
+          patchCharacter(ch.id, { inventory: nextInv2 });
+        });
+        li.appendChild(delBtn);
+        list.appendChild(li);
+      }
+      patchCharacter(ch.id, { inventory: nextInv });
     });
   }
   const detailsToggle = container.querySelector(".npc-details-toggle");
@@ -2283,6 +2475,10 @@ function wireCharacterCard(container, ch, tokenId){
       detailsToggle.textContent = willShow ? "▾ Masquer les détails" : "▸ Voir les détails (traits, actions...)";
     });
   }
+  container.querySelectorAll(".skill-row").forEach(btn => {
+    btn.addEventListener("click", () => rollSkillCheck(ch, btn.dataset.skill));
+  });
+
   const skillsToggle = container.querySelector(".skills-toggle");
   if(skillsToggle){
     skillsToggle.addEventListener("click", () => {
@@ -2629,6 +2825,32 @@ async function performRoll(count, sides, modifier, hidden){
   await saveDice(diceData);
 }
 
+// One click, one d20+bonus roll for a specific character's specific skill, straight
+// into the shared log — built the same shape as performRoll()'s entries (results is
+// always the single KEPT d20, altResults/altTotal the other draw under avantage/
+// désavantage) so renderDiceHistory() renders it identically to any other roll.
+async function rollSkillCheck(ch, skillName){
+  const bonus = (ch.skillBonuses && ch.skillBonuses[skillName]) || 0;
+  const a = rollDie(20);
+  let results = [a], total = a + bonus, altResults = null, altTotal = null;
+  if(diceAdvMode === "adv" || diceAdvMode === "dis"){
+    const b = rollDie(20);
+    const aIsKept = diceAdvMode === "adv" ? a >= b : a <= b;
+    const kept = aIsKept ? a : b;
+    const other = aIsKept ? b : a;
+    results = [kept]; total = kept + bonus;
+    altResults = [other]; altTotal = other + bonus;
+  }
+  const entry = {
+    id: "r" + Date.now() + Math.random().toString(36).slice(2,6),
+    who: (ch.name || "Personnage") + " — " + skillName, formula: "1d20" + fmtSigned(bonus),
+    results, total, advMode: diceAdvMode, altResults, altTotal,
+    hidden: false, ts: Date.now()
+  };
+  diceData = { rolls: [entry, ...diceData.rolls].slice(0, DICE_HISTORY_MAX) };
+  await saveDice(diceData);
+}
+
 function renderDiceHistory(){
   const el = document.getElementById("dice-history");
   if(!diceData.rolls.length){
@@ -2871,6 +3093,12 @@ async function init(){
     }
     renderBoard();
     renderMapLibrary();
+    // The recency check keeps a page that just loaded (or reconnected) from replaying
+    // someone else's ping from minutes ago as if it just happened.
+    if(d.ping && d.ping.ts !== lastShownPingTs){
+      lastShownPingTs = d.ping.ts;
+      if(Date.now() - d.ping.ts < 4000) showPingMarker(d.ping);
+    }
   }, (err) => {
     dotDb.className = "dot warn";
     txtDb.textContent = "Connexion interrompue";
