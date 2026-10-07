@@ -187,6 +187,11 @@ button:disabled{opacity:.5;cursor:not-allowed;}
   display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.5);
   pointer-events:auto;z-index:2;cursor:default;
 }
+.token-concentration{
+  position:absolute;top:-6px;left:-6px;width:14px;height:14px;border-radius:50%;
+  background:#3f6ea5;box-shadow:0 1px 3px rgba(0,0,0,.5),0 0 0 2px rgba(255,255,255,.6) inset;
+  z-index:2;cursor:default;
+}
 .cell-effect{
   position:absolute;display:flex;align-items:center;justify-content:center;
   pointer-events:none;z-index:2;border-radius:3px;color:var(--ink);
@@ -276,14 +281,13 @@ button:disabled{opacity:.5;cursor:not-allowed;}
 .simple-modal{position:fixed;inset:0;z-index:60;}
 .simple-modal-backdrop{position:absolute;inset:0;background:rgba(20,15,8,.55);}
 .dice-roller,.combat-log{padding-top:6px;}
-.dice-drawer-toggle,.combat-drawer-toggle,.mood-drawer-toggle{
+.dice-drawer-toggle,.mood-drawer-toggle{
   position:fixed;bottom:18px;z-index:70;width:52px;height:52px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;padding:0;
   border:1px solid var(--gold-strong);background:var(--gold-strong);color:#fff;font-size:1.4rem;
   line-height:1;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.35);
 }
 .dice-drawer-toggle{right:18px;}
-.combat-drawer-toggle{left:18px;}
 .mood-drawer-toggle{left:50%;margin-left:-26px;}
 .mood-drawer-toggle[hidden]{display:none;}
 /* Centered via left+margin (not transform) since .floating-drawer/.open already
@@ -301,9 +305,15 @@ button:disabled{opacity:.5;cursor:not-allowed;}
 }
 .floating-drawer.open{transform:translateY(0) scale(1);opacity:1;pointer-events:auto;}
 #dice-drawer{right:18px;}
-#combat-drawer{left:18px;}
-#dice-drawer .dice-history,#combat-drawer .dice-history{max-height:160px;}
+#dice-drawer .dice-history{max-height:220px;}
 .floating-drawer h3.sub{margin-top:0;font-size:.7rem;}
+/* The merged "Jets & combat" drawer packs a weapon selector, seven die buttons, a
+   formula input, and three adv/dis buttons above the history — smaller controls here
+   keep it from feeling cramped now that two drawers' worth of buttons live in one. */
+#dice-drawer .dice-btn{padding:3px 7px;font-size:.66rem;}
+#dice-drawer button.ghost.btn-sm{padding:3px 8px;font-size:.66rem;}
+#dice-drawer .adv-btn{padding:2px 7px;font-size:.62rem;}
+#dice-drawer select,#dice-drawer input[type=text]{font-size:.78rem;padding:4px 7px;}
 @media (max-width:640px){
   .floating-drawer{max-height:65vh;width:calc(100vw - 36px);}
   #mood-drawer{margin-left:calc(-50vw + 18px);}
@@ -378,11 +388,10 @@ button.my-ability:hover{border-color:var(--gold-strong);}
 .atk-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:.82rem;}
 .skill-row{width:100%;border:none;background:none;color:inherit;font-family:inherit;padding:2px 4px;margin:0 -4px;border-radius:4px;cursor:pointer;text-align:left;}
 .skill-row:hover{background:var(--parchment-line);}
-.atk-weapon-row{display:flex;flex-direction:column;gap:2px;padding:2px 0;}
-button.atk-attack-row,button.spell-cast-row{width:100%;border:none;background:none;color:inherit;font-family:inherit;text-align:left;cursor:pointer;border-radius:4px;}
-button.atk-attack-row:hover,button.spell-cast-row:hover{background:var(--parchment-line);}
-.atk-weapon-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:.82rem;}
-.atk-weapon-props{font-style:italic;color:var(--ink-soft);font-size:.78rem;width:100%;}
+.atk-weapon-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:.74rem;padding:2px 4px;margin:0 -4px;border-radius:4px;}
+button.atk-attack-row,button.concentration-row{width:100%;border:none;background:none;color:inherit;font-family:inherit;text-align:left;cursor:pointer;}
+button.atk-attack-row:hover,button.concentration-row:hover{background:var(--parchment-line);}
+button.concentration-row.active{background:color-mix(in srgb, var(--arcane,var(--gold-strong)) 18%, transparent);}
 .mono{font-variant-numeric:tabular-nums;white-space:nowrap;}
 </style>
 </head>
@@ -571,10 +580,24 @@ button.atk-attack-row:hover,button.spell-cast-row:hover{background:var(--parchme
   </div>
 </div>
 
-<button type="button" id="dice-drawer-toggle" class="dice-drawer-toggle" title="Lancer de dés">🎲</button>
+<button type="button" id="dice-drawer-toggle" class="dice-drawer-toggle" title="Jets &amp; combat">🎲</button>
 <div id="dice-drawer" class="floating-drawer">
   <div class="dice-roller">
-    <h3 class="sub">Lancer de dés</h3>
+    <h3 class="sub" style="display:flex;align-items:center;justify-content:space-between;">
+      <span>Jets &amp; combat</span>
+      <button type="button" class="ghost btn-sm" id="btn-combat-log-clear" title="Vider l'historique (nouveau combat)">↺</button>
+    </h3>
+    <div class="combat-setup">
+      <div class="combat-side"><span class="hint" style="margin:0;">Attaquant (clic droit)</span><strong id="combat-attacker-name">—</strong></div>
+      <div class="combat-arrow">→</div>
+      <div class="combat-side"><span class="hint" style="margin:0;">Cible (clic gauche)</span><strong id="combat-target-name">—</strong></div>
+    </div>
+    <div class="dice-btn-row">
+      <select id="f-combat-weapon" style="flex:1;min-width:120px;"></select>
+      <button type="button" class="ghost btn-sm" id="btn-combat-attack">Attaquer</button>
+    </div>
+    <p class="hint" id="combat-weapon-range" style="margin:0 0 4px;"></p>
+    <p class="hint" id="combat-setup-hint" style="margin:0 0 6px;"></p>
     <div class="dice-btn-row">
       <button type="button" class="dice-btn" data-die="4">d4</button>
       <button type="button" class="dice-btn" data-die="6">d6</button>
@@ -612,33 +635,6 @@ button.atk-attack-row:hover,button.spell-cast-row:hover{background:var(--parchme
   </div>
   <h3 class="sub">Galerie</h3>
   <div id="mood-list"><p class="mood-empty">Aucune carte d'ambiance pour l'instant.</p></div>
-</div>
-
-<button type="button" id="combat-drawer-toggle" class="combat-drawer-toggle" title="Journal de combat">⚔️</button>
-<div id="combat-drawer" class="floating-drawer">
-  <div class="combat-log">
-    <h3 class="sub" style="display:flex;align-items:center;justify-content:space-between;">
-      <span>Journal de combat</span>
-      <button type="button" class="ghost btn-sm" id="btn-combat-log-clear" title="Vider le journal (nouveau combat)" style="text-transform:none;letter-spacing:normal;font-family:inherit;padding:2px 8px;">↺</button>
-    </h3>
-    <div class="combat-setup">
-      <div class="combat-side"><span class="hint" style="margin:0;">Attaquant (clic droit)</span><strong id="combat-attacker-name">—</strong></div>
-      <div class="combat-arrow">→</div>
-      <div class="combat-side"><span class="hint" style="margin:0;">Cible (clic gauche)</span><strong id="combat-target-name">—</strong></div>
-    </div>
-    <div class="dice-btn-row">
-      <select id="f-combat-weapon" style="flex:1;min-width:120px;"></select>
-      <button type="button" class="ghost btn-sm" id="btn-combat-attack">Attaquer</button>
-    </div>
-    <p class="hint" id="combat-weapon-range" style="margin:0 0 4px;"></p>
-    <div class="dice-btn-row">
-      <button type="button" class="adv-btn combat-adv-btn active" data-adv="normal">Normal</button>
-      <button type="button" class="adv-btn combat-adv-btn" data-adv="adv">Avantage</button>
-      <button type="button" class="adv-btn combat-adv-btn" data-adv="dis">Désavantage</button>
-    </div>
-    <p class="hint" id="combat-setup-hint" style="margin:2px 0 4px;"></p>
-    <div id="combat-log-list" class="dice-history"></div>
-  </div>
 </div>
 
 <script type="module">
@@ -780,6 +776,11 @@ let activeEffectKey = null;
 let zoomLevel = 1;
 const BASE_BOARD_WIDTH = 1280;
 const ZOOM_MIN = 0.4, ZOOM_MAX = 3;
+// Shared roll history capped at 40 entries (kept small on purpose — this is a quick
+// combat log, not a permanent record — so the doc never gets anywhere near Firestore's
+// 1 MiB limit). Declared this early so it's already initialized by the time applyRole()
+// (called near the top of the script) triggers the first renderUnifiedHistory().
+const DICE_HISTORY_MAX = 40;
 // 50x50 keeps the shared board doc's fogHidden map well under Firestore's 1 MiB limit
 // (a couple thousand tiny boolean entries, tens of KB at most) — plenty of headroom
 // for a very large battle map; zoom in (Ctrl+molette) to compensate for smaller cells.
@@ -886,7 +887,7 @@ function applyRole(){
   renderBoard();
   renderMoods();
   renderInitiativeBar();
-  renderDiceHistory();
+  renderUnifiedHistory();
   renderOverlay();
 }
 
@@ -1196,6 +1197,12 @@ function renderBoard(){
         badge.title = conditions.join(", ");
         badge.textContent = conditions.length;
         el.appendChild(badge);
+      }
+      if(ch.concentratingOn){
+        const concBadge = document.createElement("div");
+        concBadge.className = "token-concentration";
+        concBadge.title = "Concentration : " + ch.concentratingOn;
+        el.appendChild(concBadge);
       }
     }
     el.addEventListener("pointerdown", onTokenPointerDown);
@@ -2291,10 +2298,13 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
     // if it were clickable too, so it stays inert there.
     const attackRows = attacks.length
       ? attacks.map((a,i) => {
-          const head='<div class="atk-weapon-head"><span>' + a.name + '</span><span class="mono">' + fmtSigned(a.atk) + ' · ' + a.dmgText + '</span></div>' + (a.props ? ('<div class="atk-weapon-props">' + a.props + '</div>') : '');
+          const head='<span>' + a.name + '</span><span class="mono">' + fmtSigned(a.atk) + ' · ' + a.dmgText + '</span>';
+          // The weapon's properties (Finesse, légère...) used to always take their own
+          // line below the name — a tooltip on hover keeps the row to one compact line.
+          const propsAttr = a.props ? (' title="' + a.props.replace(/"/g,"&quot;") + (isAttacker?' — Attaquer la cible sélectionnée':'') + '"') : (isAttacker?' title="Attaquer la cible sélectionnée"':'');
           return isAttacker
-            ? '<button type="button" class="atk-weapon-row atk-attack-row" data-attack-idx="' + i + '" title="Attaquer la cible sélectionnée avec cette arme">' + head + '</button>'
-            : '<div class="atk-weapon-row">' + head + '</div>';
+            ? '<button type="button" class="atk-weapon-row atk-attack-row" data-attack-idx="' + i + '"' + propsAttr + '>' + head + '</button>'
+            : '<div class="atk-weapon-row"' + propsAttr + '>' + head + '</div>';
         }).join("")
       : '<p class="hint" style="margin:0 0 6px;">Aucune arme équipée.</p>';
     // Skills: PCs get a real computed bonus per skill (synced from the character
@@ -2379,16 +2389,20 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
           ):('<span class="mono">'+(s.max-s.used)+' / '+s.max+'</span>'))+
           '</div>'
         ).join("");
+        // One compact line per spell — name, level, and a concentration mark if any;
+        // everything else (school/time/range/duration/effect) is a hover tooltip, not
+        // on-screen text, so a long spell list doesn't eat the whole panel. Only a
+        // concentration spell is clickable (toggles "I'm concentrating on this" —
+        // see resolveConcentrationBadge below); every other row is just text to read.
         const spellRows=(sd.spells||[]).map((sp,i)=>{
-          const inner='<div style="display:flex;justify-content:space-between;gap:8px;"><strong>'+sp.name+'</strong><span class="hint" style="margin:0;">'+(sp.level===0?"cantrip":"niv. "+sp.level)+'</span></div>'+
-            '<span class="hint" style="margin:0;">'+sp.school+' · '+sp.time+' · '+sp.range+' · '+sp.duration+(sp.concentration?" (concentration)":"")+(sp.domain?" · domaine, toujours préparé":"")+'</span>'+
-            '<span class="hint" style="margin:2px 0 0;">'+sp.effect+'</span>';
-          // Clicking announces the save DC to everyone and, for a real spell slot
-          // (not a cantrip), spends one — only wired for the attacker/caster panel,
-          // same reasoning as weapon rows above.
-          return isAttacker
-            ? '<button type="button" class="atk-row spell-cast-row" data-spell-idx="'+i+'" style="flex-direction:column;align-items:stretch;gap:0;" title="Annoncer le DD'+(sp.level>0?' et dépenser un emplacement de niveau '+sp.level:'')+'">'+inner+'</button>'
-            : '<div class="atk-row" style="flex-direction:column;align-items:stretch;gap:0;">'+inner+'</div>';
+          const levelTag=sp.level===0?"cantrip":"niv. "+sp.level;
+          const tooltip=(sp.school+' · '+sp.time+' · '+sp.range+' · '+sp.duration+(sp.domain?' · domaine, toujours préparé':'')+'. '+sp.effect).replace(/"/g,"&quot;");
+          const label='<span>'+sp.name+(sp.concentration?' <span class="hint" style="margin:0;">(conc.)</span>':'')+'</span><span class="hint" style="margin:0;">'+levelTag+'</span>';
+          if(isAttacker && sp.concentration){
+            const isOn=ch.concentratingOn===sp.name;
+            return '<button type="button" class="atk-weapon-row concentration-row'+(isOn?" active":"")+'" data-spell-name="'+sp.name.replace(/"/g,"&quot;")+'" title="'+tooltip+' — Cliquer pour '+(isOn?"arrêter de":"commencer à")+' vous concentrer dessus">'+label+'</button>';
+          }
+          return '<div class="atk-weapon-row" title="'+tooltip+'">'+label+'</div>';
         }).join("");
         spellsBlock=
           '<button type="button" class="ghost btn-sm spells-toggle" style="margin-top:6px;">'+(spellsOpen?"▾ Masquer les sorts":"▸ Voir les sorts")+'</button>'+
@@ -2437,8 +2451,8 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
     activeBadgesHtml +
     '<div class="field-row" style="align-items:center;gap:10px;margin-bottom:6px;">'+
     (ch.ac!=null ? ('<span>CA ' + ch.ac + '</span>') : '') +
-    (ch.speed!=null ? ('<span>Vitesse ' + ch.speed + ' m</span>') : '') +
-    '<span>Perception passive ' + passivePerception + '</span>'+
+    (ch.speed!=null ? ('<span title="Vitesse">Vit. ' + ch.speed + ' m</span>') : '') +
+    '<span title="Perception passive">PP ' + passivePerception + '</span>'+
     '</div>'+
     '<div class="my-ability-row">' + abilityRow + '</div>'+
     managedBlock +
@@ -2575,8 +2589,8 @@ function wireCharacterCard(container, ch, tokenId, isAttacker){
     container.querySelectorAll(".atk-attack-row").forEach(btn => {
       btn.addEventListener("click", () => performAttack(Number(btn.dataset.attackIdx)));
     });
-    container.querySelectorAll(".spell-cast-row").forEach(btn => {
-      btn.addEventListener("click", () => castSpell(ch, Number(btn.dataset.spellIdx)));
+    container.querySelectorAll(".concentration-row").forEach(btn => {
+      btn.addEventListener("click", () => toggleConcentration(ch, btn.dataset.spellName));
     });
   }
 
@@ -2908,11 +2922,8 @@ function renderInitiativeBar(){
 }
 
 // ============ Lancer de dés ============
-// Shared history capped at 40 rolls (kept small on purpose — this is a quick combat
-// log, not a permanent record — so the doc never gets anywhere near Firestore's
-// 1 MiB limit). A "caché" roll stays in the same log but only the MJ sees its
-// formula/result; everyone else just sees that the MJ rolled something.
-const DICE_HISTORY_MAX = 40;
+// A "caché" roll stays in the same log but only the MJ sees its formula/result;
+// everyone else just sees that the MJ rolled something.
 function rollDie(sides){ return Math.floor(Math.random()*sides) + 1; }
 function currentRollerName(){
   if(isMJ) return "MJ";
@@ -2939,12 +2950,13 @@ function rollDiceSet(count, sides, modifier){
   return { results, total: results.reduce((a,b)=>a+b,0) + modifier };
 }
 async function performRoll(count, sides, modifier, hidden){
+  const advModeUsed = diceAdvMode;
   const first = rollDiceSet(count, sides, modifier);
   let { results, total } = first;
   let altResults = null, altTotal = null;
-  if(diceAdvMode !== "normal"){
+  if(advModeUsed !== "normal"){
     const second = rollDiceSet(count, sides, modifier);
-    const firstIsKept = diceAdvMode === "adv" ? first.total >= second.total : first.total <= second.total;
+    const firstIsKept = advModeUsed === "adv" ? first.total >= second.total : first.total <= second.total;
     const kept = firstIsKept ? first : second;
     const other = firstIsKept ? second : first;
     results = kept.results; total = kept.total;
@@ -2953,18 +2965,19 @@ async function performRoll(count, sides, modifier, hidden){
   const formula = count + "d" + sides + (modifier ? (modifier>0?"+":"")+modifier : "");
   const entry = {
     id: "r" + Date.now() + Math.random().toString(36).slice(2,6),
-    who: currentRollerName(), formula, results, total, advMode: diceAdvMode, altResults, altTotal,
+    who: currentRollerName(), formula, results, total, advMode: advModeUsed, altResults, altTotal,
     hidden: !!(hidden && isMJ), ts: Date.now()
   };
   const rolls = [entry, ...diceData.rolls].slice(0, DICE_HISTORY_MAX);
   diceData = { rolls };
   await saveDice(diceData);
+  if(advModeUsed !== "normal") setSharedAdvMode("normal");
 }
 
 // One click, one d20+bonus roll for a specific character's specific skill, straight
 // into the shared log — built the same shape as performRoll()'s entries (results is
 // always the single KEPT d20, altResults/altTotal the other draw under avantage/
-// désavantage) so renderDiceHistory() renders it identically to any other roll.
+// désavantage) so renderUnifiedHistory() renders it identically to any other roll.
 // Shared by skill checks and save throws (and anything else that's "1d20 + a bonus,
 // respecting the global avantage/désavantage toggle") so the adv/dis dice-pair logic
 // only lives in one place.
@@ -2976,14 +2989,16 @@ function rollD20WithSharedAdv(){
   return { kept: aIsKept ? a : b, other: aIsKept ? b : a };
 }
 async function pushDiceEntry(who, formula, kept, other, bonus){
+  const advModeUsed = diceAdvMode;
   const entry = {
     id: "r" + Date.now() + Math.random().toString(36).slice(2,6),
     who, formula, results: [kept], total: kept + bonus,
-    advMode: diceAdvMode, altResults: other != null ? [other] : null, altTotal: other != null ? (other + bonus) : null,
+    advMode: advModeUsed, altResults: other != null ? [other] : null, altTotal: other != null ? (other + bonus) : null,
     hidden: false, ts: Date.now()
   };
   diceData = { rolls: [entry, ...diceData.rolls].slice(0, DICE_HISTORY_MAX) };
   await saveDice(diceData);
+  if(advModeUsed !== "normal") setSharedAdvMode("normal");
 }
 async function rollSkillCheck(ch, skillName){
   const bonus = (ch.skillBonuses && ch.skillBonuses[skillName]) || 0;
@@ -3002,56 +3017,56 @@ async function pushAnnouncement(who, text){
   diceData = { rolls: [entry, ...diceData.rolls].slice(0, DICE_HISTORY_MAX) };
   await saveDice(diceData);
 }
-// Clicking a spell announces its save DC to everyone (so the target's player knows
-// what to roll against) and, for an actual leveled spell, spends one slot of its
-// level — cantrips are free. Re-renders the attacker panel afterward instead of
-// patching the slot display by hand, since a click (unlike typing) can afford it.
-async function castSpell(ch, idx){
-  const sd = ch.spellDisplay;
-  const sp = sd && sd.spells && sd.spells[idx];
-  if(!sp) return;
-  if(sp.level > 0){
-    const slot = (sd.slots||[]).find(s => s.level === sp.level);
-    if(slot){
-      if(slot.used >= slot.max){
-        alert("Plus aucun emplacement de niveau " + sp.level + " disponible.");
-        return;
-      }
-      slot.used += 1;
-      const nextSlots = {};
-      (sd.slots||[]).forEach(s => { nextSlots[s.level] = s.used; });
-      await patchCharacter(ch.id, { "spellDisplay.slots": sd.slots, spellSlotsUsed: nextSlots });
-      renderMyCharacterPanel();
-    }
-  }
-  await pushAnnouncement(ch.name || "Personnage", "lance " + sp.name + " — DD " + sd.dc + (sp.level>0?(" (niv. "+sp.level+")"):" (cantrip)"));
+// A concentration spell is the one case worth a click: D&D only allows ONE at a
+// time, so clicking a second one silently replaces the first (matching the rule),
+// and clicking the active one again just stops it. Shows up everywhere an active
+// condition would — the character card and a token badge on the board — since it's
+// the same kind of "this is affecting them right now" status at a glance.
+async function toggleConcentration(ch, spellName){
+  const next = ch.concentratingOn === spellName ? null : spellName;
+  ch.concentratingOn = next;
+  await patchCharacter(ch.id, { concentratingOn: next });
+  renderMyCharacterPanel();
+  renderBoard();
 }
 
-function renderDiceHistory(){
+function diceRollRowHtml(r){
+  if(r.hidden && !isMJ){
+    return '<div class="dice-roll-row secret"><span class="who">MJ</span><span>a lancé des dés en secret</span><span></span></div>';
+  }
+  // An "announce" entry isn't a roll at all (e.g. casting a save-DC spell) — no
+  // dice, just a line for everyone to see, in the same shared log.
+  if(r.announce){
+    return '<div class="dice-roll-row"><span class="who">' + r.who + '</span><span class="hint" style="margin:0;">' + r.announce + '</span><span></span></div>';
+  }
+  const detail = r.results.length > 1 ? (" (" + r.results.join(", ") + ")") : "";
+  const advDetail = (r.advMode === "adv" || r.advMode === "dis")
+    ? (" — " + (r.advMode==="adv"?"avantage":"désavantage") + " (autre jet : " + r.altTotal + ")")
+    : "";
+  return '<div class="dice-roll-row' + (r.hidden?" secret":"") + '">'+
+    '<span class="who">' + r.who + (r.hidden?" 🔒":"") + '</span>'+
+    '<span class="hint" style="margin:0;">' + r.formula + detail + advDetail + '</span>'+
+    '<span class="total">' + r.total + '</span>'+
+  '</div>';
+}
+// The dice roller and the combat log used to be two separate drawers with two
+// separate histories — now that weapons/saves are clickable straight from the
+// character card, the plain "lance 1d20 manuellement" drawer lost most of its
+// reason to be its own thing, so both logs feed one chronological list instead.
+function renderUnifiedHistory(){
   const el = document.getElementById("dice-history");
-  if(!diceData.rolls.length){
+  const merged = [
+    ...diceData.rolls.map(r => ({ ts: r.ts, html: diceRollRowHtml(r) })),
+    ...combatLogData.entries.map(e => ({ ts: e.ts, html: combatEntryRowHtml(e) }))
+  ].sort((a, b) => b.ts - a.ts).slice(0, DICE_HISTORY_MAX);
+  if(!merged.length){
     el.innerHTML = '<p class="hint" style="margin:0;">Aucun jet pour l\'instant.</p>';
     return;
   }
-  el.innerHTML = diceData.rolls.map(r => {
-    if(r.hidden && !isMJ){
-      return '<div class="dice-roll-row secret"><span class="who">MJ</span><span>a lancé des dés en secret</span><span></span></div>';
-    }
-    // An "announce" entry isn't a roll at all (e.g. casting a save-DC spell) — no
-    // dice, just a line for everyone to see, in the same shared log.
-    if(r.announce){
-      return '<div class="dice-roll-row"><span class="who">' + r.who + '</span><span class="hint" style="margin:0;">' + r.announce + '</span><span></span></div>';
-    }
-    const detail = r.results.length > 1 ? (" (" + r.results.join(", ") + ")") : "";
-    const advDetail = (r.advMode === "adv" || r.advMode === "dis")
-      ? (" — " + (r.advMode==="adv"?"avantage":"désavantage") + " (autre jet : " + r.altTotal + ")")
-      : "";
-    return '<div class="dice-roll-row' + (r.hidden?" secret":"") + '">'+
-      '<span class="who">' + r.who + (r.hidden?" 🔒":"") + '</span>'+
-      '<span class="hint" style="margin:0;">' + r.formula + detail + advDetail + '</span>'+
-      '<span class="total">' + r.total + '</span>'+
-    '</div>';
-  }).join("");
+  el.innerHTML = merged.map(m => m.html).join("");
+  el.querySelectorAll("[data-undo]").forEach(btn => {
+    btn.addEventListener("click", () => undoCombatEntry(btn.dataset.undo));
+  });
 }
 
 document.querySelectorAll(".dice-btn").forEach(btn => {
@@ -3092,7 +3107,6 @@ function rollD20WithMode(mode){
   const kept = mode === "adv" ? Math.max(a,b) : Math.min(a,b);
   return { kept, rolls: [a,b] };
 }
-let combatAdvMode = "normal";
 
 function damageRangeText(weapon){
   const formula = parseDiceFormulaFromDmgText(weapon.dmgText);
@@ -3133,7 +3147,8 @@ async function performAttack(weaponIdxOverride){
   const weapon = attacker && attacker.attacks && attacker.attacks[weaponIdx];
   if(!attacker || !target || !weapon) return;
 
-  const d20Roll = rollD20WithMode(combatAdvMode);
+  const advModeUsed = diceAdvMode;
+  const d20Roll = rollD20WithMode(advModeUsed);
   const d20 = d20Roll.kept;
   const atkTotal = d20 + (weapon.atk||0);
   const isCrit = d20 === 20;
@@ -3161,13 +3176,17 @@ async function performAttack(weaponIdxOverride){
     attackerName: attacker.name || "Sans nom",
     targetId: target.id, targetTokenId, targetName: target.name || "Sans nom",
     weaponName: weapon.name, weaponHand: weapon.hand || null,
-    d20, d20Rolls: d20Roll.rolls, advMode: combatAdvMode, atkBonus: weapon.atk||0, atkTotal, targetAc, isCrit, isFumble, hit,
+    d20, d20Rolls: d20Roll.rolls, advMode: advModeUsed, atkBonus: weapon.atk||0, atkTotal, targetAc, isCrit, isFumble, hit,
     dmgTotal: dmg ? dmg.total : null, dmgRolls: dmg ? dmg.rolls : null, dmgModifier: dmg ? dmg.modifier : null,
     hpBefore, hpAfter, undone: false
   };
   const entries = [entry, ...combatLogData.entries].slice(0, 30);
   combatLogData = { entries };
   await saveCombatLog(combatLogData);
+  // Avantage/désavantage is a one-shot choice for the next roll, not a standing
+  // mode — reset so the following roll defaults back to normal instead of silently
+  // re-applying it.
+  if(advModeUsed !== "normal") setSharedAdvMode("normal");
 }
 
 async function undoCombatEntry(entryId){
@@ -3203,64 +3222,46 @@ function renderLastRollBanner(){
   }
   if(text){ el.textContent = text; el.hidden = false; } else { el.hidden = true; }
 }
-function renderCombatLog(){
-  const el = document.getElementById("combat-log-list");
-  if(!combatLogData.entries.length){
-    el.innerHTML = '<p class="hint" style="margin:0;">Aucune attaque pour l\'instant.</p>';
-    return;
-  }
-  el.innerHTML = combatLogData.entries.map(e => {
-    const rollDetail = e.isCrit ? " — critique !" : e.isFumble ? " — échec critique" : "";
-    const acText = e.targetAc != null ? (" vs CA " + e.targetAc) : "";
-    const advLabel = e.advMode === "adv" ? " (avantage)" : e.advMode === "dis" ? " (désavantage)" : "";
-    const d20Detail = (e.d20Rolls && e.d20Rolls.length > 1) ? (" [" + e.d20Rolls.join(", ") + "]") : "";
-    const handLabel = e.weaponHand === "main" ? ", main principale" : e.weaponHand === "off" ? ", main secondaire" : e.weaponHand === "ranged" ? ", à distance" : "";
-    const line1 = e.attackerName + " → " + e.targetName + " (" + e.weaponName + handLabel + ")";
-    const line2 = "Jet : " + e.d20 + d20Detail + fmtSigned(e.atkBonus) + " = " + e.atkTotal + acText + advLabel + rollDetail;
-    const dmgBreakdown = e.dmgTotal != null
-      ? ("(" + e.dmgRolls.join("+") + ")" + (e.dmgModifier ? fmtSigned(e.dmgModifier) : "") + " = " + e.dmgTotal)
-      : "";
-    const dmgLine = e.hit
-      ? (e.dmgTotal != null ? ("Touché — " + dmgBreakdown + " dégâts · PV " + e.hpBefore + " → " + e.hpAfter) : "Touché — dégâts non calculables (arme sans dés reconnus)")
-      : "Manqué";
-    const undoBtn = (!e.undone && e.hpBefore != null) ? ('<button type="button" class="undo-btn" data-undo="'+e.id+'">annuler</button>') : (e.undone ? '<span class="hint" style="margin:0;">(annulé)</span>' : '');
-    return '<div class="dice-roll-row' + (e.isCrit?" crit":"") + (!e.hit?" miss":"") + '" style="flex-direction:column;align-items:stretch;gap:2px;">'+
-      '<div style="display:flex;justify-content:space-between;"><span class="who">' + line1 + '</span>' + undoBtn + '</div>'+
-      '<span class="hint" style="margin:0;">' + line2 + '</span>'+
-      '<span class="hint" style="margin:0;">' + dmgLine + '</span>'+
-    '</div>';
-  }).join("");
-  el.querySelectorAll("[data-undo]").forEach(btn => {
-    btn.addEventListener("click", () => undoCombatEntry(btn.dataset.undo));
-  });
+function combatEntryRowHtml(e){
+  const rollDetail = e.isCrit ? " — critique !" : e.isFumble ? " — échec critique" : "";
+  const acText = e.targetAc != null ? (" vs CA " + e.targetAc) : "";
+  const advLabel = e.advMode === "adv" ? " (avantage)" : e.advMode === "dis" ? " (désavantage)" : "";
+  const d20Detail = (e.d20Rolls && e.d20Rolls.length > 1) ? (" [" + e.d20Rolls.join(", ") + "]") : "";
+  const handLabel = e.weaponHand === "main" ? ", main principale" : e.weaponHand === "off" ? ", main secondaire" : e.weaponHand === "ranged" ? ", à distance" : "";
+  const line1 = e.attackerName + " → " + e.targetName + " (" + e.weaponName + handLabel + ")";
+  const line2 = "Jet : " + e.d20 + d20Detail + fmtSigned(e.atkBonus) + " = " + e.atkTotal + acText + advLabel + rollDetail;
+  const dmgBreakdown = e.dmgTotal != null
+    ? ("(" + e.dmgRolls.join("+") + ")" + (e.dmgModifier ? fmtSigned(e.dmgModifier) : "") + " = " + e.dmgTotal)
+    : "";
+  const dmgLine = e.hit
+    ? (e.dmgTotal != null ? ("Touché — " + dmgBreakdown + " dégâts · PV " + e.hpBefore + " → " + e.hpAfter) : "Touché — dégâts non calculables (arme sans dés reconnus)")
+    : "Manqué";
+  const undoBtn = (!e.undone && e.hpBefore != null) ? ('<button type="button" class="undo-btn" data-undo="'+e.id+'">annuler</button>') : (e.undone ? '<span class="hint" style="margin:0;">(annulé)</span>' : '');
+  return '<div class="dice-roll-row' + (e.isCrit?" crit":"") + (!e.hit?" miss":"") + '" style="flex-direction:column;align-items:stretch;gap:2px;">'+
+    '<div style="display:flex;justify-content:space-between;"><span class="who">' + line1 + '</span>' + undoBtn + '</div>'+
+    '<span class="hint" style="margin:0;">' + line2 + '</span>'+
+    '<span class="hint" style="margin:0;">' + dmgLine + '</span>'+
+  '</div>';
 }
 
 document.getElementById("btn-combat-attack").addEventListener("click", performAttack);
 document.getElementById("btn-combat-log-clear").addEventListener("click", async () => {
-  if(!confirm("Vider le journal de combat ?")) return;
+  if(!confirm("Vider l'historique des jets et du combat ?")) return;
+  diceData = { rolls: [] };
   combatLogData = { entries: [] };
-  await saveCombatLog(combatLogData);
+  await Promise.all([saveDice(diceData), saveCombatLog(combatLogData)]);
 });
 document.getElementById("f-combat-weapon").addEventListener("change", renderCombatWeaponRange);
 document.getElementById("dice-drawer-toggle").addEventListener("click", () => {
   document.getElementById("dice-drawer").classList.toggle("open");
 });
-document.getElementById("combat-drawer-toggle").addEventListener("click", () => {
-  document.getElementById("combat-drawer").classList.toggle("open");
-});
 document.getElementById("mood-drawer-toggle").addEventListener("click", () => {
   document.getElementById("mood-drawer").classList.toggle("open");
 });
-document.querySelectorAll(".combat-adv-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    combatAdvMode = btn.dataset.adv;
-    document.querySelectorAll(".combat-adv-btn").forEach(b => b.classList.toggle("active", b===btn));
-  });
-});
-// The dice-drawer's own Normal/Avantage/Désavantage buttons and the always-visible
-// "global" copy next to zoom both drive the same diceAdvMode (shared with skill and
-// save-throw clicks on a character card) — kept in sync so whichever one you touch,
-// both show the current mode instead of silently disagreeing with each other.
+// Normal/Avantage/Désavantage is ONE shared mode — driving skill/save rolls, the
+// plain dice roller, AND attack rolls — so the always-visible global button and the
+// drawer's own buttons never silently disagree with each other; clicking either
+// group updates both.
 function setSharedAdvMode(mode){
   diceAdvMode = mode;
   document.querySelectorAll(".dice-adv-btn, .global-adv-btn").forEach(b => b.classList.toggle("active", b.dataset.adv === mode));
@@ -3329,13 +3330,13 @@ async function init(){
 
   onSnapshot(diceRef, (snap) => {
     diceData = snap.exists() ? snap.data() : { rolls: [] };
-    renderDiceHistory();
+    renderUnifiedHistory();
     renderLastRollBanner();
   });
 
   onSnapshot(combatLogRef, (snap) => {
     combatLogData = snap.exists() ? snap.data() : { entries: [] };
-    renderCombatLog();
+    renderUnifiedHistory();
     renderLastRollBanner();
   });
 
