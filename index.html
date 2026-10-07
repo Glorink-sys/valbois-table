@@ -140,6 +140,14 @@ button:disabled{opacity:.5;cursor:not-allowed;}
   background:rgba(20,15,8,.55);color:#f5efdc;font-size:.78rem;line-height:1.3;
   padding:5px 10px;border-radius:8px;text-align:right;
 }
+/* A quick "you can't do that yet" notice (e.g. attacking with no target selected) —
+   separate from last-roll-banner since it's local-only feedback, never synced or
+   shared, and shouldn't be overwritten by the next dice/combat snapshot. */
+#action-notice{
+  position:absolute;bottom:8px;left:50%;transform:translateX(-50%);max-width:80%;z-index:46;
+  pointer-events:none;background:rgba(138,59,43,.85);color:#fff;font-size:.78rem;line-height:1.3;
+  padding:5px 12px;border-radius:8px;text-align:center;
+}
 .ping-marker{
   position:absolute;width:36px;height:36px;margin:-18px 0 0 -18px;border-radius:50%;
   border:3px solid var(--warn);pointer-events:none;z-index:50;
@@ -191,7 +199,7 @@ button:disabled{opacity:.5;cursor:not-allowed;}
 .token-concentration-ring{
   position:absolute;inset:-6px;border-radius:50%;
   border:2px dashed #3f6ea5;
-  animation:conc-ring-spin 3.5s linear infinite;
+  animation:conc-ring-spin 7s linear infinite;
   cursor:default;
 }
 .cell-effect{
@@ -396,6 +404,7 @@ button.atk-attack-row:hover,button.concentration-row:hover{background:var(--parc
 /* Slightly blue, not gold, so "this is the spell you're concentrating on" doesn't
    read as the same highlight used for a selected/armed state elsewhere in the UI. */
 button.concentration-row.active{background:color-mix(in srgb, #3f6ea5 16%, transparent);}
+button.atk-attack-row.turn-gated{opacity:.45;}
 .mono{font-variant-numeric:tabular-nums;white-space:nowrap;}
 </style>
 </head>
@@ -463,9 +472,12 @@ button.concentration-row.active{background:color-mix(in srgb, #3f6ea5 16%, trans
           <div id="scene-list"><p class="mood-empty">Aucune scène enregistrée pour l'instant.</p></div>
         </div>
 
-        <h3 class="sub" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <h3 class="sub" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
           <span>Personnages (créés dans l'outil de personnage)</span>
-          <button type="button" class="ghost btn-sm" id="btn-npc-picker" style="text-transform:none;letter-spacing:normal;font-family:inherit;">Gérer les PNJ disponibles</button>
+          <span style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button type="button" class="ghost btn-sm" id="btn-export-backup" title="Télécharge un fichier JSON avec tous les personnages/PNJ et la carte — à garder de côté en cas de pépin" style="text-transform:none;letter-spacing:normal;font-family:inherit;">⬇ Exporter en JSON</button>
+            <button type="button" class="ghost btn-sm" id="btn-npc-picker" style="text-transform:none;letter-spacing:normal;font-family:inherit;">Gérer les PNJ disponibles</button>
+          </span>
         </h3>
         <p class="hint" style="margin:0 0 8px;">Ces pions sont reliés à la vraie fiche du joueur (ou du PNJ) — portrait et PV inclus, rien à réimporter.</p>
         <div id="character-library-list" class="char-library-grid"></div>
@@ -516,6 +528,7 @@ button.concentration-row.active{background:color-mix(in srgb, #3f6ea5 16%, trans
           <img id="ambiance-img" src="" alt="Carte d'ambiance">
         </div>
         <div id="last-roll-banner" hidden></div>
+        <div id="action-notice" hidden></div>
       </div>
       <div class="legend" id="legend"></div>
     </div>
@@ -807,6 +820,7 @@ const moveBadge = document.getElementById("move-badge");
 const dragLine = document.getElementById("drag-line");
 const zoomLabel = document.getElementById("zoom-label");
 const METERS_PER_CELL = 1.5;
+function fmtMetersFr(m){ return m.toString().replace(".", ",") + " m"; }
 
 document.getElementById("btn-delete-token").addEventListener("click", () => { if(selectedTokenId) deleteToken(selectedTokenId); });
 document.getElementById("btn-zoom-in").addEventListener("click", () => setZoom(zoomLevel + 0.2));
@@ -1423,7 +1437,8 @@ function onTokenPointerMove(e){
 
 async function onTokenPointerUp(e){
   if(!dragState) return;
-  const { id, el, col, row, startCol, startRow } = dragState;
+  const { id, el, startCol, startRow } = dragState;
+  let { col, row } = dragState;
   el.removeEventListener("pointermove", onTokenPointerMove);
   el.removeEventListener("pointerup", onTokenPointerUp);
   el.classList.remove("dragging");
@@ -1431,10 +1446,51 @@ async function onTokenPointerUp(e){
   dragLine.style.display = "none";
   moveBadge.hidden = true;
   if(col === startCol && row === startRow) return;
+  // Same turn restriction as attacking: once initiative is running, a PJ's pion only
+  // actually moves on their own turn — the drag still tracks the cursor visually (see
+  // onTokenPointerMove), but release snaps it back since nothing is saved here.
+  const tok = boardData.tokens[id];
+  const ch = tok && tok.characterId ? characters.find(c => c.id === tok.characterId) : null;
+  if(isPcTurnGated(ch)){
+    const current = initData.entries[initData.currentIndex];
+    showActionNotice((current ? current.name : "Un autre personnage") + " doit jouer avant — attends ton tour pour déplacer ce pion.");
+    renderBoard();
+    return;
+  }
+  // Movement budget — PJ only, only once initiative is running: a hero can't cover
+  // more ground in one turn than their speed allows. NPCs are the MJ's call, exempt
+  // just like the attack/turn gating above.
+  let initEntryToSave = null;
+  if(ch && ch.kind !== "npc" && initData.entries.length && ch.speed != null){
+    const entry = initData.entries.find(en => en.characterId === ch.id);
+    if(entry){
+      const already = entry.movedThisTurn || 0;
+      const remainingM = Math.max(0, ch.speed - already);
+      const remainingCells = Math.floor(remainingM / METERS_PER_CELL + 1e-9);
+      const dCol = col - startCol, dRow = row - startRow;
+      const requestedCells = Math.max(Math.abs(dCol), Math.abs(dRow));
+      if(requestedCells > remainingCells){
+        if(remainingCells <= 0){
+          showActionNotice("Plus de déplacement disponible ce tour-ci (vitesse " + fmtMetersFr(ch.speed) + " déjà utilisée).");
+          renderBoard();
+          return;
+        }
+        // Clamp to the farthest cell still within budget, same direction as the drag.
+        const scale = remainingCells / requestedCells;
+        col = startCol + Math.round(dCol * scale);
+        row = startRow + Math.round(dRow * scale);
+        showActionNotice("Déplacement limité : il ne restait que " + fmtMetersFr(remainingM) + " — pion arrêté à la limite.");
+      }
+      const usedCells = Math.max(Math.abs(col - startCol), Math.abs(row - startRow));
+      entry.movedThisTurn = already + usedCells * METERS_PER_CELL;
+      initEntryToSave = { entries: initData.entries, currentIndex: initData.currentIndex, round: initData.round };
+    }
+  }
   boardData.tokens[id].x = col;
   boardData.tokens[id].y = row;
   renderBoard();
   await saveBoard({ ["tokens." + id + ".x"]: col, ["tokens." + id + ".y"]: row });
+  if(initEntryToSave) await saveInit(initEntryToSave);
 }
 
 let panState = null;
@@ -2130,6 +2186,25 @@ function renderNpcPicker(){
   });
 }
 
+// A plain JSON snapshot of everything the campaign depends on — characters (synced
+// live via onSnapshot, so already in memory) plus the board — downloaded straight to
+// the MJ's own machine. Not a substitute for Firestore itself, just a quick safety net
+// to keep around before anything risky (bulk edits, imports...), since this table has
+// twice lost real campaign data to the shared backend before.
+document.getElementById("btn-export-backup").addEventListener("click", () => {
+  const payload = { exportedAt: new Date().toISOString(), characters, board: boardData };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,"-");
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "valbois-sauvegarde-" + stamp + ".json";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
+
 document.getElementById("btn-npc-picker").addEventListener("click", () => {
   renderNpcPicker();
   document.getElementById("npc-picker-modal").hidden = false;
@@ -2225,6 +2300,14 @@ async function patchInstanceHp(ch, tokenId, hpNext){
     ch.hpCurrent = hpNext;
     await patchCharacter(ch.id, { hpCurrent: hpNext });
   }
+  // D&D rule: dropping to 0 HP (unconscious) ends concentration automatically —
+  // without this, a downed character could keep showing a spell as still active.
+  if(hpNext <= 0 && ch.concentratingOn){
+    ch.concentratingOn = null;
+    await patchCharacter(ch.id, { concentratingOn: null });
+    renderBoard();
+    renderMyCharacterPanel();
+  }
 }
 async function patchInstanceConditions(ch, tokenId, nextConditions){
   if(ch.kind === "npc" && tokenId && boardData.tokens[tokenId]){
@@ -2302,14 +2385,19 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
     // attacker (left "Personnage" panel); the right panel shows the same markup for
     // the TARGET's own weapons, which would attack with the wrong character's stats
     // if it were clickable too, so it stays inert there.
+    // Dimmed (not disabled — the click still goes through performAttack(), which has
+    // the actual guard and shows the explanatory notice) when initiative is running
+    // and it isn't this PJ's turn yet, so the restriction is visible before clicking.
+    const turnGated = isAttacker && isPcTurnGated(ch);
     const attackRows = attacks.length
       ? attacks.map((a,i) => {
           const head='<span>' + a.name + '</span><span class="mono">' + fmtSigned(a.atk) + ' · ' + a.dmgText + '</span>';
           // The weapon's properties (Finesse, légère...) used to always take their own
           // line below the name — a tooltip on hover keeps the row to one compact line.
-          const propsAttr = a.props ? (' title="' + a.props.replace(/"/g,"&quot;") + (isAttacker?' — Attaquer la cible sélectionnée':'') + '"') : (isAttacker?' title="Attaquer la cible sélectionnée"':'');
+          const attackHint = turnGated ? "Ce n'est pas ton tour" : "Attaquer la cible sélectionnée";
+          const propsAttr = a.props ? (' title="' + a.props.replace(/"/g,"&quot;") + (isAttacker?(' — '+attackHint):'') + '"') : (isAttacker?(' title="'+attackHint+'"'):'');
           return isAttacker
-            ? '<button type="button" class="atk-weapon-row atk-attack-row" data-attack-idx="' + i + '"' + propsAttr + '>' + head + '</button>'
+            ? '<button type="button" class="atk-weapon-row atk-attack-row' + (turnGated?" turn-gated":"") + '" data-attack-idx="' + i + '"' + propsAttr + '>' + head + '</button>'
             : '<div class="atk-weapon-row"' + propsAttr + '>' + head + '</div>';
         }).join("")
       : '<p class="hint" style="margin:0 0 6px;">Aucune arme équipée.</p>';
@@ -2450,6 +2538,13 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
     );
   }
 
+  // Own movement budget for the current encounter — PJ only, and only meaningful
+  // once initiative is running (outside combat, movement is free/untracked).
+  const myInitEntry = (!isNpc && initData.entries.length) ? initData.entries.find(en => en.characterId === ch.id) : null;
+  const moveTrackerHtml = (isAttacker && myInitEntry && ch.speed != null)
+    ? ('<p class="hint" style="margin:0 0 6px;">Déplacement ce tour : ' + fmtMetersFr(myInitEntry.movedThisTurn || 0) + ' / ' + fmtMetersFr(ch.speed) + '</p>')
+    : '';
+
   return (
     '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'+
     '<span style="width:64px;height:64px;border-radius:50%;display:inline-block;flex:none;border:1px solid rgba(0,0,0,.2);' + swatchStyle + '"></span>'+
@@ -2464,6 +2559,7 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
     (ch.speed!=null ? ('<span title="Vitesse">Vit. ' + ch.speed + ' m</span>') : '') +
     '<span title="Perception passive">PP ' + passivePerception + '</span>'+
     '</div>'+
+    moveTrackerHtml +
     '<div class="my-ability-row">' + abilityRow + '</div>'+
     managedBlock +
     '<button type="button" class="ghost btn-sm cond-toggle" style="margin-top:6px;">' + (condOpen ? "▾ Masquer les états actifs" : ("▸ États actifs" + (active.length ? " (" + active.length + ")" : ""))) + '</button>'+
@@ -2801,7 +2897,8 @@ function rollInitiativeEntry(tokenId, tok){
   return {
     id: "e" + Date.now() + Math.random().toString(36).slice(2,7),
     tokenId, name: tok.label, score: rollD20() + dexMod,
-    characterId: tok.characterId || null
+    characterId: tok.characterId || null,
+    movedThisTurn: 0
   };
 }
 
@@ -2825,11 +2922,13 @@ async function endTurn(){
     await runTransaction(db, async (tx) => {
       const snap = await tx.get(initRef);
       const data = snap.exists() ? snap.data() : initData;
-      const entries = data.entries || [];
+      const entries = (data.entries || []).map(e => ({...e}));
       if(!entries.length) return;
       let currentIndex = (data.currentIndex==null?-1:data.currentIndex) + 1;
       let round = data.round || 1;
       if(currentIndex >= entries.length){ currentIndex = 0; round++; }
+      // Fresh movement budget for whoever's turn is starting now.
+      if(entries[currentIndex]) entries[currentIndex].movedThisTurn = 0;
       tx.set(initRef, { entries, currentIndex, round });
     });
   }catch(e){
@@ -3116,12 +3215,45 @@ function rollD20WithMode(mode){
   return { kept, rolls: [a,b] };
 }
 
+let actionNoticeTimer = null;
+// Local-only, never written to Firestore — purely "you clicked something that can't
+// happen right now," shown instantly in the browser that clicked it.
+function showActionNotice(text){
+  const el = document.getElementById("action-notice");
+  if(!el) return;
+  el.textContent = text;
+  el.hidden = false;
+  clearTimeout(actionNoticeTimer);
+  actionNoticeTimer = setTimeout(() => { el.hidden = true; }, 2500);
+}
+
+// Once initiative is rolled, a PJ can only attack on their own turn — matched by
+// characterId (not tokenId) so this also works for a player acting through the plain
+// "Mes personnages" dropdown, which has no token of its own (see getLeftPanelTokenId).
+// NPCs are exempt: the MJ runs those and needs to act with them whenever the scene
+// calls for it, not strictly in initiative order.
+function isPcTurnGated(ch){
+  if(!ch || ch.kind === "npc") return false;
+  if(!initData.entries.length) return false;
+  const current = initData.entries[initData.currentIndex];
+  return !current || current.characterId !== ch.id;
+}
+
 async function performAttack(weaponIdx){
   const attacker = getLeftPanelCharacter();
   const target = getRightPanelCharacter();
   const targetTokenId = selectedTokenId; // getRightPanelCharacter() is always derived from this token
   const weapon = attacker && attacker.attacks && attacker.attacks[weaponIdx];
-  if(!attacker || !target || !weapon) return;
+  if(!attacker || !weapon) return;
+  if(isPcTurnGated(attacker)){
+    const current = initData.entries[initData.currentIndex];
+    showActionNotice((current ? current.name : "Un autre personnage") + " doit jouer avant — attends ton tour d'initiative.");
+    return;
+  }
+  if(!target){
+    showActionNotice("Sélectionne une cible (clic gauche sur un pion) avant d'attaquer.");
+    return;
+  }
 
   const advModeUsed = diceAdvMode;
   const d20Roll = rollD20WithMode(advModeUsed);
@@ -3300,6 +3432,7 @@ async function init(){
     initData = snap.exists() ? snap.data() : { entries: [], currentIndex: -1, round: 1 };
     renderInitiativeBar();
     renderBoard();
+    renderMyCharacterPanel(); // whose turn it is affects the "turn-gated" dimming on attack rows
   });
 
   onSnapshot(diceRef, (snap) => {
