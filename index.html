@@ -184,9 +184,12 @@ button:disabled{opacity:.5;cursor:not-allowed;}
   50%{box-shadow:0 3px 6px rgba(0,0,0,.45),0 0 0 3px rgba(224,89,42,.5),0 0 20px 8px rgba(224,89,42,.25);}
 }
 .token.current-turn{animation:turn-pulse 1.4s ease-in-out infinite;}
-/* Already played its turn this round — same "done" cue as the initiative bar's
-   grayed ring, but shown right on the pion so it reads on the map too. */
-.token.played{filter:grayscale(.8) brightness(.8);opacity:.7;}
+/* 0 PV (down/unconscious) — the heavier treatment, since this is the state that
+   actually matters most at a glance. */
+.token.downed{filter:grayscale(.8) brightness(.8);opacity:.7;}
+/* Already played its turn this round — a lighter cue than "downed" (just a fade),
+   since it's informational rather than a state that changes how the fight is read. */
+.token.played{opacity:.75;}
 .token-hpbar{
   position:absolute;left:0;bottom:-6px;width:100%;height:4px;border-radius:2px;
   background:rgba(20,15,8,.55);overflow:hidden;pointer-events:none;z-index:1;
@@ -1116,6 +1119,16 @@ function computeAvailableBoardHeight(){
 }
 
 function renderBoard(){
+  // A full renderBoard() tears down and recreates every .token element — fine most of
+  // the time, but if it runs while THIS browser has a pion mid-drag (dragState set),
+  // it would delete the very element the pointer has captured, silently killing the
+  // drag. That used to be a rare coincidence; now that a PJ's move during combat also
+  // writes to the shared initiative doc (movement budget), a remote onSnapshot firing
+  // mid-drag got a lot more likely. Skipping the rebuild here costs nothing but a
+  // moment of staleness for OTHER tokens — this browser's own drag already moves its
+  // token directly (see onTokenPointerMove), and a final renderBoard() always follows
+  // right after the drag ends (onTokenPointerUp), picking up anything missed.
+  if(dragState) return;
   // clientWidth already excludes the wrapper's own border/padding — it's the exact
   // content-box width available to the board, unlike getBoundingClientRect() (which
   // is the border-box and would need the border subtracted back out to match).
@@ -1229,6 +1242,7 @@ function renderBoard(){
       bar.className = "token-hpbar";
       bar.innerHTML = '<div class="token-hpbar-fill" style="width:' + pct + '%;background:' + color + ';"></div>';
       el.appendChild(bar);
+      el.classList.toggle("downed", hpCur <= 0);
     }
     // A quick glance at the board should be enough to notice "this one's affected by
     // something" without clicking through to the character card — the badge just
