@@ -135,6 +135,11 @@ button:disabled{opacity:.5;cursor:not-allowed;}
 }
 .zoom-btn:hover{border-color:var(--gold-strong);}
 .zoom-btn.active{background:var(--gold-strong);color:#fff;border-color:var(--gold-strong);}
+#last-roll-banner{
+  position:absolute;bottom:8px;right:8px;max-width:70%;z-index:45;pointer-events:none;
+  background:rgba(20,15,8,.55);color:#f5efdc;font-size:.78rem;line-height:1.3;
+  padding:5px 10px;border-radius:8px;text-align:right;
+}
 .ping-marker{
   position:absolute;width:36px;height:36px;margin:-18px 0 0 -18px;border-radius:50%;
   border:3px solid var(--warn);pointer-events:none;z-index:50;
@@ -346,6 +351,8 @@ button:disabled{opacity:.5;cursor:not-allowed;}
 
 .my-ability-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:6px;}
 .my-ability{display:flex;flex-direction:column;align-items:center;background:var(--panel);border:1px solid var(--parchment-line);border-radius:6px;padding:4px 2px;}
+button.my-ability{cursor:pointer;font-family:inherit;color:inherit;}
+button.my-ability:hover{border-color:var(--gold-strong);}
 .my-ability-k{font-size:.68rem;color:var(--ink-soft);letter-spacing:.03em;}
 .my-ability-v{font-weight:700;font-variant-numeric:tabular-nums;}
 .my-inventory-list{list-style:none;padding:0;margin:0 0 6px;font-size:.82rem;}
@@ -372,6 +379,8 @@ button:disabled{opacity:.5;cursor:not-allowed;}
 .skill-row{width:100%;border:none;background:none;color:inherit;font-family:inherit;padding:2px 4px;margin:0 -4px;border-radius:4px;cursor:pointer;text-align:left;}
 .skill-row:hover{background:var(--parchment-line);}
 .atk-weapon-row{display:flex;flex-direction:column;gap:2px;padding:2px 0;}
+button.atk-attack-row,button.spell-cast-row{width:100%;border:none;background:none;color:inherit;font-family:inherit;text-align:left;cursor:pointer;border-radius:4px;}
+button.atk-attack-row:hover,button.spell-cast-row:hover{background:var(--parchment-line);}
 .atk-weapon-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:.82rem;}
 .atk-weapon-props{font-style:italic;color:var(--ink-soft);font-size:.78rem;width:100%;}
 .mono{font-variant-numeric:tabular-nums;white-space:nowrap;}
@@ -478,6 +487,11 @@ button:disabled{opacity:.5;cursor:not-allowed;}
         <button type="button" class="zoom-btn" id="btn-zoom-reset" title="Réinitialiser le zoom" style="width:auto;padding:0 8px;font-size:.68rem;">100%</button>
         <button type="button" class="zoom-btn" id="btn-ping-mode" title="Cliquer puis cliquer sur la carte pour signaler un endroit à tous">📍</button>
         <button type="button" class="zoom-btn" id="btn-measure-mode" title="Cliquer puis glisser sur la carte pour mesurer une distance">📏</button>
+        <div class="global-adv-group" style="display:flex;gap:2px;" title="S'applique aux jets de compétence et de sauvegarde cliqués sur une fiche">
+          <button type="button" class="zoom-btn global-adv-btn active" data-adv="normal" style="width:auto;padding:0 6px;font-size:.62rem;">Normal</button>
+          <button type="button" class="zoom-btn global-adv-btn" data-adv="adv" style="width:auto;padding:0 6px;font-size:.62rem;">Avantage</button>
+          <button type="button" class="zoom-btn global-adv-btn" data-adv="dis" style="width:auto;padding:0 6px;font-size:.62rem;">Désavantage</button>
+        </div>
         <div id="init-bar" class="init-bar"></div>
       </div>
       <div class="board-stage" style="position:relative;">
@@ -488,6 +502,7 @@ button:disabled{opacity:.5;cursor:not-allowed;}
         <div id="ambiance-overlay" hidden>
           <img id="ambiance-img" src="" alt="Carte d'ambiance">
         </div>
+        <div id="last-roll-banner" hidden></div>
       </div>
       <div class="legend" id="legend"></div>
     </div>
@@ -2216,7 +2231,7 @@ async function patchInstanceConditions(ch, tokenId, nextConditions){
   }
 }
 
-function characterCardHtml(ch, canManage, tokenId){
+function characterCardHtml(ch, canManage, tokenId, isAttacker){
   const isNpc = ch.kind === "npc";
   // A player looking at a PNJ they don't control gets the name + short descriptor
   // (already given away by the token's portrait anyway) and a visual-only HP bar —
@@ -2238,8 +2253,14 @@ function characterCardHtml(ch, canManage, tokenId){
   const abilityRow = abilities.map(k => {
     const m = abilityMod(ch, k);
     const save = ch.saveBonuses ? ch.saveBonuses[k] : m;
-    return '<div class="my-ability" title="Jet de sauvegarde : ' + fmtSigned(save) + '"><span class="my-ability-k">' + k + '</span><span class="my-ability-v">' + fmtSigned(m) + '</span></div>';
+    const inner = '<span class="my-ability-k">' + k + '</span><span class="my-ability-v">' + fmtSigned(m) + '</span>';
+    // Clickable for the same reason skills are: one click rolls 1d20 + the save bonus
+    // into the shared log instead of the MJ asking and the player doing the math.
+    return canManage
+      ? '<button type="button" class="my-ability save-row" data-save-ability="' + k + '" title="Lancer 1d20' + fmtSigned(save) + ' (jet de sauvegarde)">' + inner + '</button>'
+      : '<div class="my-ability" title="Jet de sauvegarde : ' + fmtSigned(save) + '">' + inner + '</div>';
   }).join("");
+  const passivePerception = 10 + ((ch.skillBonuses && ch.skillBonuses["Perception"]) || 0);
   const active = resolveInstanceConditions(ch, tokenId);
   const condChips = CONDITION_NAMES.map(n => {
     const on = active.includes(n);
@@ -2263,8 +2284,18 @@ function characterCardHtml(ch, canManage, tokenId){
   let managedBlock = "";
   if(canManage){
     const attacks = ch.attacks || [];
+    // Clicking a weapon here attacks the token currently selected as target (right
+    // panel) with it, straight away — only wired when this card is rendered as the
+    // attacker (left "Personnage" panel); the right panel shows the same markup for
+    // the TARGET's own weapons, which would attack with the wrong character's stats
+    // if it were clickable too, so it stays inert there.
     const attackRows = attacks.length
-      ? attacks.map(a => '<div class="atk-weapon-row"><div class="atk-weapon-head"><span>' + a.name + '</span><span class="mono">' + fmtSigned(a.atk) + ' · ' + a.dmgText + '</span></div>' + (a.props ? ('<div class="atk-weapon-props">' + a.props + '</div>') : '') + '</div>').join("")
+      ? attacks.map((a,i) => {
+          const head='<div class="atk-weapon-head"><span>' + a.name + '</span><span class="mono">' + fmtSigned(a.atk) + ' · ' + a.dmgText + '</span></div>' + (a.props ? ('<div class="atk-weapon-props">' + a.props + '</div>') : '');
+          return isAttacker
+            ? '<button type="button" class="atk-weapon-row atk-attack-row" data-attack-idx="' + i + '" title="Attaquer la cible sélectionnée avec cette arme">' + head + '</button>'
+            : '<div class="atk-weapon-row">' + head + '</div>';
+        }).join("")
       : '<p class="hint" style="margin:0 0 6px;">Aucune arme équipée.</p>';
     // Skills: PCs get a real computed bonus per skill (synced from the character
     // tool); NPCs only ever had a free-text "Discrétion +4, Perception +3" line —
@@ -2348,13 +2379,17 @@ function characterCardHtml(ch, canManage, tokenId){
           ):('<span class="mono">'+(s.max-s.used)+' / '+s.max+'</span>'))+
           '</div>'
         ).join("");
-        const spellRows=(sd.spells||[]).map(sp=>
-          '<div class="atk-row" style="flex-direction:column;align-items:stretch;gap:0;">'+
-          '<div style="display:flex;justify-content:space-between;gap:8px;"><strong>'+sp.name+'</strong><span class="hint" style="margin:0;">'+(sp.level===0?"cantrip":"niv. "+sp.level)+'</span></div>'+
-          '<span class="hint" style="margin:0;">'+sp.school+' · '+sp.time+' · '+sp.range+' · '+sp.duration+(sp.concentration?" (concentration)":"")+(sp.domain?" · domaine, toujours préparé":"")+'</span>'+
-          '<span class="hint" style="margin:2px 0 0;">'+sp.effect+'</span>'+
-          '</div>'
-        ).join("");
+        const spellRows=(sd.spells||[]).map((sp,i)=>{
+          const inner='<div style="display:flex;justify-content:space-between;gap:8px;"><strong>'+sp.name+'</strong><span class="hint" style="margin:0;">'+(sp.level===0?"cantrip":"niv. "+sp.level)+'</span></div>'+
+            '<span class="hint" style="margin:0;">'+sp.school+' · '+sp.time+' · '+sp.range+' · '+sp.duration+(sp.concentration?" (concentration)":"")+(sp.domain?" · domaine, toujours préparé":"")+'</span>'+
+            '<span class="hint" style="margin:2px 0 0;">'+sp.effect+'</span>';
+          // Clicking announces the save DC to everyone and, for a real spell slot
+          // (not a cantrip), spends one — only wired for the attacker/caster panel,
+          // same reasoning as weapon rows above.
+          return isAttacker
+            ? '<button type="button" class="atk-row spell-cast-row" data-spell-idx="'+i+'" style="flex-direction:column;align-items:stretch;gap:0;" title="Annoncer le DD'+(sp.level>0?' et dépenser un emplacement de niveau '+sp.level:'')+'">'+inner+'</button>'
+            : '<div class="atk-row" style="flex-direction:column;align-items:stretch;gap:0;">'+inner+'</div>';
+        }).join("");
         spellsBlock=
           '<button type="button" class="ghost btn-sm spells-toggle" style="margin-top:6px;">'+(spellsOpen?"▾ Masquer les sorts":"▸ Voir les sorts")+'</button>'+
           '<div class="atk-block spells-block"'+(spellsOpen?"":" hidden")+'>'+
@@ -2403,6 +2438,7 @@ function characterCardHtml(ch, canManage, tokenId){
     '<div class="field-row" style="align-items:center;gap:10px;margin-bottom:6px;">'+
     (ch.ac!=null ? ('<span>CA ' + ch.ac + '</span>') : '') +
     (ch.speed!=null ? ('<span>Vitesse ' + ch.speed + ' m</span>') : '') +
+    '<span>Perception passive ' + passivePerception + '</span>'+
     '</div>'+
     '<div class="my-ability-row">' + abilityRow + '</div>'+
     managedBlock +
@@ -2414,7 +2450,7 @@ function characterCardHtml(ch, canManage, tokenId){
 // Wires up the interactive bits of characterCardHtml() within whichever container
 // rendered it — scoped by container so the left panel and the right "Sélection"
 // panel can each show a card at the same time without id collisions.
-function wireCharacterCard(container, ch, tokenId){
+function wireCharacterCard(container, ch, tokenId, isAttacker){
   const hpMinus = container.querySelector(".hp-minus");
   const hpPlus = container.querySelector(".hp-plus");
   const applyHpDelta = (delta) => {
@@ -2532,6 +2568,17 @@ function wireCharacterCard(container, ch, tokenId){
   container.querySelectorAll(".skill-row").forEach(btn => {
     btn.addEventListener("click", () => rollSkillCheck(ch, btn.dataset.skill));
   });
+  container.querySelectorAll(".save-row").forEach(btn => {
+    btn.addEventListener("click", () => rollSaveCheck(ch, btn.dataset.saveAbility));
+  });
+  if(isAttacker){
+    container.querySelectorAll(".atk-attack-row").forEach(btn => {
+      btn.addEventListener("click", () => performAttack(Number(btn.dataset.attackIdx)));
+    });
+    container.querySelectorAll(".spell-cast-row").forEach(btn => {
+      btn.addEventListener("click", () => castSpell(ch, Number(btn.dataset.spellIdx)));
+    });
+  }
 
   const skillsToggle = container.querySelector(".skills-toggle");
   if(skillsToggle){
@@ -2634,8 +2681,8 @@ function renderMyCharacterPanel(){
     return;
   }
   const tokenId = getLeftPanelTokenId();
-  myCharacterPanel.innerHTML = characterCardHtml(ch, true, tokenId) + openSheetButtonHtml;
-  wireCharacterCard(myCharacterPanel, ch, tokenId);
+  myCharacterPanel.innerHTML = characterCardHtml(ch, true, tokenId, true) + openSheetButtonHtml;
+  wireCharacterCard(myCharacterPanel, ch, tokenId, true);
   wireOpenSheetButton(myCharacterPanel, ch);
   renderCombatSetup();
 }
@@ -2918,26 +2965,66 @@ async function performRoll(count, sides, modifier, hidden){
 // into the shared log — built the same shape as performRoll()'s entries (results is
 // always the single KEPT d20, altResults/altTotal the other draw under avantage/
 // désavantage) so renderDiceHistory() renders it identically to any other roll.
-async function rollSkillCheck(ch, skillName){
-  const bonus = (ch.skillBonuses && ch.skillBonuses[skillName]) || 0;
+// Shared by skill checks and save throws (and anything else that's "1d20 + a bonus,
+// respecting the global avantage/désavantage toggle") so the adv/dis dice-pair logic
+// only lives in one place.
+function rollD20WithSharedAdv(){
   const a = rollDie(20);
-  let results = [a], total = a + bonus, altResults = null, altTotal = null;
-  if(diceAdvMode === "adv" || diceAdvMode === "dis"){
-    const b = rollDie(20);
-    const aIsKept = diceAdvMode === "adv" ? a >= b : a <= b;
-    const kept = aIsKept ? a : b;
-    const other = aIsKept ? b : a;
-    results = [kept]; total = kept + bonus;
-    altResults = [other]; altTotal = other + bonus;
-  }
+  if(diceAdvMode !== "adv" && diceAdvMode !== "dis") return { kept: a, other: null };
+  const b = rollDie(20);
+  const aIsKept = diceAdvMode === "adv" ? a >= b : a <= b;
+  return { kept: aIsKept ? a : b, other: aIsKept ? b : a };
+}
+async function pushDiceEntry(who, formula, kept, other, bonus){
   const entry = {
     id: "r" + Date.now() + Math.random().toString(36).slice(2,6),
-    who: (ch.name || "Personnage") + " — " + skillName, formula: "1d20" + fmtSigned(bonus),
-    results, total, advMode: diceAdvMode, altResults, altTotal,
+    who, formula, results: [kept], total: kept + bonus,
+    advMode: diceAdvMode, altResults: other != null ? [other] : null, altTotal: other != null ? (other + bonus) : null,
     hidden: false, ts: Date.now()
   };
   diceData = { rolls: [entry, ...diceData.rolls].slice(0, DICE_HISTORY_MAX) };
   await saveDice(diceData);
+}
+async function rollSkillCheck(ch, skillName){
+  const bonus = (ch.skillBonuses && ch.skillBonuses[skillName]) || 0;
+  const { kept, other } = rollD20WithSharedAdv();
+  await pushDiceEntry((ch.name || "Personnage") + " — " + skillName, "1d20" + fmtSigned(bonus), kept, other, bonus);
+}
+async function rollSaveCheck(ch, abilityKey){
+  const bonus = (ch.saveBonuses && ch.saveBonuses[abilityKey]) || 0;
+  const { kept, other } = rollD20WithSharedAdv();
+  await pushDiceEntry((ch.name || "Personnage") + " — Sauvegarde " + abilityKey, "1d20" + fmtSigned(bonus), kept, other, bonus);
+}
+// A non-roll line in the same shared log — for events worth announcing to everyone
+// (a spell's save DC) that aren't themselves a d20 roll by the caster.
+async function pushAnnouncement(who, text){
+  const entry = { id: "a" + Date.now() + Math.random().toString(36).slice(2,6), who, announce: text, ts: Date.now(), hidden: false };
+  diceData = { rolls: [entry, ...diceData.rolls].slice(0, DICE_HISTORY_MAX) };
+  await saveDice(diceData);
+}
+// Clicking a spell announces its save DC to everyone (so the target's player knows
+// what to roll against) and, for an actual leveled spell, spends one slot of its
+// level — cantrips are free. Re-renders the attacker panel afterward instead of
+// patching the slot display by hand, since a click (unlike typing) can afford it.
+async function castSpell(ch, idx){
+  const sd = ch.spellDisplay;
+  const sp = sd && sd.spells && sd.spells[idx];
+  if(!sp) return;
+  if(sp.level > 0){
+    const slot = (sd.slots||[]).find(s => s.level === sp.level);
+    if(slot){
+      if(slot.used >= slot.max){
+        alert("Plus aucun emplacement de niveau " + sp.level + " disponible.");
+        return;
+      }
+      slot.used += 1;
+      const nextSlots = {};
+      (sd.slots||[]).forEach(s => { nextSlots[s.level] = s.used; });
+      await patchCharacter(ch.id, { "spellDisplay.slots": sd.slots, spellSlotsUsed: nextSlots });
+      renderMyCharacterPanel();
+    }
+  }
+  await pushAnnouncement(ch.name || "Personnage", "lance " + sp.name + " — DD " + sd.dc + (sp.level>0?(" (niv. "+sp.level+")"):" (cantrip)"));
 }
 
 function renderDiceHistory(){
@@ -2949,6 +3036,11 @@ function renderDiceHistory(){
   el.innerHTML = diceData.rolls.map(r => {
     if(r.hidden && !isMJ){
       return '<div class="dice-roll-row secret"><span class="who">MJ</span><span>a lancé des dés en secret</span><span></span></div>';
+    }
+    // An "announce" entry isn't a roll at all (e.g. casting a save-DC spell) — no
+    // dice, just a line for everyone to see, in the same shared log.
+    if(r.announce){
+      return '<div class="dice-roll-row"><span class="who">' + r.who + '</span><span class="hint" style="margin:0;">' + r.announce + '</span><span></span></div>';
     }
     const detail = r.results.length > 1 ? (" (" + r.results.join(", ") + ")") : "";
     const advDetail = (r.advMode === "adv" || r.advMode === "dis")
@@ -3033,11 +3125,11 @@ function renderCombatSetup(){
   renderCombatWeaponRange();
 }
 
-async function performAttack(){
+async function performAttack(weaponIdxOverride){
   const attacker = getLeftPanelCharacter();
   const target = getRightPanelCharacter();
   const targetTokenId = selectedTokenId; // getRightPanelCharacter() is always derived from this token
-  const weaponIdx = Number(document.getElementById("f-combat-weapon").value);
+  const weaponIdx = weaponIdxOverride != null ? weaponIdxOverride : Number(document.getElementById("f-combat-weapon").value);
   const weapon = attacker && attacker.attacks && attacker.attacks[weaponIdx];
   if(!attacker || !target || !weapon) return;
 
@@ -3068,7 +3160,7 @@ async function performAttack(){
     ts: Date.now(),
     attackerName: attacker.name || "Sans nom",
     targetId: target.id, targetTokenId, targetName: target.name || "Sans nom",
-    weaponName: weapon.name,
+    weaponName: weapon.name, weaponHand: weapon.hand || null,
     d20, d20Rolls: d20Roll.rolls, advMode: combatAdvMode, atkBonus: weapon.atk||0, atkTotal, targetAc, isCrit, isFumble, hit,
     dmgTotal: dmg ? dmg.total : null, dmgRolls: dmg ? dmg.rolls : null, dmgModifier: dmg ? dmg.modifier : null,
     hpBefore, hpAfter, undone: false
@@ -3088,6 +3180,29 @@ async function undoCombatEntry(entryId){
   await saveCombatLog(combatLogData);
 }
 
+// The most recent of either log (dice/skill/save/announce, or a combat attack),
+// shown on the map itself — so the result is visible at a glance without opening
+// either floating drawer, which is the whole point for a fast-moving table.
+function renderLastRollBanner(){
+  const el = document.getElementById("last-roll-banner");
+  if(!el) return;
+  const diceLatest = diceData.rolls[0];
+  const combatLatest = combatLogData.entries[0];
+  let text = null;
+  if(diceLatest && (!combatLatest || diceLatest.ts >= combatLatest.ts)){
+    if(diceLatest.hidden && !isMJ){
+      text = "Un jet secret a été effectué.";
+    }else if(diceLatest.announce){
+      text = diceLatest.who + " " + diceLatest.announce;
+    }else{
+      const advLabel = diceLatest.advMode==="adv" ? " (avantage)" : diceLatest.advMode==="dis" ? " (désavantage)" : "";
+      text = diceLatest.who + " — " + diceLatest.formula + " = " + diceLatest.total + advLabel;
+    }
+  }else if(combatLatest){
+    text = combatLatest.attackerName + " → " + combatLatest.targetName + " : " + (combatLatest.hit ? "touché" : "manqué") + " (" + combatLatest.atkTotal + ")";
+  }
+  if(text){ el.textContent = text; el.hidden = false; } else { el.hidden = true; }
+}
 function renderCombatLog(){
   const el = document.getElementById("combat-log-list");
   if(!combatLogData.entries.length){
@@ -3099,7 +3214,8 @@ function renderCombatLog(){
     const acText = e.targetAc != null ? (" vs CA " + e.targetAc) : "";
     const advLabel = e.advMode === "adv" ? " (avantage)" : e.advMode === "dis" ? " (désavantage)" : "";
     const d20Detail = (e.d20Rolls && e.d20Rolls.length > 1) ? (" [" + e.d20Rolls.join(", ") + "]") : "";
-    const line1 = e.attackerName + " → " + e.targetName + " (" + e.weaponName + ")";
+    const handLabel = e.weaponHand === "main" ? ", main principale" : e.weaponHand === "off" ? ", main secondaire" : e.weaponHand === "ranged" ? ", à distance" : "";
+    const line1 = e.attackerName + " → " + e.targetName + " (" + e.weaponName + handLabel + ")";
     const line2 = "Jet : " + e.d20 + d20Detail + fmtSigned(e.atkBonus) + " = " + e.atkTotal + acText + advLabel + rollDetail;
     const dmgBreakdown = e.dmgTotal != null
       ? ("(" + e.dmgRolls.join("+") + ")" + (e.dmgModifier ? fmtSigned(e.dmgModifier) : "") + " = " + e.dmgTotal)
@@ -3141,11 +3257,16 @@ document.querySelectorAll(".combat-adv-btn").forEach(btn => {
     document.querySelectorAll(".combat-adv-btn").forEach(b => b.classList.toggle("active", b===btn));
   });
 });
-document.querySelectorAll(".dice-adv-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    diceAdvMode = btn.dataset.adv;
-    document.querySelectorAll(".dice-adv-btn").forEach(b => b.classList.toggle("active", b===btn));
-  });
+// The dice-drawer's own Normal/Avantage/Désavantage buttons and the always-visible
+// "global" copy next to zoom both drive the same diceAdvMode (shared with skill and
+// save-throw clicks on a character card) — kept in sync so whichever one you touch,
+// both show the current mode instead of silently disagreeing with each other.
+function setSharedAdvMode(mode){
+  diceAdvMode = mode;
+  document.querySelectorAll(".dice-adv-btn, .global-adv-btn").forEach(b => b.classList.toggle("active", b.dataset.adv === mode));
+}
+document.querySelectorAll(".dice-adv-btn, .global-adv-btn").forEach(btn => {
+  btn.addEventListener("click", () => setSharedAdvMode(btn.dataset.adv));
 });
 
 async function init(){
@@ -3209,11 +3330,13 @@ async function init(){
   onSnapshot(diceRef, (snap) => {
     diceData = snap.exists() ? snap.data() : { rolls: [] };
     renderDiceHistory();
+    renderLastRollBanner();
   });
 
   onSnapshot(combatLogRef, (snap) => {
     combatLogData = snap.exists() ? snap.data() : { entries: [] };
     renderCombatLog();
+    renderLastRollBanner();
   });
 
   onSnapshot(moodsCol, (snap) => {
