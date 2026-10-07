@@ -176,6 +176,12 @@ button:disabled{opacity:.5;cursor:not-allowed;}
   background:rgba(20,15,8,.55);overflow:hidden;pointer-events:none;z-index:1;
 }
 .token-hpbar-fill{height:100%;transition:width .25s ease,background .25s ease;}
+.token-conditions{
+  position:absolute;top:-6px;right:-6px;min-width:16px;height:16px;padding:0 3px;
+  border-radius:999px;background:#8a3b2b;color:#fff;font-size:.62rem;font-weight:700;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.5);
+  pointer-events:auto;z-index:2;cursor:default;
+}
 .cell-effect{
   position:absolute;display:flex;align-items:center;justify-content:center;
   pointer-events:none;z-index:2;border-radius:3px;color:var(--ink);
@@ -1162,6 +1168,20 @@ function renderBoard(){
       bar.className = "token-hpbar";
       bar.innerHTML = '<div class="token-hpbar-fill" style="width:' + pct + '%;background:' + color + ';"></div>';
       el.appendChild(bar);
+    }
+    // A quick glance at the board should be enough to notice "this one's affected by
+    // something" without clicking through to the character card — the badge just
+    // shows how many conditions are active; hovering (title) lists which ones, since
+    // there isn't room to spell them out on a token this small.
+    if(ch){
+      const conditions = resolveInstanceConditions(ch, id);
+      if(conditions.length){
+        const badge = document.createElement("div");
+        badge.className = "token-conditions";
+        badge.title = conditions.join(", ");
+        badge.textContent = conditions.length;
+        el.appendChild(badge);
+      }
     }
     el.addEventListener("pointerdown", onTokenPointerDown);
     el.addEventListener("contextmenu", onTokenContextMenu);
@@ -2310,12 +2330,46 @@ function characterCardHtml(ch, canManage, tokenId){
         '<button type="button" class="ghost btn-sm inv-add-btn" style="padding:4px 8px;">Ajouter</button>'+
         '</div>'
       ) : '';
+      // Precomputed in personnage.html (computeSpellDisplay) — this tool has no spell
+      // database or slot-math of its own, same reason "attacks" is precomputed too.
+      // Lets a lanceur de sorts' slots be tracked right from the board instead of
+      // having to reopen the character tool mid-session just to mark one used.
+      let spellsBlock="";
+      if(ch.spellDisplay){
+        const sd=ch.spellDisplay;
+        const spellsOpen=!!cardTogglesOpen[toggleKey(ch,"spells")];
+        const slotRows=(sd.slots||[]).map(s=>
+          '<div class="field-row" style="align-items:center;gap:6px;margin-bottom:2px;">'+
+          '<span style="flex:1;font-size:.8rem;">Emplacements niv. '+s.level+'</span>'+
+          (canManage?(
+            '<button type="button" class="ghost btn-sm slot-minus" data-slot-level="'+s.level+'" style="padding:2px 7px;">−</button>'+
+            '<span class="mono slot-value" data-slot-level="'+s.level+'" style="min-width:40px;text-align:center;display:inline-block;">'+(s.max-s.used)+' / '+s.max+'</span>'+
+            '<button type="button" class="ghost btn-sm slot-plus" data-slot-level="'+s.level+'" style="padding:2px 7px;">+</button>'
+          ):('<span class="mono">'+(s.max-s.used)+' / '+s.max+'</span>'))+
+          '</div>'
+        ).join("");
+        const spellRows=(sd.spells||[]).map(sp=>
+          '<div class="atk-row" style="flex-direction:column;align-items:stretch;gap:0;">'+
+          '<div style="display:flex;justify-content:space-between;gap:8px;"><strong>'+sp.name+'</strong><span class="hint" style="margin:0;">'+(sp.level===0?"cantrip":"niv. "+sp.level)+'</span></div>'+
+          '<span class="hint" style="margin:0;">'+sp.school+' · '+sp.time+' · '+sp.range+' · '+sp.duration+(sp.concentration?" (concentration)":"")+(sp.domain?" · domaine, toujours préparé":"")+'</span>'+
+          '<span class="hint" style="margin:2px 0 0;">'+sp.effect+'</span>'+
+          '</div>'
+        ).join("");
+        spellsBlock=
+          '<button type="button" class="ghost btn-sm spells-toggle" style="margin-top:6px;">'+(spellsOpen?"▾ Masquer les sorts":"▸ Voir les sorts")+'</button>'+
+          '<div class="atk-block spells-block"'+(spellsOpen?"":" hidden")+'>'+
+            '<p class="hint" style="margin:0 0 6px;">'+sd.ability+' · DD '+sd.dc+' · Attaque '+fmtSigned(sd.atk)+(sd.concentratingOn?(' · Concentration : '+sd.concentratingOn):'')+'</p>'+
+            slotRows+
+            '<div style="margin-top:8px;">'+(spellRows||'<p class="hint">Aucun sort pour l\'instant.</p>')+'</div>'+
+          '</div>';
+      }
       managedBlock =
         '<h3 class="sub" style="margin-top:8px;">Attaques</h3>'+
         (ch.equippedArmor ? ('<p class="hint" style="margin:0 0 6px;">' + ch.equippedArmor + '</p>') : '') +
         '<div class="atk-block">' + attackRows + '</div>'+
         goldBlock +
         skillsBlock +
+        spellsBlock+
         '<button type="button" class="ghost btn-sm inv-toggle" style="margin-top:6px;">' + (invOpen?"▾ Masquer l'inventaire":"▸ Voir l'inventaire") + '</button>'+
         '<ul class="my-inventory-list"' + (invOpen?"":" hidden") + '>' + invRows + '</ul>'+
         '<div class="inv-add-row-wrap"' + (invOpen?"":" hidden") + '>' + invAddRow + '</div>';
@@ -2489,6 +2543,41 @@ function wireCharacterCard(container, ch, tokenId){
       skillsToggle.textContent = willShow ? "▾ Masquer les compétences" : "▸ Voir les compétences";
     });
   }
+  const spellsToggle = container.querySelector(".spells-toggle");
+  if(spellsToggle){
+    spellsToggle.addEventListener("click", () => {
+      const block = container.querySelector(".spells-block");
+      const willShow = block.hidden;
+      block.hidden = !willShow;
+      cardTogglesOpen[toggleKey(ch,"spells")] = willShow;
+      spellsToggle.textContent = willShow ? "▾ Masquer les sorts" : "▸ Voir les sorts";
+    });
+  }
+  const applySlotDelta = (level, delta) => {
+    const sd = ch.spellDisplay;
+    if(!sd) return;
+    const slot = (sd.slots||[]).find(s => s.level === level);
+    if(!slot) return;
+    slot.used = Math.max(0, Math.min(slot.max, slot.used + delta));
+    const valEl = container.querySelector('.slot-value[data-slot-level="' + level + '"]');
+    if(valEl) valEl.textContent = (slot.max - slot.used) + " / " + slot.max;
+    const nextSlots = {};
+    (sd.slots||[]).forEach(s => { nextSlots[s.level] = s.used; });
+    // Patch both: spellDisplay.slots is what this tool reads; spellSlotsUsed is what
+    // personnage.html reads/writes (computeSpellDisplay() rebuilds "slots" from it on
+    // the character's own next sync) — without this one too, the player's tab would
+    // silently overwrite a board-side change back to whatever it last had in memory.
+    patchCharacter(ch.id, { "spellDisplay.slots": sd.slots, spellSlotsUsed: nextSlots });
+  };
+  // The shown number is REMAINING slots (max - used) — "−" means "spend one"
+  // (used+1, remaining down), "+" means "get one back" (used-1, remaining up).
+  container.querySelectorAll(".slot-minus").forEach(btn => {
+    btn.addEventListener("click", () => applySlotDelta(Number(btn.dataset.slotLevel), 1));
+  });
+  container.querySelectorAll(".slot-plus").forEach(btn => {
+    btn.addEventListener("click", () => applySlotDelta(Number(btn.dataset.slotLevel), -1));
+  });
+
   const condToggle = container.querySelector(".cond-toggle");
   if(condToggle){
     condToggle.addEventListener("click", () => {
