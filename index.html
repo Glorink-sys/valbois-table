@@ -184,6 +184,9 @@ button:disabled{opacity:.5;cursor:not-allowed;}
   50%{box-shadow:0 3px 6px rgba(0,0,0,.45),0 0 0 3px rgba(224,89,42,.5),0 0 20px 8px rgba(224,89,42,.25);}
 }
 .token.current-turn{animation:turn-pulse 1.4s ease-in-out infinite;}
+/* Already played its turn this round — same "done" cue as the initiative bar's
+   grayed ring, but shown right on the pion so it reads on the map too. */
+.token.played{filter:grayscale(.8) brightness(.8);opacity:.7;}
 .token-hpbar{
   position:absolute;left:0;bottom:-6px;width:100%;height:4px;border-radius:2px;
   background:rgba(20,15,8,.55);overflow:hidden;pointer-events:none;z-index:1;
@@ -251,7 +254,10 @@ button:disabled{opacity:.5;cursor:not-allowed;}
 .char-library-card .del{background:none;border:none;color:var(--ink-soft);font-size:.72rem;padding:0 4px;cursor:pointer;}
 .char-library-card .del:hover{color:var(--warn);}
 
-.init-bar{flex:1;display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;padding:3px 0;}
+/* Never wraps to a second line — however many chips are showing (now capped at 5
+   anyway, see renderInitiativeBar), a taller zoom-row shrinks the board's available
+   height budget and narrows a landscape map (see computeAvailableBoardHeight). */
+.init-bar{flex:1;display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:nowrap;overflow-x:auto;padding:3px 0;min-width:0;}
 .init-chip{
   position:relative;display:block;padding:2px;border-radius:50%;
   border:2px solid transparent;line-height:0;cursor:pointer;
@@ -370,7 +376,7 @@ button:disabled{opacity:.5;cursor:not-allowed;}
 
 .my-ability-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:6px;}
 .my-ability{display:flex;flex-direction:column;align-items:center;background:var(--panel);border:1px solid var(--parchment-line);border-radius:6px;padding:4px 2px;}
-button.my-ability{cursor:pointer;font-family:inherit;color:inherit;}
+button.my-ability{cursor:pointer;font-family:inherit;text-transform:none;letter-spacing:normal;color:inherit;}
 button.my-ability:hover{border-color:var(--gold-strong);}
 .my-ability-k{font-size:.68rem;color:var(--ink-soft);letter-spacing:.03em;}
 .my-ability-v{font-size:.82rem;font-weight:700;font-variant-numeric:tabular-nums;}
@@ -396,9 +402,9 @@ button.my-ability:hover{border-color:var(--gold-strong);}
 .atk-block{display:flex;flex-direction:column;gap:4px;margin-bottom:6px;}
 .atk-block[hidden]{display:none;}
 .atk-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:.82rem;}
-.skill-row{width:100%;border:none;background:none;color:inherit;font-family:inherit;padding:2px 4px;margin:0 -4px;border-radius:4px;cursor:pointer;text-align:left;}
+.skill-row{width:100%;border:none;background:none;color:inherit;font-family:inherit;text-transform:none;letter-spacing:normal;padding:2px 4px;margin:0 -4px;border-radius:4px;cursor:pointer;text-align:left;}
 .skill-row:hover{background:var(--parchment-line);}
-.atk-weapon-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:.82rem;padding:2px 4px;margin:0 -4px;border-radius:4px;}
+.atk-weapon-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:.88rem;padding:2px 4px;margin:0 -4px;border-radius:4px;}
 button.atk-attack-row,button.concentration-row{
   width:100%;border:none;background:none;color:inherit;cursor:pointer;text-align:left;
   font-family:inherit;text-transform:none;letter-spacing:normal;
@@ -1178,13 +1184,17 @@ function renderBoard(){
     const posCol = isDraggingThis ? dragState.col : t.x;
     const posRow = isDraggingThis ? dragState.row : t.y;
     const isCurrentTurn = initData.entries[initData.currentIndex] && initData.entries[initData.currentIndex].tokenId === id;
+    // Same "already played this round" state as the grayed ring in the initiative bar,
+    // mirrored on the pion itself so it reads at a glance on the map too.
+    const initEntryIdx = initData.entries.findIndex(e => e.tokenId === id);
+    const hasPlayed = initEntryIdx !== -1 && initEntryIdx < initData.currentIndex;
     const tokenCh = t.characterId ? characters.find(c => c.id === t.characterId) : null;
     // At-a-glance friend/foe: the pion's own contour (not an added glow) — a muted
     // teal for a player's own character, a muted red for an NPC the MJ has flagged
     // hostile. Plain monsters/NPCs with no flag keep the token's own color.
     const factionColor = tokenCh ? (tokenCh.kind !== "npc" ? "#4d8a86" : (tokenCh.hostile ? "#8a3b2b" : null)) : null;
     const el = document.createElement("div");
-    el.className = "token" + (id === selectedTokenId ? " selected" : "") + (isDraggingThis ? " dragging" : "") + (isCurrentTurn ? " current-turn" : "");
+    el.className = "token" + (id === selectedTokenId ? " selected" : "") + (isDraggingThis ? " dragging" : "") + (isCurrentTurn ? " current-turn" : "") + (hasPlayed ? " played" : "");
     el.style.width = tokenSize + "px";
     el.style.height = tokenSize + "px";
     el.style.left = (posCol * w + w/2 - tokenSize/2) + "px";
@@ -1488,9 +1498,10 @@ async function onTokenPointerUp(e){
   }
   // Movement budget — PJ only, only once initiative is running: a hero can't cover
   // more ground in one turn than their speed allows. NPCs are the MJ's call, exempt
-  // just like the attack/turn gating above.
+  // just like the attack/turn gating above — and so is the MJ moving a PJ's pion,
+  // same exemption as isPcTurnGated().
   let initEntryToSave = null;
-  if(ch && ch.kind !== "npc" && initData.entries.length && ch.speed != null){
+  if(!isMJ && ch && ch.kind !== "npc" && initData.entries.length && ch.speed != null){
     const entry = initData.entries.find(en => en.characterId === ch.id);
     if(entry){
       const already = entry.movedThisTurn || 0;
@@ -2585,7 +2596,7 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
     '</div>'+
     '<div class="hp-row">' + hpControls + '</div>'+
     activeBadgesHtml +
-    '<div class="field-row" style="align-items:center;gap:10px;margin-bottom:6px;font-size:.82rem;">'+
+    '<div class="field-row" style="align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;">'+
     (ch.ac!=null ? ('<span' + (ch.equippedArmor?(' title="'+ch.equippedArmor.replace(/"/g,"&quot;")+'"'):'') + '>CA ' + ch.ac + '</span>') : '') +
     (ch.speed!=null ? ('<span title="Vitesse">Vit. ' + ch.speed + ' m</span>') : '') +
     '<span title="Perception passive">PP ' + passivePerception + '</span>'+
