@@ -329,6 +329,7 @@ table.price-table td.mono{white-space:nowrap;}
 .inv-qty{color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;font-size:.78rem;}
 .inv-actions{display:flex;align-items:center;gap:6px;flex:none;}
 .inv-blocked{font-size:.7rem;color:var(--ink-soft);font-style:italic;}
+.inv-hand-label{font-size:.7rem;color:var(--gold-strong);font-weight:600;}
 .inv-add{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:4px;}
 .inv-add select,.inv-add input[type="text"]{flex:1;min-width:120px;}
 .inv-add input[type="number"]{flex:none;width:70px;}
@@ -1398,6 +1399,9 @@ function defaultState(){
     gold:0,
     inventory:[],
     inventoryInit:false,
+    weapon1ItemId:null,
+    weapon2ItemId:null,
+    weaponRangedItemId:null,
     activeConditions:[],
     asiBonuses:{FOR:0,DEX:0,CON:0,INT:0,SAG:0,CHA:0},
     asiApplied:{},
@@ -1481,7 +1485,7 @@ async function syncToFirestore(){
     // without re-implementing character-sheet math.
     const derived=computeDerived();
     const attacks=equippedWeaponPairs().map(([w,tag])=>({name:w.name,props:w.props,atk:w.atk,dmgText:w.dmgText,tag}));
-    await setDoc(doc(charactersCol,state.docId),{...state,kind:"pc",hpMax:derived.hp,ac:derived.ac,speed:derived.speed,attacks,equippedArmor:armorLineText(),saveBonuses:computeSaveBonuses(),skillBonuses:computeSkillBonuses(),abilityMods:computeAbilityMods(),updatedAt:Date.now()});
+    await setDoc(doc(charactersCol,state.docId),{...state,kind:"pc",hpMax:derived.hp,ac:derived.ac,speed:derived.speed,attacks,equippedArmor:armorLineText(),saveBonuses:computeSaveBonuses(),skillBonuses:computeSkillBonuses(),abilityMods:computeAbilityMods(),spellDisplay:computeSpellDisplay(),updatedAt:Date.now()});
   }catch(e){
     console.error(e);
     if(isDocTooLargeError(e)){
@@ -1705,6 +1709,9 @@ function computeAC(dexMod){
     base=10+dexMod;
     if(state.classKey==="barbare")base+=mod(totalAbility("CON"));
     if(state.classKey==="moine"&&!state.shield)base+=mod(totalAbility("SAG"));
+    // "Résilience draconique" (Ensorceleur, origine Lignée draconique): sans armure,
+    // CA = 13 + mod. DEX — described in the trait text but never wired in here before.
+    if(state.classKey==="ensorceleur"&&currentSubclass()===SUBCLASSES.ensorceleur.draconique)base+=3;
   }else if(armor.dexCap===0){
     base=armor.base;
   }else if(armor.dexCap===null){
@@ -1847,11 +1854,15 @@ function seedInventory(){
   const bg=BACKGROUNDS[state.bgKey];
   const items=[];
   let nextId=1;
-  const push=(name,qty,cat,refKey)=>{items.push({id:nextId++,name,qty,cat,refKey:refKey||null});};
-  const weaponQty={};
-  [state.weapon1,state.weapon2,state.weaponRanged].forEach(n=>{if(n)weaponQty[n]=(weaponQty[n]||0)+1;});
-  (cls.extraKit||[]).forEach(t=>{if(typeof t==="object"&&t.weapon)weaponQty[t.weapon]=(weaponQty[t.weapon]||0)+(t.qty||1);});
-  Object.entries(weaponQty).forEach(([n,q])=>push(n,q,"weapon",n));
+  const push=(name,qty,cat,refKey)=>{const id=nextId++;items.push({id,name,qty,cat,refKey:refKey||null});return id;};
+  // Each equipped weapon slot gets its OWN inventory row, even when main and off hand
+  // are the same weapon name — merging them into one "qty:2" stack (the old behavior)
+  // left no way to tell which hand a dual-wielder's two identical blades were in, or
+  // to unequip just one of them.
+  if(state.weapon1)state.weapon1ItemId=push(state.weapon1,1,"weapon",state.weapon1);
+  if(state.weapon2)state.weapon2ItemId=push(state.weapon2,1,"weapon",state.weapon2);
+  if(state.weaponRanged)state.weaponRangedItemId=push(state.weaponRanged,1,"weapon",state.weaponRanged);
+  (cls.extraKit||[]).forEach(t=>{if(typeof t==="object"&&t.weapon)push(t.weapon,t.qty||1,"weapon",t.weapon);});
   if(state.armorKey&&state.armorKey!=="aucune")push(SHORT_ARMOR_NAME[state.armorKey]||state.armorKey,1,"armor",state.armorKey);
   if(state.shield)push("Bouclier",1,"shield","shield");
   (cls.extraKit||[]).forEach(t=>{if(typeof t!=="object")push(t,1,"other",null);});
@@ -1934,10 +1945,49 @@ function gearShopHtml(){
    '<thead><tr><th></th><th>Objet</th><th>Prix</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
 }
 function isEquippedItem(it){
-  if(it.cat==="weapon")return state.weapon1===it.refKey||state.weapon2===it.refKey||state.weaponRanged===it.refKey;
+  // Weapons are matched by INVENTORY ITEM ID, not by name — two different inventory
+  // rows can share a weapon name (two identical blades for a dual-wielder), and only
+  // matching by name made equipping/unequipping one row affect both rows on screen.
+  if(it.cat==="weapon")return state.weapon1ItemId===it.id||state.weapon2ItemId===it.id||state.weaponRangedItemId===it.id;
   if(it.cat==="armor")return state.armorKey===it.refKey;
   if(it.cat==="shield")return !!state.shield;
   return false;
+}
+function weaponSlotLabel(it){
+  if(state.weapon1ItemId===it.id)return "main principale";
+  if(state.weapon2ItemId===it.id)return "main secondaire";
+  if(state.weaponRangedItemId===it.id)return "à distance";
+  return null;
+}
+// A pre-existing character created before weapon slots were tracked by inventory item
+// id (rather than by name) can have (a) no itemId recorded at all, or (b) — if main and
+// off hand were the same weapon — a single old-style qty:2 row standing in for both
+// hands at once. Both are repaired here, once, the first time such a character loads.
+function migrateWeaponSlotItemIds(){
+  if(state.weapon1&&state.weapon2&&state.weapon1===state.weapon2&&state.weapon1ItemId==null&&state.weapon2ItemId==null){
+    const stacked=state.inventory.find(it=>it.cat==="weapon"&&it.refKey===state.weapon1&&it.qty>=2);
+    if(stacked){
+      const idx=state.inventory.indexOf(stacked);
+      const newId=state.inventory.reduce((m,it)=>Math.max(m,it.id),0)+1;
+      const rows=[
+        {id:stacked.id,name:stacked.name,qty:1,cat:"weapon",refKey:stacked.refKey},
+        {id:newId,name:stacked.name,qty:1,cat:"weapon",refKey:stacked.refKey}
+      ];
+      if(stacked.qty>2)rows.push({id:newId+1,name:stacked.name,qty:stacked.qty-2,cat:"weapon",refKey:stacked.refKey});
+      state.inventory.splice(idx,1,...rows);
+      state.weapon1ItemId=stacked.id;
+      state.weapon2ItemId=newId;
+    }
+  }
+  const usedIds=new Set([state.weapon1ItemId,state.weapon2ItemId,state.weaponRangedItemId].filter(x=>x!=null));
+  const findItemFor=(name)=>{
+    if(!name)return null;
+    const it=state.inventory.find(x=>x.cat==="weapon"&&x.refKey===name&&!usedIds.has(x.id));
+    return it?it.id:null;
+  };
+  if(state.weapon1&&state.weapon1ItemId==null){const id=findItemFor(state.weapon1);if(id!=null){state.weapon1ItemId=id;usedIds.add(id);}}
+  if(state.weapon2&&state.weapon2ItemId==null){const id=findItemFor(state.weapon2);if(id!=null){state.weapon2ItemId=id;usedIds.add(id);}}
+  if(state.weaponRanged&&state.weaponRangedItemId==null){const id=findItemFor(state.weaponRanged);if(id!=null){state.weaponRangedItemId=id;usedIds.add(id);}}
 }
 function effectiveWeaponChoices(){
   const cls=CLASSES[state.classKey]||{};
@@ -1975,7 +2025,9 @@ function equipBlockedReason(it){
   }
   return null;
 }
-function equipInventoryItem(it){
+// slot: "main" | "off" | "ranged" — chosen explicitly by the button clicked, never
+// guessed, so equipping a weapon always lands in the hand the player actually picked.
+function equipInventoryItem(it,slot){
   if(it.cat==="armor"){
     state.armorKey=it.refKey;
   }else if(it.cat==="shield"){
@@ -1985,16 +2037,14 @@ function equipInventoryItem(it){
     const name=it.refKey;
     const w=WEAPON_DATA.find(x=>x.name===name);
     const ranged=w&&/Munitions/.test(w.props);
-    if(ranged){
-      state.weaponRanged=name;
-    }else if(isTwoHanded(name)){
-      state.weapon1=name;state.weapon2="";state.shield=false;
-    }else if(!state.weapon1||isTwoHanded(state.weapon1)){
-      state.weapon1=name;
-    }else if(!state.weapon2&&!state.shield){
-      state.weapon2=name;
+    if(ranged||slot==="ranged"){
+      state.weaponRanged=name;state.weaponRangedItemId=it.id;
+    }else if(slot==="off"){
+      if(isTwoHanded(name))return;
+      state.weapon2=name;state.weapon2ItemId=it.id;state.shield=false;
     }else{
-      state.weapon1=name;
+      state.weapon1=name;state.weapon1ItemId=it.id;
+      if(isTwoHanded(name)){state.weapon2="";state.weapon2ItemId=null;state.shield=false;}
     }
   }
   ensureEquipmentChoice();
@@ -2003,9 +2053,9 @@ function unequipInventoryItem(it){
   if(it.cat==="armor"&&state.armorKey===it.refKey)state.armorKey="aucune";
   else if(it.cat==="shield")state.shield=false;
   else if(it.cat==="weapon"){
-    if(state.weapon1===it.refKey)state.weapon1="";
-    else if(state.weapon2===it.refKey)state.weapon2="";
-    else if(state.weaponRanged===it.refKey)state.weaponRanged="";
+    if(state.weapon1ItemId===it.id){state.weapon1="";state.weapon1ItemId=null;}
+    else if(state.weapon2ItemId===it.id){state.weapon2="";state.weapon2ItemId=null;}
+    else if(state.weaponRangedItemId===it.id){state.weaponRanged="";state.weaponRangedItemId=null;}
   }
   ensureEquipmentChoice();
 }
@@ -2014,7 +2064,23 @@ function inventoryRowHtml(it){
   const equipped=equippable&&isEquippedItem(it);
   const blocked=equippable&&!equipped&&equipBlockedReason(it);
   let actionBtn="";
-  if(equippable){
+  if(it.cat==="weapon"){
+    if(equipped){
+      actionBtn='<span class="inv-hand-label">Équipé — '+weaponSlotLabel(it)+'</span> '+
+        '<button type="button" class="btn btn-ghost btn-sm" data-inv-unequip="'+it.id+'">Déséquiper</button>';
+    }else if(blocked){
+      actionBtn='<span class="inv-blocked" title="'+esc(blocked)+'">Non équipable — '+esc(blocked)+'</span>';
+    }else{
+      const w=WEAPON_DATA.find(x=>x.name===it.refKey);
+      const ranged=w&&/Munitions/.test(w.props);
+      if(ranged){
+        actionBtn='<button type="button" class="btn btn-arcane btn-sm" data-inv-equip="'+it.id+'" data-inv-slot="ranged">Équiper</button>';
+      }else{
+        actionBtn='<button type="button" class="btn btn-arcane btn-sm" data-inv-equip="'+it.id+'" data-inv-slot="main">Main principale</button> '+
+          (isTwoHanded(it.refKey)?'':'<button type="button" class="btn btn-arcane btn-sm" data-inv-equip="'+it.id+'" data-inv-slot="off">Main secondaire</button>');
+      }
+    }
+  }else if(equippable){
     if(equipped)actionBtn='<button type="button" class="btn btn-ghost btn-sm" data-inv-unequip="'+it.id+'">Déséquiper</button>';
     else if(blocked)actionBtn='<span class="inv-blocked" title="'+esc(blocked)+'">Non équipable — '+esc(blocked)+'</span>';
     else actionBtn='<button type="button" class="btn btn-arcane btn-sm" data-inv-equip="'+it.id+'">Équiper</button>';
@@ -2091,7 +2157,7 @@ function bindInventoryEvents(){
   sheet.querySelectorAll("[data-inv-equip]").forEach(el=>el.addEventListener("click",()=>{
     const it=state.inventory.find(x=>x.id===Number(el.dataset.invEquip));
     if(!it)return;
-    equipInventoryItem(it);renderSheet();saveLocal();
+    equipInventoryItem(it,el.dataset.invSlot);renderSheet();saveLocal();
   }));
   sheet.querySelectorAll("[data-inv-unequip]").forEach(el=>el.addEventListener("click",()=>{
     const it=state.inventory.find(x=>x.id===Number(el.dataset.invUnequip));
@@ -2763,16 +2829,16 @@ function ensureEquipmentChoice(){
   const armorChoices=effectiveArmorChoices();
   const weaponChoices=effectiveWeaponChoices();
   if(!armorChoices.includes(state.armorKey))state.armorKey=def.armorKey;
-  if(state.weapon1&&!weaponChoices.includes(state.weapon1))state.weapon1=def.weapon1||"";
-  if(state.weapon1&&isTwoHanded(state.weapon1)){state.shield=false;state.weapon2="";}
+  if(state.weapon1&&!weaponChoices.includes(state.weapon1)){state.weapon1=def.weapon1||"";state.weapon1ItemId=null;}
+  if(state.weapon1&&isTwoHanded(state.weapon1)){state.shield=false;state.weapon2="";state.weapon2ItemId=null;}
   // Off-hand (bonus-action) attacks are only a thing when BOTH weapons are light — a
   // non-light weapon2 isn't a legal dual-wield setup at all, and was wrongly getting a
   // full ability-mod bonus to damage in weaponInfo() because isLight gated that clamp.
   const offhand=weaponChoices.filter(n=>lightWeaponNames().includes(n));
-  if(state.weapon2&&!offhand.includes(state.weapon2))state.weapon2=(def.weapon2&&offhand.includes(def.weapon2))?def.weapon2:"";
-  if(state.shield&&state.weapon2)state.weapon2="";
+  if(state.weapon2&&!offhand.includes(state.weapon2)){state.weapon2=(def.weapon2&&offhand.includes(def.weapon2))?def.weapon2:"";state.weapon2ItemId=null;}
+  if(state.shield&&state.weapon2){state.weapon2="";state.weapon2ItemId=null;}
   const ranged=weaponChoices.filter(n=>{const w=WEAPON_DATA.find(x=>x.name===n);return w&&/Munitions/.test(w.props);});
-  if(state.weaponRanged&&!ranged.includes(state.weaponRanged))state.weaponRanged=(def.weaponRanged&&ranged.includes(def.weaponRanged))?def.weaponRanged:"";
+  if(state.weaponRanged&&!ranged.includes(state.weaponRanged)){state.weaponRanged=(def.weaponRanged&&ranged.includes(def.weaponRanged))?def.weaponRanged:"";state.weaponRangedItemId=null;}
 }
 function optionRequirement(kc,value){
   if(kc.field==="armorKey"){
@@ -3031,6 +3097,34 @@ function spellKnownSectionHtml(sc){
     ):'<p class="sheet-text">Aucun sort choisi pour l\'instant — voir l\'onglet Classe.</p>')+
     grimoireNote+
     (isPreparedCaster()?('<button type="button" class="btn btn-ghost btn-sm" id="btn-open-grimoire-sheet" style="margin-top:8px;">'+(state.classKey==="magicien"?"Gérer mon grimoire":"Gérer mes sorts préparés")+'</button>'):'');
+}
+// la table de jeu has no SPELLS_DB or spell-slot math of its own — same gap "attacks"
+// already closed for weapons. Precompute a display-ready snapshot (names resolved to
+// school/time/range/duration/effect text, slots already totalled) so it can show a
+// spell tab without duplicating this whole spell database and its rules.
+function computeSpellDisplay(){
+  const sc=spellStats();
+  if(!sc||!sc.hasCapacity)return null;
+  const slotLevels=Object.keys(sc.slots).map(Number).sort((a,b)=>a-b);
+  const bonusSpells=subclassBonusSpells();
+  const castableNonCantrip=isPreparedCaster()?state.spellsPrepared:state.spellsKnown.filter(n=>{const sp=SPELLS_DB.find(x=>x.name===n);return sp&&sp.level>0;});
+  const cantripNames=state.spellsKnown.filter(n=>{const sp=SPELLS_DB.find(x=>x.name===n);return sp&&sp.level===0;});
+  const castable=cantripNames.concat(castableNonCantrip).concat(bonusSpells.filter(n=>!cantripNames.includes(n)&&!castableNonCantrip.includes(n)));
+  const spells=castable.map(n=>{
+    const sp=SPELLS_DB.find(x=>x.name===n);
+    if(!sp)return null;
+    return {
+      name:sp.name,level:sp.level,school:sp.school,time:sp.time,range:sp.range,duration:sp.duration,
+      effect:resolveEffect(sp),concentration:/concentration/i.test(sp.duration),
+      domain:bonusSpells.includes(n)
+    };
+  }).filter(Boolean);
+  return{
+    ability:ABIL_NAME[sc.ability],dc:sc.dc,atk:sc.atk,
+    slots:slotLevels.map(l=>({level:l,max:sc.slots[l],used:(state.spellSlotsUsed&&state.spellSlotsUsed[l])||0})),
+    concentratingOn:state.concentratingOn||null,
+    spells
+  };
 }
 function armorLineText(){
   return (ARMOR_DATA.find(a=>a.key===state.armorKey)||ARMOR_DATA[0]).label+(state.shield?' + Bouclier (+2 CA)':'')+(fightingStyle()==="Défense"&&state.armorKey!=="aucune"?' + Style Défense (+1 CA)':'');
@@ -4082,6 +4176,7 @@ let eventsWired=false;
 function boot(initial){
   state=Object.assign(defaultState(),initial||{});
   ensureRaceChoice();
+  migrateWeaponSlotItemIds();
   ensureEquipmentChoice();
   renderTabs();renderTab();renderSheet();
   syncHeader();
