@@ -259,6 +259,9 @@ button:disabled{opacity:.5;cursor:not-allowed;}
 .init-chip.current{border-color:var(--warn);box-shadow:0 0 8px 1px rgba(224,89,42,.6);}
 .init-chip.selected{box-shadow:0 0 0 2px var(--gold);}
 .init-chip.current.selected{box-shadow:0 0 0 2px var(--gold),0 0 8px 1px rgba(224,89,42,.6);}
+/* Already played its turn this round — dimmed ring so it reads as "done" at a glance. */
+.init-chip.played{border-color:#8f8878;opacity:.55;}
+.init-chip.played.selected{box-shadow:0 0 0 2px var(--gold);opacity:.8;}
 .init-avatar{
   width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
   background-size:cover;background-position:center;color:#fff;font-weight:700;font-size:.8rem;
@@ -370,7 +373,7 @@ button:disabled{opacity:.5;cursor:not-allowed;}
 button.my-ability{cursor:pointer;font-family:inherit;color:inherit;}
 button.my-ability:hover{border-color:var(--gold-strong);}
 .my-ability-k{font-size:.68rem;color:var(--ink-soft);letter-spacing:.03em;}
-.my-ability-v{font-weight:700;font-variant-numeric:tabular-nums;}
+.my-ability-v{font-size:.82rem;font-weight:700;font-variant-numeric:tabular-nums;}
 .my-inventory-list{list-style:none;padding:0;margin:0 0 6px;font-size:.82rem;}
 .my-inventory-list li{padding:2px 0;border-bottom:1px solid var(--parchment-line);}
 .cond-chip-wrap{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;}
@@ -395,7 +398,7 @@ button.my-ability:hover{border-color:var(--gold-strong);}
 .atk-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:.82rem;}
 .skill-row{width:100%;border:none;background:none;color:inherit;font-family:inherit;padding:2px 4px;margin:0 -4px;border-radius:4px;cursor:pointer;text-align:left;}
 .skill-row:hover{background:var(--parchment-line);}
-.atk-weapon-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:.74rem;padding:2px 4px;margin:0 -4px;border-radius:4px;}
+.atk-weapon-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:.82rem;padding:2px 4px;margin:0 -4px;border-radius:4px;}
 button.atk-attack-row,button.concentration-row{
   width:100%;border:none;background:none;color:inherit;cursor:pointer;text-align:left;
   font-family:inherit;text-transform:none;letter-spacing:normal;
@@ -808,6 +811,32 @@ const selectionInfo = document.getElementById("selection-info");
 const myCharacterSelect = document.getElementById("my-character-select");
 const myCharacterPanel = document.getElementById("my-character-panel");
 const CONDITION_NAMES = ["Agrippé","À terre","Aveuglé","Assourdi","Charmé","Effrayé","Empoisonné","Entravé","Étourdi","Incapacité","Inconscient","Invisible","Paralysé","Pétrifié","Épuisement"];
+// Same order as personnage/index.html's SKILLS list — ch.skillBonuses is a plain
+// object, and Firestore doesn't promise to hand back a map's keys in the order they
+// were written, so sorting by this fixed list (instead of Object.entries()'s
+// incidental order) is what keeps the skill list from visibly reshuffling itself
+// every time the character doc round-trips (e.g. after a spell-slot +/-, which
+// re-fetches the whole doc even though it only touched slots).
+const SKILL_ORDER = ["Acrobaties","Arcanes","Athlétisme","Discrétion","Dressage","Escamotage","Histoire","Intimidation","Intuition","Investigation","Médecine","Nature","Perception","Persuasion","Religion","Représentation","Survie","Tromperie"];
+// Same wording as personnage/index.html's CONDITIONS_GLOSSARY — kept in sync by hand
+// since the two tools don't share a module; used purely for hover tooltips here.
+const CONDITIONS_GLOSSARY = {
+  "Agrippé":"Vitesse réduite à 0. Prend fin si la source du grappin est incapacitée, ou si vous êtes déplacé hors de sa portée.",
+  "À terre":"Seul déplacement possible : ramper (coûte un surplus de mouvement), ou dépenser la moitié de son mouvement pour se relever. Désavantage à ses propres attaques ; un attaquant au corps à corps a l'avantage contre vous, un attaquant à distance a désavantage.",
+  "Aveuglé":"Ne voit rien et rate automatiquement tout test nécessitant la vue. Désavantage à ses attaques ; les attaques contre lui ont l'avantage.",
+  "Assourdi":"N'entend rien et rate automatiquement tout test nécessitant l'ouïe.",
+  "Charmé":"Ne peut pas attaquer le charmeur ni le cibler avec une capacité ou un effet nuisible ; le charmeur a l'avantage aux tests sociaux envers lui.",
+  "Effrayé":"Désavantage aux tests et aux attaques tant qu'il perçoit la source de sa peur ; ne peut pas s'en approcher volontairement.",
+  "Empoisonné":"Désavantage aux jets d'attaque et aux tests de caractéristique.",
+  "Entravé":"Vitesse réduite à 0, désavantage à ses attaques et à ses JS de Dextérité ; les attaques contre lui ont l'avantage.",
+  "Étourdi":"Incapacité complète, ne peut bouger et ne parle que difficilement ; rate automatiquement ses JS de Force et de Dextérité ; les attaques contre lui ont l'avantage.",
+  "Incapacité":"Ne peut effectuer aucune action, action bonus ni réaction ce tour.",
+  "Inconscient":"Incapacité totale, lâche ce qu'il tenait et tombe à terre ; rate automatiquement ses JS de Force et de Dextérité ; les attaques contre lui ont l'avantage et tout coup au corps à corps à moins de 1,5 m est automatiquement critique.",
+  "Invisible":"Impossible à repérer à vue sans magie ou sens spécial. A l'avantage à ses attaques ; les attaques contre lui ont désavantage. Reste repérable au bruit, à l'odeur ou aux traces.",
+  "Paralysé":"Incapacité totale, ne peut ni bouger ni parler ; rate automatiquement ses JS de Force et de Dextérité ; les attaques contre lui ont l'avantage et tout coup au corps à corps à moins de 1,5 m est automatiquement critique.",
+  "Pétrifié":"Transformé en substance solide avec tout ce qu'il porte ; incapacité, ne perçoit plus son environnement, résiste à tous les dégâts, immunisé au poison et à la maladie.",
+  "Épuisement":"Se cumule par niveaux (1 à 6) après un effort extrême, une privation ou certains effets magiques. Chaque niveau ajoute une pénalité croissante (désavantage aux tests, vitesse réduite, PV max réduits...) ; le niveau 6 est fatal."
+};
 let myCharacterId = "";
 let mjInspectedTokenId = null; // MJ-only: last pion clicked on the map/initiative bar, mirrored into the left panel
 try{ myCharacterId = localStorage.getItem("valbois-my-character-id") || ""; }catch(e){}
@@ -2354,7 +2383,8 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
   const active = resolveInstanceConditions(ch, tokenId);
   const condChips = CONDITION_NAMES.map(n => {
     const on = active.includes(n);
-    return '<button type="button" class="cond-chip' + (on?" active":"") + '" data-cond="' + n + '">' + n + '</button>';
+    const effect = (CONDITIONS_GLOSSARY[n]||"").replace(/"/g,"&quot;");
+    return '<button type="button" class="cond-chip' + (on?" active":"") + '" data-cond="' + n + '" title="' + effect + '">' + n + '</button>';
   }).join("");
   // Concentration shown the same way as an active condition (same badge strip under
   // the portrait) — generic "Concentration" text, with the actual spell name only on
@@ -2363,7 +2393,7 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
     ? '<span class="cond-badge conc-badge" title="Concentration : ' + ch.concentratingOn.replace(/"/g,"&quot;") + '">Concentration</span>'
     : '';
   const activeBadgesHtml = (active.length || concBadgeHtml)
-    ? '<div class="cond-active-badges">' + active.map(n => '<span class="cond-badge">' + n + '</span>').join("") + concBadgeHtml + '</div>'
+    ? '<div class="cond-active-badges">' + active.map(n => '<span class="cond-badge" title="' + (CONDITIONS_GLOSSARY[n]||"").replace(/"/g,"&quot;") + '">' + n + '</span>').join("") + concBadgeHtml + '</div>'
     : '';
   const condOpen = !!cardTogglesOpen[toggleKey(ch,"cond")];
   const hpPct = (typeof hpMax === "number" && hpMax > 0 && typeof hpCur === "number")
@@ -2410,9 +2440,11 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
       // Clicking a skill rolls 1d20 + that skill's bonus for this exact character,
       // straight into the shared dice log — the point being one click instead of
       // "MJ asks for the roll, player finds the bonus, types a formula by hand".
-      const rows = Object.entries(ch.skillBonuses).map(([name,b]) =>
-        '<button type="button" class="atk-row skill-row" data-skill="' + name + '" title="Lancer 1d20' + fmtSigned(b) + ' pour ' + name + '"><span>' + name + '</span><span class="mono">' + fmtSigned(b) + '</span></button>'
-      ).join("");
+      const rows = Object.entries(ch.skillBonuses)
+        .sort((a, b) => SKILL_ORDER.indexOf(a[0]) - SKILL_ORDER.indexOf(b[0]))
+        .map(([name,b]) =>
+          '<button type="button" class="atk-row skill-row" data-skill="' + name + '" title="Lancer 1d20' + fmtSigned(b) + ' pour ' + name + '"><span>' + name + '</span><span class="mono">' + fmtSigned(b) + '</span></button>'
+        ).join("");
       skillsBlock =
         '<button type="button" class="ghost btn-sm skills-toggle" style="margin-top:6px;">' + (skillsOpen?"▾ Masquer les compétences":"▸ Voir les compétences") + '</button>'+
         '<div class="atk-block skills-block"' + (skillsOpen?"":" hidden") + '>' + rows + '</div>';
@@ -2475,7 +2507,7 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
         const spellsOpen=!!cardTogglesOpen[toggleKey(ch,"spells")];
         const slotRows=(sd.slots||[]).map(s=>
           '<div class="field-row" style="align-items:center;gap:6px;margin-bottom:2px;">'+
-          '<span style="flex:1;font-size:.8rem;">Emplacements niv. '+s.level+'</span>'+
+          '<span style="flex:1;font-size:.82rem;">Emplacements niv. '+s.level+'</span>'+
           (canManage?(
             '<button type="button" class="ghost btn-sm slot-minus" data-slot-level="'+s.level+'" style="padding:2px 7px;">−</button>'+
             '<span class="mono slot-value" data-slot-level="'+s.level+'" style="min-width:40px;text-align:center;display:inline-block;">'+(s.max-s.used)+' / '+s.max+'</span>'+
@@ -2512,7 +2544,6 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
       }
       managedBlock =
         '<h3 class="sub" style="margin-top:8px;">Attaques</h3>'+
-        (ch.equippedArmor ? ('<p class="hint" style="margin:0 0 6px;">' + ch.equippedArmor + '</p>') : '') +
         '<div class="atk-block">' + attackRows + '</div>'+
         goldBlock +
         skillsBlock +
@@ -2554,8 +2585,8 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
     '</div>'+
     '<div class="hp-row">' + hpControls + '</div>'+
     activeBadgesHtml +
-    '<div class="field-row" style="align-items:center;gap:10px;margin-bottom:6px;">'+
-    (ch.ac!=null ? ('<span>CA ' + ch.ac + '</span>') : '') +
+    '<div class="field-row" style="align-items:center;gap:10px;margin-bottom:6px;font-size:.82rem;">'+
+    (ch.ac!=null ? ('<span' + (ch.equippedArmor?(' title="'+ch.equippedArmor.replace(/"/g,"&quot;")+'"'):'') + '>CA ' + ch.ac + '</span>') : '') +
     (ch.speed!=null ? ('<span title="Vitesse">Vit. ' + ch.speed + ' m</span>') : '') +
     '<span title="Perception passive">PP ' + passivePerception + '</span>'+
     '</div>'+
@@ -2986,8 +3017,18 @@ function renderInitiativeBar(){
     if(startBtn) startBtn.addEventListener("click", startInitiative);
     return;
   }
-  const chips = initData.entries.map((entry, i) => {
+  // On a big fight (lots of tokens), the full order is more clutter than help — show
+  // a window of at most 5 around the current turn instead: up to 2 already-played
+  // (grayed, for context) plus the current one and whatever upcoming turns fit.
+  const total = initData.entries.length;
+  const windowSize = Math.min(5, total);
+  let windowStart = Math.max(0, initData.currentIndex - 2);
+  if(windowStart + windowSize > total) windowStart = total - windowSize;
+  const windowEnd = windowStart + windowSize;
+  const chips = initData.entries.slice(windowStart, windowEnd).map((entry, wi) => {
+    const i = windowStart + wi;
     const cur = i === initData.currentIndex;
+    const played = i < initData.currentIndex;
     const sel = entry.tokenId === selectedTokenId;
     const safeName = (entry.name||"?").replace(/</g,"&lt;").replace(/"/g,"&quot;");
     const tok = boardData.tokens[entry.tokenId];
@@ -2995,7 +3036,7 @@ function renderInitiativeBar(){
     const avatarStyle = image
       ? ("background-image:url('" + image.replace(/'/g,"%27") + "');")
       : ("background:" + (tok ? tok.color : "#7c5e20") + ";");
-    return '<span class="init-chip' + (cur?" current":"") + (sel?" selected":"") + '" data-token-id="' + entry.tokenId + '" title="' + safeName + '">' +
+    return '<span class="init-chip' + (cur?" current":"") + (played?" played":"") + (sel?" selected":"") + '" data-token-id="' + entry.tokenId + '" title="' + safeName + (played?" (a déjà joué)":"") + '">' +
       '<span class="init-avatar" style="' + avatarStyle + '">' + (image ? "" : safeName.charAt(0).toUpperCase()) + '</span>' +
       '<span class="init-score-badge">' + entry.score + '</span>' +
     '</span>';
@@ -3227,12 +3268,14 @@ function showActionNotice(text){
   actionNoticeTimer = setTimeout(() => { el.hidden = true; }, 2500);
 }
 
-// Once initiative is rolled, a PJ can only attack on their own turn — matched by
+// Once initiative is rolled, a PJ can only attack/move on their own turn — matched by
 // characterId (not tokenId) so this also works for a player acting through the plain
 // "Mes personnages" dropdown, which has no token of its own (see getLeftPanelTokenId).
 // NPCs are exempt: the MJ runs those and needs to act with them whenever the scene
-// calls for it, not strictly in initiative order.
+// calls for it, not strictly in initiative order. The MJ is exempt too — this only
+// restricts a PLAYER controlling their own PC, never the table's referee.
 function isPcTurnGated(ch){
+  if(isMJ) return false;
   if(!ch || ch.kind === "npc") return false;
   if(!initData.entries.length) return false;
   const current = initData.entries[initData.currentIndex];
