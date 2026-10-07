@@ -113,6 +113,11 @@ button{font-family:inherit;}
 .npc-row input{padding:5px 8px;font-size:.82rem;}
 .npc-row .del{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:.8rem;padding:4px;}
 .npc-row .del:hover{color:#a33;}
+.npc-attack-card{border:1px solid var(--line-soft);border-radius:8px;padding:10px;margin-bottom:10px;background:var(--bg-alt);}
+.npc-attack-grid{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px;}
+.npc-attack-grid .field input{padding:5px 8px;font-size:.82rem;}
+.npc-attack-card .del{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:.8rem;padding:4px;flex:none;}
+.npc-attack-card .del:hover{color:#a33;}
 .npc-section-title{font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--gold-strong);margin:16px 0 6px;}
 .field{display:flex;flex-direction:column;gap:5px;min-width:0;}
 .field label{font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:.09em;text-transform:uppercase;color:var(--gold-strong);}
@@ -3702,7 +3707,14 @@ async function syncNpcToFirestore(){
   if(!npcDraft || !(npcDraft.name||"").trim()) return;
   if(!npcDraft.docId) npcDraft.docId=doc(charactersCol).id;
   try{
-    await setDoc(doc(charactersCol,npcDraft.docId),{...npcDraft,kind:"npc",updatedAt:Date.now()});
+    // The structured dice/bonus/type fields are only for in-editor editing and the
+    // live preview — table-de-jeu still expects each attack as a legacy {atk,dmgText}
+    // pair, so attacks are flattened back into that shape at the moment of sync.
+    const attacksForSync=(npcDraft.attacks||[]).map(a=>{
+      const computed=npcAttackComputed(a);
+      return {name:a.name||"",props:a.props||"",atk:computed.atk,dmgText:computed.dmgText,hand:null};
+    });
+    await setDoc(doc(charactersCol,npcDraft.docId),{...npcDraft,attacks:attacksForSync,kind:"npc",updatedAt:Date.now()});
   }catch(e){
     console.error(e);
     if(isDocTooLargeError(e)){
@@ -3797,13 +3809,60 @@ async function renderNpcListView(){
   });
 }
 
+// Attacks used to be two free-text fields — a raw "+N" attack bonus and a hand-typed
+// damage string like "7 (2d4+2) tranchant" with the modifier baked into the prose. The
+// two numbers (to-hit bonus, damage bonus) were entered independently with nothing
+// tying them together, so editing one easily left the other stale. Dice/bonus/type are
+// now separate, always-consistent fields (mirrors the PJ side's auto-computed attacks,
+// as closely as an NPC's free-form stat block allows) — dmgText is only ever the
+// COMPUTED result, never hand-typed. See migrateNpcAttacks() for reading old data back in.
+function parseNpcDamageText(dmgText){
+  if(!dmgText) return null;
+  // PJ-style: dice first, e.g. "1d6+2 perforant"
+  let m=dmgText.match(/^(\d+)d(\d+)\s*([+-]\s*\d+)?\s*(.*)$/i);
+  if(m) return {diceCount:parseInt(m[1],10),diceSides:parseInt(m[2],10),dmgBonus:m[3]?parseInt(m[3].replace(/\s+/g,""),10):0,dmgType:(m[4]||"").trim()};
+  // Bestiaire-style: flat total then the dice in parentheses, e.g. "7 (2d4+2) tranchant"
+  m=dmgText.match(/\((\d+)d(\d+)\s*([+-]\s*\d+)?\)\s*(.*)$/i);
+  if(m) return {diceCount:parseInt(m[1],10),diceSides:parseInt(m[2],10),dmgBonus:m[3]?parseInt(m[3].replace(/\s+/g,""),10):0,dmgType:(m[4]||"").trim()};
+  return null;
+}
+function migrateNpcAttacks(npc){
+  (npc.attacks||[]).forEach(a=>{
+    if(a.diceCount!=null) return; // already in the new shape
+    a.atkBonus=a.atk!=null?a.atk:0;
+    const parsed=parseNpcDamageText(a.dmgText);
+    if(parsed){
+      a.diceCount=parsed.diceCount; a.diceSides=parsed.diceSides; a.dmgBonus=parsed.dmgBonus; a.dmgType=parsed.dmgType;
+    }else{
+      // Couldn't parse (multiple damage types, "voir description"...) — default to
+      // something editable rather than guess wrong, and keep the original text
+      // visible once so it can be re-entered into the new fields by hand.
+      a.diceCount=1; a.diceSides=6; a.dmgBonus=0; a.dmgType="";
+      a.migrationNote=a.dmgText?("Ancien texte à reporter : "+a.dmgText):"";
+    }
+  });
+}
+function npcAttackComputed(a){
+  const dmgText=(a.diceCount||1)+"d"+(a.diceSides||6)+fmt(a.dmgBonus||0)+(a.dmgType?(" "+a.dmgType):"");
+  return {atk:a.atkBonus||0, dmgText};
+}
 function npcAttackRowHtml(a,i){
-  return '<div class="npc-row" data-attack-idx="'+i+'">'+
-    '<input data-atk-field="name" placeholder="Nom (ex. Morsure)" value="'+esc(a.name||"")+'">'+
-    '<input data-atk-field="props" placeholder="Portée / propriétés" value="'+esc(a.props||"")+'">'+
-    '<input data-atk-field="atk" type="number" placeholder="+" value="'+(a.atk!=null?a.atk:"")+'">'+
-    '<input data-atk-field="dmgText" placeholder="Dégâts (ex. 7 (2d4+2) tranchants)" value="'+esc(a.dmgText||"")+'">'+
-    '<button type="button" class="del" data-del-attack="'+i+'">✕</button>'+
+  const computed=npcAttackComputed(a);
+  return '<div class="npc-attack-card" data-attack-idx="'+i+'">'+
+    '<div class="npc-attack-grid">'+
+      '<div class="field" style="flex:1.3;"><label>Nom</label><input data-atk-field="name" placeholder="ex. Morsure" value="'+esc(a.name||"")+'"></div>'+
+      '<div class="field" style="flex:1.6;"><label>Portée / propriétés</label><input data-atk-field="props" placeholder="ex. corps à corps, allonge 1,5 m" value="'+esc(a.props||"")+'"></div>'+
+      '<button type="button" class="del" data-del-attack="'+i+'" title="Supprimer cette attaque">✕</button>'+
+    '</div>'+
+    '<div class="npc-attack-grid">'+
+      '<div class="field" style="width:120px;"><label>Bonus pour toucher</label><input data-atk-field="atkBonus" type="number" value="'+(a.atkBonus!=null?a.atkBonus:0)+'"></div>'+
+      '<div class="field" style="width:64px;"><label>Dés</label><input data-atk-field="diceCount" type="number" min="1" value="'+(a.diceCount!=null?a.diceCount:1)+'"></div>'+
+      '<div class="field" style="width:64px;"><label>Faces</label><input data-atk-field="diceSides" type="number" min="1" value="'+(a.diceSides!=null?a.diceSides:6)+'"></div>'+
+      '<div class="field" style="width:110px;"><label>Bonus dégâts</label><input data-atk-field="dmgBonus" type="number" value="'+(a.dmgBonus!=null?a.dmgBonus:0)+'"></div>'+
+      '<div class="field" style="flex:1;min-width:110px;"><label>Type de dégâts</label><input data-atk-field="dmgType" placeholder="ex. tranchant" value="'+esc(a.dmgType||"")+'"></div>'+
+    '</div>'+
+    (a.migrationNote?('<p class="hint npc-attack-note" style="color:var(--warn,#c0392b);margin:0 0 6px;">'+esc(a.migrationNote)+'</p>'):'')+
+    '<p class="hint" style="margin:0;">Aperçu (ce que voit le MJ sur la table) : <strong class="npc-attack-preview" data-attack-idx="'+i+'">'+fmt(computed.atk)+' pour toucher · '+esc(computed.dmgText)+'</strong></p>'+
   '</div>';
 }
 function renderNpcEditView(){
@@ -3812,6 +3871,7 @@ function renderNpcEditView(){
   const body=document.getElementById("npc-modal-body");
   const abilities=["FOR","DEX","CON","INT","SAG","CHA"];
   n.saveBonuses=n.saveBonuses||{FOR:0,DEX:0,CON:0,INT:0,SAG:0,CHA:0};
+  migrateNpcAttacks(n);
   body.innerHTML=
     '<button type="button" class="btn btn-ghost btn-sm" id="npc-back-to-list" style="margin-bottom:10px;">◀ Retour à la liste</button>'+
     '<div class="field" style="margin-bottom:10px;"><label>Nom</label><input id="npc-f-name" value="'+esc(n.name)+'"></div>'+
@@ -3993,13 +4053,23 @@ function bindNpcEditView(){
     }
   });
 
+  const numericAtkFields=["atkBonus","diceCount","diceSides","dmgBonus"];
   document.getElementById("npc-attacks-list").addEventListener("input",(e)=>{
     const row=e.target.closest("[data-attack-idx]");
     if(!row) return;
     const i=Number(row.dataset.attackIdx);
     const field=e.target.dataset.atkField;
     if(!field) return;
-    npcDraft.attacks[i][field]=field==="atk"?(Number(e.target.value)||0):e.target.value;
+    const a=npcDraft.attacks[i];
+    a[field]=numericAtkFields.includes(field)?(Number(e.target.value)||0):e.target.value;
+    a.migrationNote=""; // edited by hand — the old-text reminder no longer applies
+    // Only the preview text updates live (not a full re-render) so the field the
+    // GM is typing in never loses focus mid-keystroke.
+    const preview=row.querySelector(".npc-attack-preview");
+    if(preview){
+      const computed=npcAttackComputed(a);
+      preview.textContent=fmt(computed.atk)+" pour toucher · "+computed.dmgText;
+    }
     scheduleNpcSync();
   });
   document.getElementById("npc-attacks-list").addEventListener("click",(e)=>{
@@ -4010,7 +4080,7 @@ function bindNpcEditView(){
     renderNpcEditView();
   });
   document.getElementById("btn-npc-add-attack").addEventListener("click",()=>{
-    npcDraft.attacks.push({name:"",props:"",atk:0,dmgText:""});
+    npcDraft.attacks.push({name:"",props:"",atkBonus:0,diceCount:1,diceSides:6,dmgBonus:0,dmgType:""});
     renderNpcEditView();
   });
 
