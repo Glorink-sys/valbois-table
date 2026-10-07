@@ -1484,7 +1484,7 @@ async function syncToFirestore(){
     // implements — compute them once here so the game table can display them
     // without re-implementing character-sheet math.
     const derived=computeDerived();
-    const attacks=equippedWeaponPairs().map(([w,tag])=>({name:w.name,props:w.props,atk:w.atk,dmgText:w.dmgText,tag}));
+    const attacks=equippedWeaponPairs().map(([w,tag,hand])=>({name:w.name,props:w.props,atk:w.atk,dmgText:w.dmgText,tag,hand}));
     await setDoc(doc(charactersCol,state.docId),{...state,kind:"pc",hpMax:derived.hp,ac:derived.ac,speed:derived.speed,attacks,equippedArmor:armorLineText(),saveBonuses:computeSaveBonuses(),skillBonuses:computeSkillBonuses(),abilityMods:computeAbilityMods(),spellDisplay:computeSpellDisplay(),updatedAt:Date.now()});
   }catch(e){
     console.error(e);
@@ -3143,12 +3143,12 @@ function unarmedStrikeInfo(){
 }
 function equippedWeaponPairs(){
   const rows=[
-    [weaponInfo(state.weapon1,false),""],
-    [weaponInfo(state.weapon2,true),lightWeaponNames().includes(state.weapon2)?"":" — arme de secours, pas d'attaque bonus"],
-    [weaponInfo(state.weaponRanged,false),""]
+    [weaponInfo(state.weapon1,false),"","main"],
+    [weaponInfo(state.weapon2,true),lightWeaponNames().includes(state.weapon2)?"":" — arme de secours, pas d'attaque bonus","off"],
+    [weaponInfo(state.weaponRanged,false),"","ranged"]
   ].filter(pair=>pair[0]);
-  if(state.classKey==="moine")rows.push([unarmedStrikeInfo(),""]);
-  else if(!rows.length)rows.push([unarmedStrikeInfo(),""]);
+  if(state.classKey==="moine")rows.push([unarmedStrikeInfo(),"",null]);
+  else if(!rows.length)rows.push([unarmedStrikeInfo(),"",null]);
   return rows;
 }
 function weaponRowsHtml(){
