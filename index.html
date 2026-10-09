@@ -186,36 +186,48 @@ button:disabled{opacity:.5;cursor:not-allowed;}
 .token.current-turn{animation:turn-pulse 1.4s ease-in-out infinite;}
 /* 0 PV (down/unconscious) — the heavier treatment, since this is the state that
    actually matters most at a glance. */
-.token.downed{filter:grayscale(.8) brightness(.8);opacity:.7;}
+.token.downed, .portrait-swatch.downed{filter:grayscale(.8) brightness(.8);opacity:.7;}
 /* Already played its turn this round — a lighter cue than "downed" (just a fade),
    since it's informational rather than a state that changes how the fight is read. */
-.token.played{opacity:.75;}
-.token-skull{
+.token.played, .portrait-swatch.played{opacity:.75;}
+.skull-overlay{
   position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
   pointer-events:none;z-index:3;
 }
-/* A brief red pulse the instant a hit lands — box-shadow, not filter, so it never
-   fights with .downed/.played's own filter/opacity (both can be active at once,
-   e.g. a finishing blow that also drops the target to 0). */
+/* A red ring that holds solid for a beat before fading — box-shadow, not filter, so
+   it never fights with .downed/.played's own filter/opacity (both can be active at
+   once, e.g. a finishing blow that also drops the target to 0). Shared between the
+   map token and a matching portrait in the side panels, so a hit reads wherever the
+   viewer happens to be looking. */
 @keyframes hit-flash-kf{
-  0%{box-shadow:0 0 0 0 rgba(217,36,36,.9);}
-  60%{box-shadow:0 0 0 10px rgba(217,36,36,0);}
-  100%{box-shadow:0 0 0 0 rgba(217,36,36,0);}
+  0%{box-shadow:0 0 0 0 rgba(217,36,36,0);}
+  12%{box-shadow:0 0 0 6px rgba(217,36,36,.95);}
+  55%{box-shadow:0 0 0 6px rgba(217,36,36,.85);}
+  100%{box-shadow:0 0 0 14px rgba(217,36,36,0);}
 }
-.token.hit-flash{animation:hit-flash-kf .5s ease-out;}
+.token.hit-flash, .portrait-swatch.hit-flash{animation:hit-flash-kf 1.4s ease-out;}
 @keyframes float-up-kf{
-  0%{transform:translate(-50%,0);opacity:1;}
-  100%{transform:translate(-50%,-34px);opacity:0;}
+  0%{transform:translate(-50%,0) scale(1);opacity:1;}
+  15%{transform:translate(-50%,-6px) scale(1.15);opacity:1;}
+  100%{transform:translate(-50%,-44px) scale(1);opacity:0;}
 }
 .float-text{
   position:absolute;left:50%;top:-6px;transform:translate(-50%,0);
-  font-family:'Cinzel',serif;font-weight:700;font-size:.78rem;white-space:nowrap;
-  pointer-events:none;z-index:10;animation:float-up-kf 1.1s ease-out forwards;
-  text-shadow:0 1px 2px rgba(0,0,0,.6);
+  font-family:'Cinzel',serif;font-weight:700;font-size:.95rem;white-space:nowrap;
+  pointer-events:none;z-index:10;animation:float-up-kf 2.2s ease-out forwards;
+  text-shadow:0 1px 3px rgba(0,0,0,.7);
 }
-.float-text.float-miss{color:#cfc6ae;}
+.float-text.float-miss{color:#e4dcc4;}
 .float-text.float-dmg{color:#e0592a;}
-.float-text.float-crit{color:#ffd24d;font-size:.92rem;}
+.float-text.float-crit{color:#ffd24d;font-size:1.1rem;}
+.portrait-swatch{position:relative;}
+.death-saves{margin:4px 0 10px;padding:8px 10px;border:1px solid var(--parchment-line);border-radius:8px;background:color-mix(in srgb, var(--panel) 50%, transparent);}
+.death-saves-label{font-size:.74rem;color:var(--ink-soft);margin-bottom:6px;text-transform:uppercase;letter-spacing:.03em;}
+.death-saves-row{display:flex;gap:16px;margin-bottom:6px;}
+.ds-group{display:flex;gap:5px;align-items:center;}
+.ds-pip{width:14px;height:14px;border-radius:50%;border:2px solid var(--ink-soft);display:inline-block;}
+.ds-pip.ds-success.filled{background:#2f6b3e;border-color:#2f6b3e;}
+.ds-pip.ds-fail.filled{background:#8a3b2b;border-color:#8a3b2b;}
 .token-hpbar{
   position:absolute;left:0;bottom:-6px;width:100%;height:4px;border-radius:2px;
   background:rgba(20,15,8,.55);overflow:hidden;pointer-events:none;z-index:1;
@@ -370,6 +382,7 @@ button:disabled{opacity:.5;cursor:not-allowed;}
 .dice-roll-row .undo-btn:hover{color:var(--warn);}
 .dice-roll-row.miss{opacity:.75;}
 .dice-roll-row.crit .total{color:var(--warn);}
+.conc-save-fail{color:var(--warn);font-weight:600;}
 .adv-btn{
   font-family:'Cinzel',serif;font-size:.68rem;padding:4px 9px;border-radius:999px;
   border:1px solid var(--parchment-line);background:var(--panel);color:var(--ink-soft);cursor:pointer;
@@ -850,6 +863,17 @@ const selectionInfo = document.getElementById("selection-info");
 const myCharacterSelect = document.getElementById("my-character-select");
 const myCharacterPanel = document.getElementById("my-character-panel");
 const CONDITION_NAMES = ["Agrippé","À terre","Aveuglé","Assourdi","Charmé","Effrayé","Empoisonné","Entravé","Étourdi","Incapacité","Inconscient","Invisible","Paralysé","Pétrifié","Épuisement"];
+// Shared between a board pion and a portrait in the side panels (see .skull-overlay) —
+// a rounded cranium + jaw with two teeth, eye sockets and a nose cavity, legible even
+// at the ~20px a zoomed-out pion renders at.
+const SKULL_SVG_HTML =
+  '<svg viewBox="0 0 24 24" width="62%" height="62%">'+
+    '<path d="M5,10 C5,5 8,2.5 12,2.5 C16,2.5 19,5 19,10 C19,12.7 17.6,14.6 15.5,15.5 L8.5,15.5 C6.4,14.6 5,12.7 5,10 Z" fill="#f5efdc" stroke="#2b2013" stroke-width="1"/>'+
+    '<path d="M7.5,15 L16.5,15 L16.5,16.8 L14.8,16.8 L14.8,19 L12.8,19 L12.8,16.8 L11.2,16.8 L11.2,19 L9.2,19 L9.2,16.8 L7.5,16.8 Z" fill="#f5efdc" stroke="#2b2013" stroke-width="1"/>'+
+    '<ellipse cx="9.3" cy="9.8" rx="1.7" ry="2.1" fill="#2b2013"/>'+
+    '<ellipse cx="14.7" cy="9.8" rx="1.7" ry="2.1" fill="#2b2013"/>'+
+    '<path d="M12,11.3 L10.9,13.6 L13.1,13.6 Z" fill="#2b2013"/>'+
+  '</svg>';
 // Same order as personnage/index.html's SKILLS list — ch.skillBonuses is a plain
 // object, and Firestore doesn't promise to hand back a map's keys in the order they
 // were written, so sorting by this fixed list (instead of Object.entries()'s
@@ -1275,13 +1299,8 @@ function renderBoard(){
       el.classList.toggle("downed", hpCur <= 0);
       if(hpCur <= 0){
         const skull = document.createElement("div");
-        skull.className = "token-skull";
-        skull.innerHTML = '<svg viewBox="0 0 24 24" width="60%" height="60%">'+
-          '<path d="M12 2C7 2 4 5.5 4 10c0 2.6 1.2 4.3 2.4 5.4V18h2.2v2.4h1.4V18h1.6v2.4h1.4V18h2.2v-2.6C18.8 14.3 20 12.6 20 10c0-4.5-3-8-8-8Z" fill="#f5efdc" stroke="#2b2013" stroke-width="1.3"/>'+
-          '<circle cx="9" cy="10" r="1.3" fill="#2b2013"/>'+
-          '<circle cx="15" cy="10" r="1.3" fill="#2b2013"/>'+
-          '<path d="M10.5 13.5h3" stroke="#2b2013" stroke-width="1.3" stroke-linecap="round"/>'+
-        '</svg>';
+        skull.className = "skull-overlay";
+        skull.innerHTML = SKULL_SVG_HTML;
         el.appendChild(skull);
       }
     }
@@ -2403,6 +2422,15 @@ async function patchInstanceHp(ch, tokenId, hpNext){
     renderBoard();
     renderMyCharacterPanel();
   }
+  // Any healing back above 0 clears death-save progress — a fresh drop to 0 later
+  // starts the count over, same as a short/long rest would.
+  if(hpNext > 0 && ((ch.deathSaveSuccesses||0) > 0 || (ch.deathSaveFailures||0) > 0)){
+    ch.deathSaveSuccesses = 0;
+    ch.deathSaveFailures = 0;
+    await patchCharacter(ch.id, { deathSaveSuccesses: 0, deathSaveFailures: 0 });
+    renderBoard();
+    renderMyCharacterPanel();
+  }
 }
 async function patchInstanceConditions(ch, tokenId, nextConditions){
   if(ch.kind === "npc" && tokenId && boardData.tokens[tokenId]){
@@ -2434,6 +2462,18 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
   const hasHpOverride = ch.kind === "npc" && tokenId && boardData.tokens[tokenId] && boardData.tokens[tokenId].hpCurrent != null;
   const hpCur = hasHpOverride ? boardData.tokens[tokenId].hpCurrent : ((ch.hpCurrent == null) ? (ch.hpMax != null ? ch.hpMax : "?") : ch.hpCurrent);
   const hpMax = ch.hpMax != null ? ch.hpMax : "?";
+  // Same "downed"/"already played" read as the pion on the map (see renderBoard),
+  // mirrored onto the portrait so it's visible from the side panels too — matched by
+  // tokenId when there is one (an NPC instance), else by characterId (the plain "Mes
+  // personnages" dropdown case, which has no token of its own).
+  const portraitInitIdx = tokenId
+    ? initData.entries.findIndex(en => en.tokenId === tokenId)
+    : initData.entries.findIndex(en => en.characterId === ch.id);
+  const isDownedPortrait = typeof hpCur === "number" && hpCur <= 0;
+  const isPlayedPortrait = portraitInitIdx !== -1 && portraitInitIdx < initData.currentIndex;
+  const portraitClass = "portrait-swatch" + (isDownedPortrait?" downed":"") + (isPlayedPortrait?" played":"");
+  const portraitSkullHtml = isDownedPortrait ? ('<div class="skull-overlay">'+SKULL_SVG_HTML+'</div>') : "";
+  const portraitDataAttrs = ' data-token-id="' + (tokenId||"") + '" data-char-id="' + ch.id + '"';
   const abilities = ["FOR","DEX","CON","INT","SAG","CHA"];
   const abilityRow = abilities.map(k => {
     const m = abilityMod(ch, k);
@@ -2627,7 +2667,7 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
   if(publicView){
     return (
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'+
-      '<span style="width:64px;height:64px;border-radius:50%;display:inline-block;flex:none;border:1px solid rgba(0,0,0,.2);' + swatchStyle + '"></span>'+
+      '<span class="' + portraitClass + '"' + portraitDataAttrs + ' style="width:64px;height:64px;border-radius:50%;display:inline-block;flex:none;border:1px solid rgba(0,0,0,.2);' + swatchStyle + '">' + portraitSkullHtml + '</span>'+
       '<div><strong style="font-family:\'Cinzel\',serif;display:block;">' + (ch.name||"Sans nom") + '</strong>'+
       '<span class="hint" style="margin:0;">' + subtitle + '</span></div>'+
       '</div>'+
@@ -2642,14 +2682,33 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
     ? ('<p class="hint" style="margin:0 0 6px;">Déplacement ce tour : ' + fmtMetersFr(myInitEntry.movedThisTurn || 0) + ' / ' + fmtMetersFr(ch.speed) + '</p>')
     : '';
 
+  // Death saves: a PJ-only mechanic (RAW), shown only once actually down. The roll
+  // button needs canManage (same bar as HP +/-), but the pips themselves are read-only
+  // info so they stay visible in a read-only view of the same card too.
+  const dsSuccesses = ch.deathSaveSuccesses || 0;
+  const dsFailures = ch.deathSaveFailures || 0;
+  const dsStable = dsSuccesses >= 3;
+  const dsDead = dsFailures >= 3;
+  const deathSavesHtml = (!isNpc && isDownedPortrait) ? (
+    '<div class="death-saves">'+
+      '<div class="death-saves-label">Jets de sauvegarde contre la mort' + (dsStable?' — stabilisé':dsDead?' — mort':'') + '</div>'+
+      '<div class="death-saves-row">'+
+        '<span class="ds-group">' + [0,1,2].map(i=>'<span class="ds-pip ds-success' + (i<dsSuccesses?' filled':'') + '"></span>').join("") + '</span>'+
+        '<span class="ds-group">' + [0,1,2].map(i=>'<span class="ds-pip ds-fail' + (i<dsFailures?' filled':'') + '"></span>').join("") + '</span>'+
+      '</div>'+
+      (canManage && !dsStable && !dsDead ? '<button type="button" class="ghost btn-sm death-save-roll">Lancer un jet de sauvegarde</button>' : '')+
+    '</div>'
+  ) : '';
+
   return (
     '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'+
-    '<span style="width:64px;height:64px;border-radius:50%;display:inline-block;flex:none;border:1px solid rgba(0,0,0,.2);' + swatchStyle + '"></span>'+
+    '<span class="' + portraitClass + '"' + portraitDataAttrs + ' style="width:64px;height:64px;border-radius:50%;display:inline-block;flex:none;border:1px solid rgba(0,0,0,.2);' + swatchStyle + '">' + portraitSkullHtml + '</span>'+
     '<div><strong style="font-family:\'Cinzel\',serif;display:block;">' + (ch.name||"Sans nom") + (isNpc?' <span class="hint" style="margin:0;">(PNJ)</span>':'') + '</strong>'+
     (ch.playerName ? ('<span class="hint" style="margin:0;display:block;">Joueur : ' + ch.playerName + '</span>') : '') +
     '<span class="hint" style="margin:0;">' + subtitle + '</span></div>'+
     '</div>'+
     '<div class="hp-row">' + hpControls + '</div>'+
+    deathSavesHtml +
     activeBadgesHtml +
     '<div class="field-row" style="align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;">'+
     (ch.ac!=null ? ('<span' + (ch.equippedArmor?(' title="'+ch.equippedArmor.replace(/"/g,"&quot;")+'"'):'') + '>CA ' + ch.ac + '</span>') : '') +
@@ -2788,6 +2847,8 @@ function wireCharacterCard(container, ch, tokenId, isAttacker){
   container.querySelectorAll(".save-row").forEach(btn => {
     btn.addEventListener("click", () => rollSaveCheck(ch, btn.dataset.saveAbility));
   });
+  const deathSaveBtn = container.querySelector(".death-save-roll");
+  if(deathSaveBtn) deathSaveBtn.addEventListener("click", () => rollDeathSave(ch));
   if(isAttacker){
     container.querySelectorAll(".atk-attack-row").forEach(btn => {
       btn.addEventListener("click", () => performAttack(Number(btn.dataset.attackIdx)));
@@ -3244,6 +3305,39 @@ async function toggleConcentration(ch, spellName){
   renderBoard();
 }
 
+// D&D 5e death saving throw: flat 1d20, DC 10, no modifiers. A 20 regains 1 HP and
+// consciousness outright; a 1 counts as two failures. Logged as a shared announcement
+// (not a combat-log entry — there's no attacker/target pair here) so everyone sees it.
+async function rollDeathSave(ch){
+  const successes = ch.deathSaveSuccesses || 0;
+  const failures = ch.deathSaveFailures || 0;
+  if(successes >= 3 || failures >= 3) return;
+  const d20 = rollDie(20);
+  const who = ch.name || "Personnage";
+  if(d20 === 20){
+    ch.deathSaveSuccesses = 0; ch.deathSaveFailures = 0; ch.hpCurrent = 1;
+    await patchCharacter(ch.id, { deathSaveSuccesses:0, deathSaveFailures:0, hpCurrent:1 });
+    await pushAnnouncement(who, "— jet de sauvegarde contre la mort : 20 naturel ! Reprend connaissance avec 1 PV");
+  }else if(d20 === 1){
+    const nextFailures = Math.min(3, failures + 2);
+    ch.deathSaveFailures = nextFailures;
+    await patchCharacter(ch.id, { deathSaveFailures: nextFailures });
+    await pushAnnouncement(who, "— jet de sauvegarde contre la mort : 1 naturel (compte comme 2 échecs)" + (nextFailures>=3?" — mort":""));
+  }else if(d20 >= 10){
+    const nextSuccesses = Math.min(3, successes + 1);
+    ch.deathSaveSuccesses = nextSuccesses;
+    await patchCharacter(ch.id, { deathSaveSuccesses: nextSuccesses });
+    await pushAnnouncement(who, "— jet de sauvegarde contre la mort : " + d20 + " (réussite)" + (nextSuccesses>=3?" — stabilisé":""));
+  }else{
+    const nextFailures = Math.min(3, failures + 1);
+    ch.deathSaveFailures = nextFailures;
+    await patchCharacter(ch.id, { deathSaveFailures: nextFailures });
+    await pushAnnouncement(who, "— jet de sauvegarde contre la mort : " + d20 + " (échec)" + (nextFailures>=3?" — mort":""));
+  }
+  renderMyCharacterPanel();
+  renderBoard();
+}
+
 function diceRollRowHtml(r){
   if(r.hidden && !isMJ){
     return '<div class="dice-roll-row secret"><span class="who">MJ</span><span>a lancé des dés en secret</span><span></span></div>';
@@ -3375,15 +3469,31 @@ async function performAttack(weaponIdx){
 
   let dmg = null;
   let hpBefore = null, hpAfter = null;
+  let concSave = null;
   if(hit){
     const formula = parseDiceFormulaFromDmgText(weapon.dmgText);
     if(formula){
       dmg = rollDamage(formula, isCrit);
       hpBefore = resolveInstanceHp(target, targetTokenId);
       hpAfter = Math.max(0, hpBefore - dmg.total);
+      // Captured BEFORE patchInstanceHp, which already auto-clears concentratingOn
+      // if this hit drops the target to 0 — no save needed in that case, dropping
+      // unconscious ends concentration outright (D&D 5e rule, already handled there).
+      const wasConcentrating = target.concentratingOn;
       // Only this pion takes the hit, not every other copy of the same PNJ sharing
       // its fiche (see resolveInstanceHp/patchInstanceHp above the character card).
       await patchInstanceHp(target, targetTokenId, hpAfter);
+      if(wasConcentrating && hpAfter > 0){
+        // D&D 5e: taking damage while concentrating forces a Constitution save,
+        // DC 10 or half the damage taken, whichever is higher. Failure ends it.
+        const conBonus = (target.saveBonuses && target.saveBonuses.CON) || 0;
+        const dc = Math.max(10, Math.floor(dmg.total / 2));
+        const roll = rollDie(20);
+        const total = roll + conBonus;
+        const success = total >= dc;
+        concSave = { spell: wasConcentrating, dc, roll, bonus: conBonus, total, success };
+        if(!success) await patchCharacter(target.id, { concentratingOn: null });
+      }
     }
   }
 
@@ -3395,7 +3505,7 @@ async function performAttack(weaponIdx){
     weaponName: weapon.name, weaponHand: weapon.hand || null,
     d20, d20Rolls: d20Roll.rolls, advMode: advModeUsed, atkBonus: weapon.atk||0, atkTotal, targetAc, isCrit, isFumble, hit,
     dmgTotal: dmg ? dmg.total : null, dmgRolls: dmg ? dmg.rolls : null, dmgModifier: dmg ? dmg.modifier : null,
-    hpBefore, hpAfter, undone: false
+    hpBefore, hpAfter, concSave, undone: false
   };
   const entries = [entry, ...combatLogData.entries].slice(0, 30);
   combatLogData = { entries };
@@ -3424,20 +3534,32 @@ function spawnFloatingText(tokenEl, text, kind){
   span.className = "float-text float-" + kind;
   span.textContent = text;
   tokenEl.appendChild(span);
-  setTimeout(() => span.remove(), 1100);
+  setTimeout(() => span.remove(), 2200);
+}
+function flashHit(el){
+  el.classList.remove("hit-flash");
+  void el.offsetWidth; // restart the animation even if one just finished
+  el.classList.add("hit-flash");
+  setTimeout(() => el.classList.remove("hit-flash"), 1400);
 }
 function triggerCombatFeedback(entry){
   const tokenEl = document.querySelector('.token[data-id="' + entry.targetTokenId + '"]');
-  if(!tokenEl) return;
+  if(tokenEl){
+    if(entry.hit){
+      flashHit(tokenEl);
+      const label = entry.dmgTotal != null ? ("-" + entry.dmgTotal) : "touché";
+      spawnFloatingText(tokenEl, label, entry.isCrit ? "crit" : "dmg");
+    }else{
+      spawnFloatingText(tokenEl, "Raté", "miss");
+    }
+  }
+  // Mirror just the flash (state, not the floating text — cramped next to the card's
+  // own text) onto a matching portrait in the side panels, so a hit reads there too.
   if(entry.hit){
-    tokenEl.classList.remove("hit-flash");
-    void tokenEl.offsetWidth; // restart the animation even if one just finished
-    tokenEl.classList.add("hit-flash");
-    setTimeout(() => tokenEl.classList.remove("hit-flash"), 500);
-    const label = entry.dmgTotal != null ? ("-" + entry.dmgTotal) : "touché";
-    spawnFloatingText(tokenEl, label, entry.isCrit ? "crit" : "dmg");
-  }else{
-    spawnFloatingText(tokenEl, "Raté", "miss");
+    document.querySelectorAll(
+      '.portrait-swatch[data-token-id="' + entry.targetTokenId + '"], ' +
+      '.portrait-swatch[data-char-id="' + entry.targetId + '"]'
+    ).forEach(flashHit);
   }
 }
 function announceNewCombatEntries(){
@@ -3488,10 +3610,14 @@ function combatEntryRowHtml(e){
     ? (e.dmgTotal != null ? ("Touché — " + dmgBreakdown + " dégâts · PV " + e.hpBefore + " → " + e.hpAfter) : "Touché — dégâts non calculables (arme sans dés reconnus)")
     : "Manqué";
   const undoBtn = (!e.undone && e.hpBefore != null) ? ('<button type="button" class="undo-btn" data-undo="'+e.id+'">annuler</button>') : (e.undone ? '<span class="hint" style="margin:0;">(annulé)</span>' : '');
+  const concLine = e.concSave
+    ? ('<span class="hint conc-save-line' + (e.concSave.success?'':' conc-save-fail') + '" style="margin:0;">Concentration (' + e.concSave.spell + ') — JS Constitution DD ' + e.concSave.dc + ' : ' + e.concSave.roll + fmtSigned(e.concSave.bonus) + ' = ' + e.concSave.total + ' — ' + (e.concSave.success ? 'réussi, concentration conservée' : 'échoué, concentration perdue') + '</span>')
+    : '';
   return '<div class="dice-roll-row' + (e.isCrit?" crit":"") + (!e.hit?" miss":"") + '" style="flex-direction:column;align-items:stretch;gap:2px;">'+
     '<div style="display:flex;justify-content:space-between;"><span class="who">' + line1 + '</span>' + undoBtn + '</div>'+
     '<span class="hint" style="margin:0;">' + line2 + '</span>'+
     '<span class="hint" style="margin:0;">' + dmgLine + '</span>'+
+    concLine+
   '</div>';
 }
 
