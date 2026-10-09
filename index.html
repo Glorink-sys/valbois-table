@@ -144,7 +144,7 @@ button:disabled{opacity:.5;cursor:not-allowed;}
    separate from last-roll-banner since it's local-only feedback, never synced or
    shared, and shouldn't be overwritten by the next dice/combat snapshot. */
 #action-notice{
-  position:absolute;bottom:8px;left:50%;transform:translateX(-50%);max-width:80%;z-index:46;
+  position:absolute;top:8px;left:50%;transform:translateX(-50%);max-width:80%;z-index:46;
   pointer-events:none;background:rgba(138,59,43,.85);color:#fff;font-size:.78rem;line-height:1.3;
   padding:5px 12px;border-radius:8px;text-align:center;
 }
@@ -192,7 +192,7 @@ button:disabled{opacity:.5;cursor:not-allowed;}
 .token.played, .portrait-swatch.played{opacity:.75;}
 .skull-overlay{
   position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-  pointer-events:none;z-index:3;
+  pointer-events:none;z-index:3;font-size:40px;line-height:1;
 }
 /* A red ring that holds solid for a beat before fading — box-shadow, not filter, so
    it never fights with .downed/.played's own filter/opacity (both can be active at
@@ -205,21 +205,23 @@ button:disabled{opacity:.5;cursor:not-allowed;}
   55%{box-shadow:0 0 0 6px rgba(217,36,36,.85);}
   100%{box-shadow:0 0 0 14px rgba(217,36,36,0);}
 }
-.token.hit-flash, .portrait-swatch.hit-flash{animation:hit-flash-kf 1.4s ease-out;}
+.token.hit-flash, .portrait-swatch.hit-flash{animation:hit-flash-kf .8s ease-out;}
 @keyframes float-up-kf{
   0%{transform:translate(-50%,0) scale(1);opacity:1;}
   15%{transform:translate(-50%,-6px) scale(1.15);opacity:1;}
   100%{transform:translate(-50%,-44px) scale(1);opacity:0;}
 }
+/* A solid dark pill behind the text, not just a text-shadow — a busy map background
+   (or a light parchment-alt card) was swallowing the damage number otherwise. */
 .float-text{
-  position:absolute;left:50%;top:-6px;transform:translate(-50%,0);
-  font-family:'Cinzel',serif;font-weight:700;font-size:.95rem;white-space:nowrap;
-  pointer-events:none;z-index:10;animation:float-up-kf 2.2s ease-out forwards;
-  text-shadow:0 1px 3px rgba(0,0,0,.7);
+  position:absolute;left:50%;top:-8px;transform:translate(-50%,0);
+  font-family:'Cinzel',serif;font-weight:700;font-size:.9rem;white-space:nowrap;
+  pointer-events:none;z-index:20;animation:float-up-kf 2.2s ease-out forwards;
+  text-shadow:0 1px 2px rgba(0,0,0,.9),0 0 4px rgba(0,0,0,.7);
 }
 .float-text.float-miss{color:#e4dcc4;}
-.float-text.float-dmg{color:#e0592a;}
-.float-text.float-crit{color:#ffd24d;font-size:1.1rem;}
+.float-text.float-dmg{color:#ff7a45;}
+.float-text.float-crit{color:#ffd24d;font-size:1.05rem;}
 .portrait-swatch{position:relative;}
 .death-saves{margin:4px 0 10px;padding:8px 10px;border:1px solid var(--parchment-line);border-radius:8px;background:color-mix(in srgb, var(--panel) 50%, transparent);}
 .death-saves-label{font-size:.74rem;color:var(--ink-soft);margin-bottom:6px;text-transform:uppercase;letter-spacing:.03em;}
@@ -263,9 +265,6 @@ button:disabled{opacity:.5;cursor:not-allowed;}
   pointer-events:none;z-index:7;border:1px solid var(--gold);
 }
 .move-badge[hidden]{display:none;}
-.legend{display:flex;gap:12px;margin-top:10px;font-size:.76rem;color:var(--ink-soft);flex-wrap:wrap;}
-.legend span{display:inline-flex;align-items:center;gap:6px;}
-.legend i{width:10px;height:10px;border-radius:50%;display:inline-block;background-size:cover;}
 
 .mood-grid{
   display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:8px;
@@ -348,12 +347,9 @@ button:disabled{opacity:.5;cursor:not-allowed;}
   line-height:1;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.35);
 }
 .dice-drawer-toggle{right:18px;}
-.mood-drawer-toggle{left:50%;margin-left:-26px;}
+.mood-drawer-toggle{left:18px;}
 .mood-drawer-toggle[hidden]{display:none;}
-/* Centered via left+margin (not transform) since .floating-drawer/.open already
-   use transform for the slide-up animation — a transform here would win on
-   specificity (ID beats class) and silently break that animation. */
-#mood-drawer{left:50%;margin-left:-150px;right:auto;}
+#mood-drawer{left:18px;right:auto;}
 .floating-drawer{
   position:fixed;bottom:82px;z-index:65;width:300px;max-width:calc(100vw - 36px);
   background-color:color-mix(in srgb, var(--panel) 55%, transparent);
@@ -376,7 +372,6 @@ button:disabled{opacity:.5;cursor:not-allowed;}
 #dice-drawer select,#dice-drawer input[type=text]{font-size:.78rem;padding:4px 7px;}
 @media (max-width:640px){
   .floating-drawer{max-height:65vh;width:calc(100vw - 36px);}
-  #mood-drawer{margin-left:calc(-50vw + 18px);}
 }
 .dice-roll-row .undo-btn{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:.68rem;text-decoration:underline;padding:0;}
 .dice-roll-row .undo-btn:hover{color:var(--warn);}
@@ -469,6 +464,7 @@ button.atk-attack-row.turn-gated{opacity:.45;}
   <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">
     <div class="status-row">
       <span class="status-pill"><span class="dot" id="dot-db"></span><span id="txt-db">Connexion…</span></span>
+      <button type="button" class="ghost btn-sm" id="btn-export-backup" title="Télécharge un fichier JSON avec tous les personnages/PNJ, la carte, l'initiative et le journal de combat — à garder de côté en cas de pépin" hidden style="width:30px;height:30px;padding:0;border-radius:50%;font-size:1rem;line-height:1;">⚙️</button>
     </div>
     <label class="role-toggle">
       <input type="checkbox" id="chk-mj">
@@ -526,12 +522,15 @@ button.atk-attack-row.turn-gated{opacity:.45;}
         <h3 class="sub" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
           <span>Personnages (créés dans l'outil de personnage)</span>
           <span style="display:flex;gap:6px;flex-wrap:wrap;">
-            <button type="button" class="ghost btn-sm" id="btn-export-backup" title="Télécharge un fichier JSON avec tous les personnages/PNJ et la carte — à garder de côté en cas de pépin" style="text-transform:none;letter-spacing:normal;font-family:inherit;">⬇ Exporter en JSON</button>
+            <button type="button" class="ghost btn-sm" id="btn-toggle-charlist" style="text-transform:none;letter-spacing:normal;font-family:inherit;">▾ Masquer</button>
+            <button type="button" class="ghost btn-sm" id="btn-rest-all" title="Remet tous les PJ au maximum : PV, emplacements de sorts et jets de sauvegarde contre la mort" style="text-transform:none;letter-spacing:normal;font-family:inherit;">🌙 Repos (PJ)</button>
             <button type="button" class="ghost btn-sm" id="btn-npc-picker" style="text-transform:none;letter-spacing:normal;font-family:inherit;">Gérer les PNJ disponibles</button>
           </span>
         </h3>
-        <p class="hint" style="margin:0 0 8px;">Ces pions sont reliés à la vraie fiche du joueur (ou du PNJ) — portrait et PV inclus, rien à réimporter.</p>
-        <div id="character-library-list" class="char-library-grid"></div>
+        <div id="char-roster-wrap">
+          <p class="hint" style="margin:0 0 8px;">Ces pions sont reliés à la vraie fiche du joueur (ou du PNJ) — portrait et PV inclus, rien à réimporter.</p>
+          <div id="character-library-list" class="char-library-grid"></div>
+        </div>
 
         <h3 class="sub">Mode d'interaction</h3>
         <div class="mode-row">
@@ -581,7 +580,6 @@ button.atk-attack-row.turn-gated{opacity:.45;}
         <div id="last-roll-banner" hidden></div>
         <div id="action-notice" hidden></div>
       </div>
-      <div class="legend" id="legend"></div>
     </div>
 
   </main>
@@ -820,6 +818,19 @@ async function saveCombatLog(data){
 let boardData = { tokens: {}, mapId:null, mapUrl:"", cols:12, rows:8, effects:{}, fogHidden:{} };
 let sceneData = { active:"map", activeMoodId:null };
 let initData = { entries: [], currentIndex: -1, round: 1 };
+// A malformed initiative doc (a bad write — this has happened) used to crash the
+// whole board render the instant it synced (entries.findIndex is not a function),
+// taking the map down for every connected player at once. Normalizing untrusted
+// reads through this means a corrupt doc just looks like "no combat running"
+// instead of breaking everything.
+function sanitizeInitData(raw){
+  raw = raw || {};
+  return {
+    entries: Array.isArray(raw.entries) ? raw.entries : [],
+    currentIndex: typeof raw.currentIndex === "number" ? raw.currentIndex : -1,
+    round: typeof raw.round === "number" ? raw.round : 1
+  };
+}
 let diceData = { rolls: [] };
 let lastShownPingTs = 0;
 let combatLogData = { entries: [] };
@@ -827,6 +838,12 @@ let combatLogData = { entries: [] };
 // the very first snapshot after page load doesn't replay all 30 history entries at
 // once, and an unrelated field change (e.g. "undone") doesn't re-trigger an old one.
 let lastSeenCombatEntryId = null;
+// Tracks "<currentIndex>:<round>" so a turn change can be announced exactly once —
+// undefined (not null) marks "haven't observed a single initiative snapshot yet",
+// distinct from null (initiative not currently running), so starting combat from a
+// freshly-loaded page still announces who goes first instead of being mistaken for
+// page-load replay.
+let lastSeenTurnKey;
 let moods = [], maps = [], characters = [], scenes = [];
 let isMJ = false;
 let selectedTokenId = null;
@@ -853,7 +870,6 @@ const txtDb = document.getElementById("txt-db");
 const chkMJ = document.getElementById("chk-mj");
 const mjMapControls = document.getElementById("mj-map-controls");
 const mjMoodControls = document.getElementById("mj-mood-controls");
-const legend = document.getElementById("legend");
 const zoomRowEl = document.getElementById("zoom-row");
 const moodList = document.getElementById("mood-list");
 const mapList = document.getElementById("map-list");
@@ -863,17 +879,10 @@ const selectionInfo = document.getElementById("selection-info");
 const myCharacterSelect = document.getElementById("my-character-select");
 const myCharacterPanel = document.getElementById("my-character-panel");
 const CONDITION_NAMES = ["Agrippé","À terre","Aveuglé","Assourdi","Charmé","Effrayé","Empoisonné","Entravé","Étourdi","Incapacité","Inconscient","Invisible","Paralysé","Pétrifié","Épuisement"];
-// Shared between a board pion and a portrait in the side panels (see .skull-overlay) —
-// a rounded cranium + jaw with two teeth, eye sockets and a nose cavity, legible even
-// at the ~20px a zoomed-out pion renders at.
-const SKULL_SVG_HTML =
-  '<svg viewBox="0 0 24 24" width="62%" height="62%">'+
-    '<path d="M5,10 C5,5 8,2.5 12,2.5 C16,2.5 19,5 19,10 C19,12.7 17.6,14.6 15.5,15.5 L8.5,15.5 C6.4,14.6 5,12.7 5,10 Z" fill="#f5efdc" stroke="#2b2013" stroke-width="1"/>'+
-    '<path d="M7.5,15 L16.5,15 L16.5,16.8 L14.8,16.8 L14.8,19 L12.8,19 L12.8,16.8 L11.2,16.8 L11.2,19 L9.2,19 L9.2,16.8 L7.5,16.8 Z" fill="#f5efdc" stroke="#2b2013" stroke-width="1"/>'+
-    '<ellipse cx="9.3" cy="9.8" rx="1.7" ry="2.1" fill="#2b2013"/>'+
-    '<ellipse cx="14.7" cy="9.8" rx="1.7" ry="2.1" fill="#2b2013"/>'+
-    '<path d="M12,11.3 L10.9,13.6 L13.1,13.6 Z" fill="#2b2013"/>'+
-  '</svg>';
+// A plain emoji glyph instead of a hand-drawn icon — renders with the viewer's own
+// system emoji font (the exact ☠️ everyone already recognizes), shared between a
+// board pion and a portrait in the side panels (see .skull-overlay).
+const SKULL_HTML = "☠️";
 // Same order as personnage/index.html's SKILLS list — ch.skillBonuses is a plain
 // object, and Firestore doesn't promise to hand back a map's keys in the order they
 // were written, so sorting by this fixed list (instead of Object.entries()'s
@@ -978,6 +987,7 @@ function applyRole(){
   // Only the MJ picks which ambiance image everyone sees — players get no button or
   // gallery at all, just the image appearing over the map when the MJ triggers it.
   document.getElementById("mood-drawer-toggle").hidden = !isMJ;
+  document.getElementById("btn-export-backup").hidden = !isMJ;
   if(!isMJ) document.getElementById("mood-drawer").classList.remove("open");
   if(!isMJ){ interactionMode = "move"; effectPaletteWrap.hidden = true; fogControls.hidden = true; }
   document.getElementById("dice-hidden-wrap").hidden = !isMJ;
@@ -1164,12 +1174,11 @@ function getScrollbarWidth(){
 // ordinary window). Measuring the ACTUAL leftover room — assuming the page is
 // scrolled so the map's own toolbar row sits at the very top — uses every real pixel
 // instead of a guessed fraction: once the MJ scrolls the setup controls out of the
-// way, the map + its legend is sized to fill the rest of the window exactly.
+// way, the map is sized to fill the rest of the window exactly.
 function computeAvailableBoardHeight(){
   const zoomRowH = zoomRowEl ? zoomRowEl.offsetHeight + 8 : 0; // + its own margin-bottom
-  const legendH = legend ? legend.offsetHeight + 10 : 0; // + its own margin-top
-  const pageBottomMargin = 16; // a little breathing room below the legend
-  return Math.max(200, window.innerHeight - zoomRowH - legendH - pageBottomMargin);
+  const pageBottomMargin = 16; // a little breathing room below the map
+  return Math.max(200, window.innerHeight - zoomRowH - pageBottomMargin);
 }
 
 function renderBoard(){
@@ -1240,12 +1249,11 @@ function renderBoard(){
     board.appendChild(el);
   });
 
-  legend.innerHTML = "";
   Object.keys(boardData.tokens).forEach(id => {
     const t = boardData.tokens[id];
     // A token sitting on a fog-hidden cell doesn't exist for players at all — not on
-    // the board, not in the legend, not clickable — only visually painting over it
-    // left it selectable/nameable underneath. The MJ still sees and can move it.
+    // the board, not clickable — only visually painting over it left it
+    // selectable/nameable underneath. The MJ still sees and can move it.
     if(!isMJ && isTokenFogHidden(t)) return;
     const isDraggingThis = dragState && dragState.id === id;
     const posCol = isDraggingThis ? dragState.col : t.x;
@@ -1297,10 +1305,16 @@ function renderBoard(){
       bar.innerHTML = '<div class="token-hpbar-fill" style="width:' + pct + '%;background:' + color + ';"></div>';
       el.appendChild(bar);
       el.classList.toggle("downed", hpCur <= 0);
-      if(hpCur <= 0){
+      // A PJ at 0 PV is unconscious, not dead — the skull is for "actually dead" (3
+      // failed death saves), while the greyed-out "downed" look above already covers
+      // "down but might get back up". NPCs have no death-save tracking, so 0 PV is
+      // as final as it gets for them.
+      const isDead = hpCur <= 0 && (ch.kind === "npc" || (ch.deathSaveFailures||0) >= 3);
+      if(isDead){
         const skull = document.createElement("div");
         skull.className = "skull-overlay";
-        skull.innerHTML = SKULL_SVG_HTML;
+        skull.style.fontSize = (tokenSize * 0.48) + "px";
+        skull.textContent = SKULL_HTML;
         el.appendChild(skull);
       }
     }
@@ -1327,11 +1341,6 @@ function renderBoard(){
     el.addEventListener("pointerdown", onTokenPointerDown);
     el.addEventListener("contextmenu", onTokenContextMenu);
     board.appendChild(el);
-
-    const li = document.createElement("span");
-    const swatchStyle = image ? ("background-image:url('"+image.replace(/'/g,"%27")+"');background-size:100% 100%;") : ("background:"+t.color);
-    li.innerHTML = '<i style="' + swatchStyle + '"></i>' + t.label;
-    legend.appendChild(li);
   });
 
   // Fog of war: opaque for players (fully hides the cell), lightly greyed for the MJ
@@ -2218,7 +2227,7 @@ async function loadScene(s){
   renderBoard();
   renderSelection(null);
   try{ await setDoc(boardRef, boardData); }catch(e){ console.error(e); }
-  initData = { entries: s.initEntries||[], currentIndex: s.initCurrentIndex==null?-1:s.initCurrentIndex, round: s.initRound||1 };
+  initData = sanitizeInitData({ entries: s.initEntries, currentIndex: s.initCurrentIndex, round: s.initRound });
   await saveInit(initData);
 }
 
@@ -2242,6 +2251,17 @@ btnTogglePrep.addEventListener("click", () => {
   const willShow = prepWrap.hidden;
   prepWrap.hidden = !willShow;
   btnTogglePrep.textContent = willShow ? "▾ Masquer" : "▸ Afficher";
+});
+
+// Folds away the character/PNJ roster grid specifically — it's the bulkiest part of
+// Préparation, and once pions are placed on the board there's rarely a need to keep
+// scrolling past it just to reach "Mode d'interaction" below.
+const btnToggleCharlist = document.getElementById("btn-toggle-charlist");
+const charRosterWrap = document.getElementById("char-roster-wrap");
+btnToggleCharlist.addEventListener("click", () => {
+  const willShow = charRosterWrap.hidden;
+  charRosterWrap.hidden = !willShow;
+  btnToggleCharlist.textContent = willShow ? "▾ Masquer" : "▸ Afficher";
 });
 
 function renderCharacterLibrary(){
@@ -2306,7 +2326,10 @@ function renderNpcPicker(){
 // to keep around before anything risky (bulk edits, imports...), since this table has
 // twice lost real campaign data to the shared backend before.
 document.getElementById("btn-export-backup").addEventListener("click", () => {
-  const payload = { exportedAt: new Date().toISOString(), characters, board: boardData };
+  // Initiative and the combat log are shared Firestore state just like the board —
+  // leaving them out of the backup is exactly what turned a bad test write into an
+  // unrecoverable loss of the current encounter's turn order.
+  const payload = { exportedAt: new Date().toISOString(), characters, board: boardData, init: initData, combatLog: combatLogData };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,"-");
@@ -2317,6 +2340,28 @@ document.getElementById("btn-export-backup").addEventListener("click", () => {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+});
+
+// A long rest, applied to every PJ at once: full PV, full spell slots, death saves
+// cleared. NPCs are left alone — a defeated monster doesn't "rest", and death saves
+// are a PJ-only mechanic in the first place (see rollDeathSave above).
+document.getElementById("btn-rest-all").addEventListener("click", async () => {
+  const pcs = characters.filter(ch => ch.kind !== "npc");
+  if(!pcs.length) return;
+  if(!confirm("Appliquer un repos long à tous les PJ ? PV, emplacements de sorts et jets de sauvegarde contre la mort seront réinitialisés.")) return;
+  await Promise.all(pcs.map(ch => {
+    const fields = {};
+    if(ch.hpMax != null) fields.hpCurrent = ch.hpMax;
+    fields.deathSaveSuccesses = 0;
+    fields.deathSaveFailures = 0;
+    if(ch.spellDisplay && ch.spellDisplay.slots){
+      const slots = ch.spellDisplay.slots.map(s => ({ ...s, used: 0 }));
+      fields["spellDisplay.slots"] = slots;
+      fields.spellSlotsUsed = {};
+      slots.forEach(s => { fields.spellSlotsUsed[s.level] = 0; });
+    }
+    return patchCharacter(ch.id, fields);
+  }));
 });
 
 document.getElementById("btn-npc-picker").addEventListener("click", () => {
@@ -2472,7 +2517,10 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
   const isDownedPortrait = typeof hpCur === "number" && hpCur <= 0;
   const isPlayedPortrait = portraitInitIdx !== -1 && portraitInitIdx < initData.currentIndex;
   const portraitClass = "portrait-swatch" + (isDownedPortrait?" downed":"") + (isPlayedPortrait?" played":"");
-  const portraitSkullHtml = isDownedPortrait ? ('<div class="skull-overlay">'+SKULL_SVG_HTML+'</div>') : "";
+  // Same "actually dead, not just down" distinction as the board pion (see renderBoard):
+  // a PJ only gets the skull once death saves confirm it, an NPC gets it right at 0 PV.
+  const isDeadPortrait = isDownedPortrait && (isNpc || (ch.deathSaveFailures||0) >= 3);
+  const portraitSkullHtml = isDeadPortrait ? ('<div class="skull-overlay">'+SKULL_HTML+'</div>') : "";
   const portraitDataAttrs = ' data-token-id="' + (tokenId||"") + '" data-char-id="' + ch.id + '"';
   const abilities = ["FOR","DEX","CON","INT","SAG","CHA"];
   const abilityRow = abilities.map(k => {
@@ -3540,27 +3588,25 @@ function flashHit(el){
   el.classList.remove("hit-flash");
   void el.offsetWidth; // restart the animation even if one just finished
   el.classList.add("hit-flash");
-  setTimeout(() => el.classList.remove("hit-flash"), 1400);
+  setTimeout(() => el.classList.remove("hit-flash"), 800);
 }
 function triggerCombatFeedback(entry){
   const tokenEl = document.querySelector('.token[data-id="' + entry.targetTokenId + '"]');
+  const label = entry.hit ? (entry.dmgTotal != null ? ("-" + entry.dmgTotal) : "touché") : "Raté";
+  const kind = entry.hit ? (entry.isCrit ? "crit" : "dmg") : "miss";
   if(tokenEl){
-    if(entry.hit){
-      flashHit(tokenEl);
-      const label = entry.dmgTotal != null ? ("-" + entry.dmgTotal) : "touché";
-      spawnFloatingText(tokenEl, label, entry.isCrit ? "crit" : "dmg");
-    }else{
-      spawnFloatingText(tokenEl, "Raté", "miss");
-    }
+    if(entry.hit) flashHit(tokenEl);
+    spawnFloatingText(tokenEl, label, kind);
   }
-  // Mirror just the flash (state, not the floating text — cramped next to the card's
-  // own text) onto a matching portrait in the side panels, so a hit reads there too.
-  if(entry.hit){
-    document.querySelectorAll(
-      '.portrait-swatch[data-token-id="' + entry.targetTokenId + '"], ' +
-      '.portrait-swatch[data-char-id="' + entry.targetId + '"]'
-    ).forEach(flashHit);
-  }
+  // Mirror the same flash + floating text onto a matching portrait in the side
+  // panels, so a hit or a miss reads there too, not just on the map.
+  document.querySelectorAll(
+    '.portrait-swatch[data-token-id="' + entry.targetTokenId + '"], ' +
+    '.portrait-swatch[data-char-id="' + entry.targetId + '"]'
+  ).forEach(swatchEl => {
+    if(entry.hit) flashHit(swatchEl);
+    spawnFloatingText(swatchEl, label, kind);
+  });
 }
 function announceNewCombatEntries(){
   const entries = combatLogData.entries;
@@ -3570,6 +3616,30 @@ function announceNewCombatEntries(){
   const idx = entries.findIndex(e => e.id === prevId);
   const newOnes = idx === -1 ? entries.slice(0, 1) : entries.slice(0, idx);
   newOnes.slice().reverse().forEach(triggerCombatFeedback);
+}
+
+// Runs on every initiative snapshot, but a PJ's move during combat also writes to
+// this same doc (movement budget) without changing currentIndex/round — comparing
+// the actual turn key (not just "did the doc change") is what keeps this from firing
+// on every such move.
+function announceTurnChangeIfNeeded(){
+  const current = initData.entries[initData.currentIndex];
+  // Keyed by the entry's own id (not its numeric index) + round — an index can mean
+  // a different person after a reinforcement is inserted or a new encounter starts,
+  // but a given entry's id is unique to it for as long as it exists in the order.
+  const key = current ? (current.id + ":" + (initData.round||1)) : null;
+  const isFirstObservation = lastSeenTurnKey === undefined;
+  const changed = key !== lastSeenTurnKey;
+  lastSeenTurnKey = key;
+  if(isFirstObservation || !changed || key === null) return;
+  showActionNotice("C'est au tour de " + current.name + ".");
+  // MJ-only: bring the new current character's own sheet into the left panel (same
+  // mechanism as right-clicking their pion) — never touches the right panel's target
+  // selection, so whoever was selected as a target stays selected.
+  if(isMJ && current.tokenId && boardData.tokens[current.tokenId]){
+    mjInspectedTokenId = current.tokenId;
+    renderMyCharacterPanel();
+  }
 }
 
 // The most recent of either log (dice/skill/save/announce, or a combat attack),
@@ -3698,10 +3768,11 @@ async function init(){
   });
 
   onSnapshot(initRef, (snap) => {
-    initData = snap.exists() ? snap.data() : { entries: [], currentIndex: -1, round: 1 };
+    initData = sanitizeInitData(snap.exists() ? snap.data() : null);
     renderInitiativeBar();
     renderBoard();
     renderMyCharacterPanel(); // whose turn it is affects the "turn-gated" dimming on attack rows
+    announceTurnChangeIfNeeded();
   });
 
   onSnapshot(diceRef, (snap) => {
