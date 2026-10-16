@@ -118,6 +118,9 @@ button{font-family:inherit;}
 .npc-attack-grid .field input{padding:5px 8px;font-size:.82rem;}
 .npc-attack-card .del{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:.8rem;padding:4px;flex:none;}
 .npc-attack-card .del:hover{color:#a33;}
+.npc-search{position:sticky;top:0;z-index:2;background:var(--surface);padding-bottom:6px;display:flex;flex-direction:column;gap:4px;}
+.npc-search input{width:100%;}
+.roster-card[hidden]{display:none;}
 .npc-section-title{font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--gold-strong);margin:16px 0 6px;}
 .field{display:flex;flex-direction:column;gap:5px;min-width:0;}
 .field label{font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:.09em;text-transform:uppercase;color:var(--gold-strong);}
@@ -3677,7 +3680,7 @@ function bindRoster(){
 // the race/classe/historique flow above.
 function defaultNpc(){
   return {
-    kind:"npc", docId:null, name:"", portrait:"", portraitVariants:[], descriptor:"", cr:"",
+    kind:"npc", docId:null, name:"", portrait:"", portraitVariants:[], descriptor:"", cr:"", appearsText:"",
     ac:null, acNote:"", hpMax:null, hpCurrent:null, speed:null,
     baseScores:{FOR:10,DEX:10,CON:10,INT:10,SAG:10,CHA:10},
     saveBonuses:{FOR:0,DEX:0,CON:0,INT:0,SAG:0,CHA:0},
@@ -3690,6 +3693,10 @@ let npcs=[];
 let npcDraft=null;
 let npcSyncTimer=null;
 let lastNpcImportMsg="";
+// Kept across re-renders (back from a fiche, after an import) so the GM doesn't have to
+// retype the filter every time the list is rebuilt.
+let npcSearchQuery="";
+function npcSearchNormalize(s){ return (s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase(); }
 
 async function loadNpcs(){
   try{
@@ -3746,21 +3753,55 @@ async function renderNpcListView(){
   await loadNpcs();
   const cards=npcs.map(n=>{
     const swatch=n.data.portrait?"background-image:url('"+n.data.portrait.replace(/'/g,"%27")+"');":"";
-    return '<div class="roster-card" data-npc-id="'+n.id+'">'+
+    const hay=npcSearchNormalize((n.data.name||"")+" "+(n.data.descriptor||"")+" "+(n.data.appearsText||""));
+    return '<div class="roster-card" data-npc-id="'+n.id+'" data-npc-search="'+esc(hay).replace(/"/g,"&quot;")+'">'+
       '<div class="portrait" style="'+swatch+'"></div>'+
       '<div class="rinfo"><div class="rname">'+esc(n.data.name||"Sans nom")+
         (n.data.activeOnMap?' <span style="color:var(--gold-strong);font-size:.72rem;">● sur la carte</span>':'')+
-      '</div><div class="rmeta">'+esc((n.data.descriptor||"").slice(0,70))+'</div></div>'+
+      '</div><div class="rmeta">'+esc((n.data.descriptor||"").slice(0,70))+'</div>'+
+      (n.data.appearsText?'<div class="rmeta">Jours : '+esc(n.data.appearsText)+'</div>':'')+
+      '</div>'+
     '</div>';
   }).join("");
   body.innerHTML=
+    '<div class="npc-search">'+
+      '<input type="search" id="npc-search" placeholder="Rechercher un PNJ (nom, rôle, jour : « jour 7 » ou « j7 »...)" value="'+esc(npcSearchQuery).replace(/"/g,"&quot;")+'">'+
+      '<span class="hint" id="npc-search-count" style="margin:0;"></span>'+
+    '</div>'+
     '<div class="roster-card new" id="npc-new">+ Nouveau PNJ</div>'+
     cards+
+    '<p class="sheet-text" id="npc-search-empty" hidden>Aucun PNJ ne correspond à cette recherche.</p>'+
     '<div class="npc-section-title">Importer depuis un document (texte collé)</div>'+
     '<p class="sheet-text">Colle le texte copié depuis un document de bestiaire/PNJ (blocs Nom / CA / PV / Vitesse / Actions...) — chaque bloc reconnu devient un PNJ séparé. Vérifie/complète les champs après import, surtout les attaques.</p>'+
     '<textarea id="npc-import-text" rows="6" placeholder="Colle le texte ici..."></textarea>'+
     '<button class="btn btn-arcane" id="btn-npc-import" style="margin-top:8px;">Importer</button>'+
     '<p class="sheet-text" id="npc-import-result">'+lastNpcImportMsg+'</p>';
+  // Filters by hiding cards rather than re-rendering, so the search field never loses
+  // focus mid-word. Every word must match (name, descriptor or jours d'apparition),
+  // accents ignored: "eveille gisele" finds « Gisèle Roncelet (éveillée) ».
+  // "jour 7" / "j7" / "seance 2" are matched as whole phrases — as two loose words, the
+  // "7" would also hit every "(700 PX)" in a descriptor.
+  const searchEl=body.querySelector("#npc-search");
+  const applyNpcSearch=()=>{
+    npcSearchQuery=searchEl.value;
+    const phrases=[];
+    const rest=npcSearchNormalize(npcSearchQuery)
+      .replace(/\b(?:jour|j)\s*(\d+)\b/g,(m,d)=>{ phrases.push(new RegExp("\\bjour "+d+"\\b")); return " "; })
+      .replace(/\bseance\s*(\d+)\b/g,(m,d)=>{ phrases.push(new RegExp("\\bseance "+d+"\\b")); return " "; });
+    const words=rest.split(/\s+/).filter(Boolean);
+    const active=words.length+phrases.length>0;
+    let shown=0;
+    body.querySelectorAll("[data-npc-search]").forEach(card=>{
+      const hay=card.dataset.npcSearch;
+      const match=words.every(w=>hay.includes(w))&&phrases.every(r=>r.test(hay));
+      card.hidden=!match;
+      if(match) shown++;
+    });
+    body.querySelector("#npc-search-count").textContent=active?(shown+" PNJ sur "+npcs.length):(npcs.length+" PNJ");
+    body.querySelector("#npc-search-empty").hidden=!(active&&!shown);
+  };
+  searchEl.addEventListener("input",applyNpcSearch);
+  applyNpcSearch();
   body.querySelector("#npc-new").addEventListener("click",()=>{
     npcDraft=defaultNpc();
     renderNpcEditView();
@@ -3886,6 +3927,7 @@ function renderNpcEditView(){
       '<div class="field" style="flex:1;"><label>Description (race, taille...)</label><input id="npc-f-descriptor" value="'+esc(n.descriptor)+'"></div>'+
       '<div class="field" style="flex:none;width:80px;"><label>FP</label><input id="npc-f-cr" placeholder="ex. 1/4" value="'+esc(n.cr||"")+'"></div>'+
     '</div>'+
+    '<div class="field" style="margin-bottom:14px;"><label>Jours d\'apparition</label><input id="npc-f-appears" placeholder="ex. Jour 2, Jour 5, Jour 8" value="'+esc(n.appearsText||"").replace(/"/g,"&quot;")+'"></div>'+
     '<div class="field" style="margin-bottom:14px;"><label>Variantes d\'apparence (pour des pions différents du même PNJ)</label>'+
       '<div id="npc-portrait-variants" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;">'+
         (n.portraitVariants||[]).map((v,i)=>(
@@ -3948,7 +3990,7 @@ function bindNpcEditView(){
     renderNpcListView();
   });
   const simpleFields=[
-    ["npc-f-name","name"],["npc-f-descriptor","descriptor"],["npc-f-cr","cr"],
+    ["npc-f-name","name"],["npc-f-descriptor","descriptor"],["npc-f-cr","cr"],["npc-f-appears","appearsText"],
     ["npc-f-acnote","acNote"],
     ["npc-f-skills","skillsText"],["npc-f-senses","sensesText"],
     ["npc-f-languages","languagesText"],["npc-f-equipment","equipmentText"],
@@ -4111,7 +4153,8 @@ const NPC_LABEL_MAP={
   "traits":"traits","actions":"actions",
   "réaction":"reactions","réactions":"reactions","reaction":"reactions","reactions":"reactions",
   "action bonus":"bonusAction",
-  "notes mj":"notesMj"
+  "notes mj":"notesMj",
+  "apparitions":"appears"
 };
 function npcSplitLabelValue(line){
   const idx=line.indexOf("\t");
@@ -4157,6 +4200,9 @@ function parseBestiaryText(text){
   return entries;
 }
 function npcParseLeadingNumber(s){ const m=(s||"").match(/-?\d+/); return m?parseInt(m[0],10):null; }
+// Speeds are written the French way ("7,50 m", "10,5 m") — the integer-only parser above
+// silently turned them into 7 and 10.
+function npcParseSpeed(s){ const m=(s||"").match(/\d+(?:[.,]\d+)?/); return m?parseFloat(m[0].replace(",",".")):null; }
 function npcParseParenNote(s){ const m=(s||"").match(/\(([^)]+)\)/); return m?m[1]:""; }
 function parseAttacksFromActionsText(text){
   if(!text) return [];
@@ -4205,7 +4251,7 @@ function buildNpcFromParsed(entry){
     name:entry.name, descriptor:entry.descriptor, cr:npcParseCrFromDescriptor(entry.descriptor),
     ac:npcParseLeadingNumber(f.ca), acNote:npcParseParenNote(f.ca),
     hpMax:npcParseLeadingNumber(f.pv),
-    speed:npcParseLeadingNumber(f.vitesse), baseScores,
+    speed:npcParseSpeed(f.vitesse), baseScores, appearsText:f.appears||"",
     saveBonuses:npcParseSaveBonusesFromText(f.saves||"",baseScores),
     skillsText:f.skills||"", sensesText:f.senses||"", languagesText:f.languages||"",
     equipmentText:f.equipment||"", traitsText:f.traits||"",
