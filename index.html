@@ -2613,6 +2613,9 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
         ch.languagesText ? ("Langues : " + ch.languagesText) : "",
         ch.equipmentText ? ("Équipement : " + ch.equipmentText) : "",
         ch.traitsText ? ("Traits : " + ch.traitsText) : "",
+        // The attack buttons above only cover actions with a to-hit roll — the full
+        // text is the only place special actions (Ordre sec, Fumigène, soins...) live.
+        ch.actionsRaw ? ("Actions : " + ch.actionsRaw) : "",
         ch.reactionsText ? ("Réactions : " + ch.reactionsText) : "",
         ch.bonusActionText ? ("Action bonus : " + ch.bonusActionText) : "",
         ch.notesMjText ? ("Notes MJ : " + ch.notesMjText) : ""
