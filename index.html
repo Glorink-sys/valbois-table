@@ -19,6 +19,9 @@
   --ok:#2f6b3e;
   --warn:#8a3b2b;
   --panel:#f5efdc;
+  --shadow-sm:0 1px 2px rgba(43,32,19,.18);
+  --shadow-md:0 2px 6px rgba(43,32,19,.12), 0 8px 20px rgba(43,32,19,.10);
+  --sheen:rgba(255,255,255,.35);
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark){
@@ -33,6 +36,9 @@
     --ok:#6fbf7f;
     --warn:#e2836b;
     --panel:#241d13;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.45);
+    --shadow-md:0 2px 6px rgba(0,0,0,.35), 0 10px 24px rgba(0,0,0,.45);
+    --sheen:rgba(255,255,255,.12);
     color-scheme: dark;
   }
 }
@@ -57,19 +63,19 @@ h3.sub{font-size:.76rem;letter-spacing:.03em;text-transform:uppercase;color:var(
 .status-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:.78rem;}
 .status-pill{
   display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
-  border:1px solid var(--parchment-line);background:var(--panel);
+  border:1px solid var(--parchment-line);background:var(--panel);box-shadow:var(--shadow-sm);
 }
 .dot{width:8px;height:8px;border-radius:50%;background:var(--ink-soft);flex:none;}
 .dot.ok{background:var(--ok);}
 .dot.warn{background:var(--warn);}
 .role-toggle{
   display:flex;align-items:center;gap:8px;font-size:.82rem;background:var(--panel);
-  border:1px solid var(--parchment-line);border-radius:8px;padding:6px 10px;
+  border:1px solid var(--parchment-line);border-radius:8px;padding:6px 10px;box-shadow:var(--shadow-sm);
 }
 .role-toggle input{accent-color:var(--gold-strong);}
 .panel{
   background:var(--parchment-alt);border:1px solid var(--parchment-line);border-radius:0 8px 8px 8px;
-  padding:16px;width:100%;
+  padding:16px;width:100%;box-shadow:var(--shadow-md);
 }
 .panel[hidden]{display:none;}
 .field-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
@@ -81,17 +87,26 @@ input[type=color]{width:38px;height:34px;padding:2px;border-radius:6px;border:1p
 button{
   font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.03em;text-transform:uppercase;
   padding:8px 14px;border-radius:6px;border:1px solid var(--gold-strong);
-  background:var(--gold-strong);color:#fff;cursor:pointer;
+  background:linear-gradient(180deg, color-mix(in srgb, var(--gold-strong) 82%, white 18%), var(--gold-strong));
+  color:#fff;cursor:pointer;
+  box-shadow:0 1px 0 var(--sheen) inset, var(--shadow-sm);
+  transition:transform .12s ease, box-shadow .12s ease, filter .12s ease, background-color .12s ease, border-color .12s ease;
 }
-button.ghost{background:transparent;color:var(--gold-strong);}
+button:hover:not(:disabled){filter:brightness(1.06);}
+button:active:not(:disabled){transform:translateY(1px);box-shadow:0 1px 0 var(--sheen) inset;}
+button.ghost{background:transparent;color:var(--gold-strong);box-shadow:none;}
+button.ghost:hover:not(:disabled){background:color-mix(in srgb, var(--gold-strong) 12%, transparent);filter:none;}
+button.ghost:active:not(:disabled){box-shadow:none;}
 .file-pick-btn{
   font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.03em;text-transform:uppercase;
   padding:8px 14px;border-radius:6px;border:1px dashed var(--parchment-line);
   background:transparent;color:var(--ink-soft);cursor:pointer;display:inline-flex;align-items:center;
+  transition:border-color .12s ease, color .12s ease, background-color .12s ease;
 }
-.file-pick-btn:hover{border-color:var(--gold-strong);color:var(--gold-strong);}
-button.danger{background:transparent;color:var(--warn);border-color:var(--warn);}
-button:disabled{opacity:.5;cursor:not-allowed;}
+.file-pick-btn:hover{border-color:var(--gold-strong);color:var(--gold-strong);background:color-mix(in srgb, var(--gold-strong) 8%, transparent);}
+button.danger{background:transparent;color:var(--warn);border-color:var(--warn);box-shadow:none;}
+button.danger:hover:not(:disabled){background:color-mix(in srgb, var(--warn) 12%, transparent);filter:none;}
+button:disabled{opacity:.5;cursor:not-allowed;transform:none;}
 
 .game-layout{display:grid;grid-template-columns:220px minmax(0,1fr) 220px;gap:16px;align-items:start;}
 @media (max-width:960px){
@@ -101,7 +116,7 @@ button:disabled{opacity:.5;cursor:not-allowed;}
 }
 .side-panel{
   background:var(--parchment-alt);border:1px solid var(--parchment-line);border-radius:8px;
-  padding:14px;min-height:140px;
+  padding:14px;min-height:140px;box-shadow:var(--shadow-md);
 }
 .center-panel{display:flex;flex-direction:column;align-items:center;min-width:0;width:100%;}
 
@@ -253,8 +268,8 @@ button:disabled{opacity:.5;cursor:not-allowed;}
   pointer-events:none;z-index:2;border-radius:3px;color:var(--ink);
 }
 .cell-effect svg{width:55%;height:55%;max-width:26px;max-height:26px;}
-.effect-btn .ic{display:inline-flex;width:1.1em;height:1.1em;}
-.effect-btn .ic svg{width:100%;height:100%;}
+.effect-btn .ic{display:inline-flex;align-items:center;justify-content:center;width:1.5em;height:1.5em;border-radius:50%;flex:none;}
+.effect-btn .ic svg{width:62%;height:62%;}
 #drag-line-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;overflow:visible;}
 .fog-tile{position:absolute;pointer-events:none;background:#15100a;z-index:25;}
 .fog-tile.mj{background:rgba(40,40,40,.6);z-index:3;}
@@ -464,7 +479,7 @@ button.atk-attack-row.turn-gated{opacity:.45;}
   <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">
     <div class="status-row">
       <span class="status-pill"><span class="dot" id="dot-db"></span><span id="txt-db">Connexion…</span></span>
-      <button type="button" class="ghost btn-sm" id="btn-export-backup" title="Télécharge un fichier JSON avec tous les personnages/PNJ, la carte, l'initiative et le journal de combat — à garder de côté en cas de pépin" hidden style="width:30px;height:30px;padding:0;border-radius:50%;font-size:1rem;line-height:1;">⚙️</button>
+      <button type="button" class="ghost btn-sm" id="btn-export-backup" title="Télécharge un fichier JSON avec tous les personnages/PNJ, la carte, l'initiative et le journal de combat — à garder de côté en cas de pépin" hidden style="width:30px;height:30px;padding:0;border-radius:50%;font-size:1rem;line-height:1;background:var(--panel);box-shadow:var(--shadow-sm);">⚙️</button>
     </div>
     <label class="role-toggle">
       <input type="checkbox" id="chk-mj">
@@ -1014,7 +1029,7 @@ EFFECTS_LIBRARY.forEach(fx => {
   const b = document.createElement("button");
   b.type = "button";
   b.className = "effect-btn";
-  b.innerHTML = '<span class="ic">' + fx.icon + '</span><span>' + fx.label + '</span>';
+  b.innerHTML = '<span class="ic" style="background:' + (fx.color||"#888") + '33;">' + fx.icon + '</span><span>' + fx.label + '</span>';
   b.addEventListener("click", () => {
     activeEffectKey = activeEffectKey === fx.key ? null : fx.key;
     document.querySelectorAll(".effect-btn").forEach((el,i) => el.classList.toggle("active", EFFECTS_LIBRARY[i].key === activeEffectKey));
