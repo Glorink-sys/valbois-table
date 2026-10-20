@@ -1179,9 +1179,9 @@ const SPELLS_DB=[
  {name:"Main du mage",level:0,school:"Évocation",classes:["barde","ensorceleur","occultiste","magicien"],time:"Action",range:"9 m",duration:"1 minute",effect:"Une main spectrale manipule, ouvre ou déplace un petit objet (moins de 2 kg) à distance."},
  {name:"Lumière",level:0,school:"Évocation",classes:["barde","clerc","ensorceleur","magicien"],time:"Action",range:"Contact",duration:"1 heure",effect:"Un objet touché émet une lumière vive dans un rayon de 6 m."},
  {name:"Prestidigitation",level:0,school:"Transmutation",classes:["barde","ensorceleur","occultiste","magicien"],time:"Action",range:"3 m",duration:"1 heure (effet mineur)",effect:"Un petit effet sensoriel mineur au choix : étincelle, odeur, nettoyer, réchauffer ou refroidir un objet, marquer un symbole..."},
- {name:"Trait de feu",level:0,school:"Évocation",classes:["ensorceleur","magicien"],time:"Action",range:"36 m",duration:"Instantané",effect:function(){return "Attaque à distance ; en cas de réussite, "+(curLevel()>=5?"2d10":"1d10")+" dégâts de feu.";}},
+ {name:"Trait de feu",level:0,school:"Évocation",classes:["ensorceleur","magicien"],time:"Action",range:"36 m",duration:"Instantané",effect:function(){return "Attaque à distance ; en cas de réussite, "+(curLevel()>=5?"2d10":"1d10")+" dégâts de feu.";},atkType:"attack",dmgFormula:function(){return curLevel()>=5?"2d10":"1d10";},dmgType:"feu"},
  {name:"Décharge occulte",level:0,school:"Évocation",classes:["occultiste"],time:"Action",range:"36 m",duration:"Instantané",effect:function(){return curLevel()>=5?"Attaque à distance : 2 rayons distincts (jet d'attaque séparé pour chacun), contre la même cible ou des cibles différentes ; chaque rayon touché inflige 1d10 dégâts de force.":"Attaque à distance ; en cas de réussite, 1d10 dégâts de force.";}},
- {name:"Moquerie cruelle",level:0,school:"Enchantement",classes:["barde"],time:"Action",range:"18 m",duration:"Instantané",effect:function(){return "Une créature qui vous entend rate un JS Sagesse ou subit "+(curLevel()>=5?"2d4":"1d4")+" dégâts psychiques et a désavantage à sa prochaine attaque avant votre prochain tour.";}},
+ {name:"Moquerie cruelle",level:0,school:"Enchantement",classes:["barde"],time:"Action",range:"18 m",duration:"Instantané",effect:function(){return "Une créature qui vous entend rate un JS Sagesse ou subit "+(curLevel()>=5?"2d4":"1d4")+" dégâts psychiques et a désavantage à sa prochaine attaque avant votre prochain tour.";},atkType:"save",saveAbility:"SAG",halfOnSave:false,dmgFormula:function(){return curLevel()>=5?"2d4":"1d4";},dmgType:"psychique"},
  {name:"Illusion mineure",level:0,school:"Illusion",classes:["barde","ensorceleur","occultiste","magicien"],time:"Action",range:"9 m",duration:"1 minute",effect:"Crée un son ou une image silencieuse et immobile dans un espace de 1,5 m."},
  {name:"Druidisme",level:0,school:"Transmutation",classes:["druide"],time:"Action",range:"9 m",duration:"Instantané",effect:"Un petit effet naturel au choix : prédire la météo, faire éclore une fleur, allumer ou éteindre une petite flamme..."},
  {name:"Flagellation spirituelle",level:0,school:"Évocation",classes:["clerc"],time:"Action",range:"18 m",duration:"Instantané",effect:function(){return "La cible rate un JS Dextérité ou subit "+(curLevel()>=5?"2d8":"1d8")+" dégâts radiants.";}},
@@ -1203,7 +1203,7 @@ const SPELLS_DB=[
  {name:"Nuage de brouillard",level:1,school:"Conjuration",classes:["druide","ensorceleur","rodeur"],time:"Action",range:"36 m",duration:"1 heure (concentration)",effect:"Crée une sphère de brume de 6 m obscurcissant fortement la zone."},
  {name:"Ami des bêtes",level:1,school:"Enchantement",classes:["druide","rodeur"],time:"Action",range:"9 m",duration:"24 heures",effect:"Une bête rate un JS Sagesse ou devient amicale envers vous pendant la durée."},
  {name:"Projectile magique",level:1,school:"Évocation",classes:["ensorceleur","magicien"],time:"Action",range:"36 m",duration:"Instantané",effect:"Trois fléchettes de force touchent automatiquement une ou plusieurs cibles, 1d4+1 dégâts chacune."},
- {name:"Mains brûlantes",level:1,school:"Évocation",classes:["ensorceleur","magicien"],time:"Action",range:"Cône de 4,5 m",duration:"Instantané",effect:"Chaque créature dans le cône rate un JS Dextérité ou subit 3d6 dégâts de feu (moitié si réussi)."},
+ {name:"Mains brûlantes",level:1,school:"Évocation",classes:["ensorceleur","magicien"],time:"Action",range:"Cône de 4,5 m",duration:"Instantané",effect:"Chaque créature dans le cône rate un JS Dextérité ou subit 3d6 dégâts de feu (moitié si réussi).",atkType:"save",saveAbility:"DEX",halfOnSave:true,dmgFormula:"3d6",dmgType:"feu",aoe:{shape:"cone",size:4.5}},
  {name:"Feu follet",level:1,school:"Évocation",classes:["druide","ensorceleur"],time:"Action",range:"18 m",duration:"1 minute (concentration)",effect:"Les créatures dans un cube de 6 m ratent un JS Dextérité ou sont nimbées de lumière : les attaques contre elles ont l'avantage, et elles ne bénéficient pas de l'invisibilité."},
  {name:"Murmures dissonants",level:1,school:"Enchantement",classes:["occultiste"],time:"Action",range:"18 m",duration:"Instantané",effect:"La cible rate un JS Sagesse ou subit 3d6 dégâts psychiques et doit immédiatement utiliser sa réaction pour s'éloigner de vous par le chemin le plus sûr."},
  {name:"Fou rire de Tasha",level:1,school:"Enchantement",classes:["occultiste"],time:"Action",range:"9 m",duration:"1 minute (concentration)",effect:"La cible rate un JS Sagesse ou tombe à terre, prise d'un fou rire incontrôlable (incapable d'agir) ; elle peut retenter le jet si elle subit des dégâts."},
@@ -1233,7 +1233,7 @@ const SPELLS_DB=[
  {name:"Détection des pensées",level:2,school:"Divination",classes:["barde","ensorceleur","magicien"],time:"Action",range:"Personnelle",duration:"1 minute (concentration)",effect:"Lisez les pensées de surface d'une créature dans un rayon de 9 m ; elle peut résister par un JS Sagesse."},
  {name:"Aide",level:2,school:"Abjuration",classes:["clerc","paladin"],time:"Action",range:"9 m",duration:"8 heures",effect:"Jusqu'à 3 créatures gagnent chacune 5 PV maximum et actuels supplémentaires pour la durée."},
  {name:"Flétrissure",level:2,school:"Nécromancie",classes:["occultiste","magicien"],time:"Action",range:"18 m",duration:"1 minute (concentration)",effect:"La cible rate un JS Constitution ou subit 4d6 dégâts nécrotiques (moitié si réussi) et a désavantage aux jets d'attaque à la Force jusqu'à la fin du sort."},
- {name:"Boule de feu",level:3,school:"Évocation",classes:["ensorceleur","magicien"],time:"Action",range:"45 m",duration:"Instantané",effect:"Chaque créature dans une sphère de 6 m rate un JS Dextérité ou subit 8d6 dégâts de feu (moitié si réussi)."},
+ {name:"Boule de feu",level:3,school:"Évocation",classes:["ensorceleur","magicien"],time:"Action",range:"45 m",duration:"Instantané",effect:"Chaque créature dans une sphère de 6 m rate un JS Dextérité ou subit 8d6 dégâts de feu (moitié si réussi).",atkType:"save",saveAbility:"DEX",halfOnSave:true,dmgFormula:"8d6",dmgType:"feu",aoe:{shape:"sphere",size:6}},
  {name:"Éclair",level:3,school:"Évocation",classes:["ensorceleur","magicien"],time:"Action",range:"Ligne de 30 m",duration:"Instantané",effect:"Chaque créature dans une ligne de 1,5 m de large rate un JS Dextérité ou subit 8d6 dégâts de foudre (moitié si réussi)."},
  {name:"Dissipation de la magie",level:3,school:"Abjuration",classes:["barde","clerc","druide","ensorceleur","occultiste","magicien"],time:"Action",range:"36 m",duration:"Instantané",effect:"Met fin à un sort actif sur une créature, un objet ou un effet visible à portée (automatique si son niveau ≤ à celui de ce sort)."},
  {name:"Contresort",level:3,school:"Abjuration",classes:["ensorceleur","occultiste","magicien"],time:"Réaction",range:"18 m",duration:"Instantané",effect:"Interrompt le sort qu'une créature est en train de lancer, s'il est de niveau égal ou inférieur à ce contresort."},
@@ -3124,7 +3124,16 @@ function computeSpellDisplay(){
     return {
       name:sp.name,level:sp.level,school:sp.school,time:sp.time,range:sp.range,duration:sp.duration,
       effect:resolveEffect(sp),concentration:/concentration/i.test(sp.duration),
-      domain:bonusSpells.includes(n)
+      domain:bonusSpells.includes(n),
+      // Only set on the handful of spells enriched for automated casting in the
+      // table-de-jeu tool — everything else stays a plain informational row there,
+      // same as before.
+      atkType:sp.atkType||null,
+      saveAbility:sp.saveAbility||null,
+      halfOnSave:!!sp.halfOnSave,
+      dmgFormula:typeof sp.dmgFormula==="function"?sp.dmgFormula():(sp.dmgFormula||null),
+      dmgType:sp.dmgType||null,
+      aoe:sp.aoe||null
     };
   }).filter(Boolean);
   return{
