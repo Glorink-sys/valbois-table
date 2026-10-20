@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Table de jeu — Valbois</title>
+<link rel="icon" type="image/png" href="assets/icons/favicon-dice.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Cinzel+Decorative:wght@700&family=IM+Fell+English+SC&family=MedievalSharp&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
@@ -156,7 +157,7 @@ button:disabled{opacity:.5;cursor:not-allowed;transform:none;}
   .center-panel{order:1;}
 }
 .side-panel{
-  position:relative;min-height:140px;background:transparent;
+  position:relative;z-index:5;min-height:140px;background:transparent;
   border-style:solid;border-width:14px 6px;border-color:transparent;
   border-image-source:url('assets/ui/frame-sidepanel.png');
   border-image-slice:175 85 175 85 fill;
@@ -212,7 +213,45 @@ button:disabled{opacity:.5;cursor:not-allowed;transform:none;}
   padding:4px 9px;border-radius:6px;pointer-events:none;z-index:60;
   opacity:0;transition:opacity .12s ease;
 }
-button:hover .icon-label, button:focus-visible .icon-label{opacity:1;}
+button:hover .icon-label, button:focus-visible .icon-label, .hover-reveal:hover .icon-label{opacity:1;}
+.hover-reveal{position:relative;}
+/* A roomier hover tooltip for content worth actually reading (a condition's name +
+   full rules text) — reuses the same plain wood-framed square already used for the
+   board's own quick-reference callouts, instead of another flat-color pill. */
+.info-tooltip{
+  position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);
+  width:max-content;max-width:210px;
+  /* border-image's "fill" keyword is what's meant to paint this solid, but at the
+     small sizes a map tooltip renders at it can't be trusted to — an explicit
+     background behind it guarantees the box is never see-through. */
+  background:#cfc0a0;
+  border-style:solid;border-width:8px;border-color:transparent;
+  border-image-source:url('assets/ui/frame-square.png');
+  border-image-slice:28 fill;
+  border-image-width:8px;
+  border-image-repeat:stretch;
+  color:var(--ink);font-family:'Source Sans 3',system-ui,sans-serif;
+  font-size:.74rem;line-height:1.45;text-align:left;text-transform:none;letter-spacing:normal;
+  padding:7px 8px;
+  pointer-events:none;z-index:70;
+  opacity:0;transition:opacity .12s ease;
+  box-shadow:0 4px 10px rgba(0,0,0,.4);
+}
+.info-tooltip strong{
+  display:block;font-family:'Cinzel',serif;font-size:.76rem;text-transform:uppercase;
+  letter-spacing:.03em;color:var(--gold-strong);margin-bottom:4px;
+  padding-bottom:3px;border-bottom:1px solid var(--parchment-line);
+}
+button:hover .info-tooltip, button:focus-visible .info-tooltip, .hover-reveal:hover .info-tooltip{opacity:1;}
+/* Centered-under-the-icon only works away from the page edge — the two 220px side
+   panels sit close enough to the left/right edge of the window that a centered
+   tooltip this wide would run off-screen there, so anchor it to whichever side of
+   the button actually has room instead. */
+#panel-left .info-tooltip{left:0;transform:none;}
+#panel-right .info-tooltip{left:auto;right:0;transform:none;}
+/* The same frame reads as too heavy at the tiny size a map tooltip needs — a
+   thinner border here, independent of the side-panel version above. */
+#board .info-tooltip{border-width:5px;border-image-width:5px;padding:5px 6px;}
 .zoom-btn.active{background:var(--gold-strong);color:#fff;border-color:var(--gold-strong);}
 #last-roll-banner{
   position:absolute;bottom:8px;right:8px;max-width:70%;z-index:45;pointer-events:none;
@@ -227,6 +266,7 @@ button:hover .icon-label, button:focus-visible .icon-label{opacity:1;}
   pointer-events:none;background:rgba(138,59,43,.85);color:#fff;font-size:.78rem;line-height:1.3;
   padding:5px 12px;border-radius:8px;text-align:center;
 }
+#action-notice.notice-info{background:rgba(63,110,165,.9);}
 .ping-marker{
   position:absolute;width:36px;height:36px;margin:-18px 0 0 -18px;border-radius:50%;
   border:3px solid var(--warn);pointer-events:none;z-index:50;
@@ -260,6 +300,11 @@ button:hover .icon-label, button:focus-visible .icon-label{opacity:1;}
   box-shadow:0 3px 6px rgba(0,0,0,.45);background-size:cover;background-position:center;
   z-index:6;
 }
+/* A hovered condition badge's tooltip is a descendant of ITS OWN pion — at equal (or
+   even lower) z-index than a neighbouring pion, the whole subtree, tooltip included,
+   still paints under that neighbour. The inline z-index each pion gets in renderBoard()
+   needs an !important to actually win here. */
+.token:has(.hover-reveal:hover){z-index:55 !important;}
 .token.selected{outline:2px solid var(--gold);outline-offset:2px;}
 .token.dragging{cursor:grabbing;z-index:20;box-shadow:0 6px 14px rgba(0,0,0,.55);}
 @keyframes turn-pulse{
@@ -318,18 +363,30 @@ button:hover .icon-label, button:focus-visible .icon-label{opacity:1;}
   background:rgba(20,15,8,.55);overflow:hidden;pointer-events:none;z-index:1;
 }
 .token-hpbar-fill{height:100%;transition:width .25s ease,background .25s ease;}
-.token-conditions{
-  position:absolute;top:-6px;right:-6px;min-width:16px;height:16px;padding:0 3px;
-  border-radius:999px;background:#8a3b2b;color:#fff;font-size:.62rem;font-weight:700;
+/* Up to 4 active conditions get their own small badge spread around the pion's edge
+   instead of stacked in one spot — past 4 there's no room to keep them legible, so a
+   single count badge replaces them all, with the full list only on hover. Sized in %
+   of the token's own box (not a fixed px) so they grow and shrink along with the
+   pion itself as the MJ zooms the map in or out. */
+.token-cond-icon-wrap{position:absolute;z-index:4;pointer-events:auto;width:40%;height:40%;}
+.token-cond-slot-a{top:-10%;left:-10%;}
+.token-cond-slot-b{top:-10%;right:-10%;}
+.token-cond-slot-c{bottom:-10%;left:-10%;}
+.token-cond-slot-d{bottom:-10%;right:-10%;}
+.token-cond-icon{width:100%;height:100%;object-fit:contain;border-radius:50%;box-shadow:0 1px 2px rgba(0,0,0,.6);display:block;cursor:default;}
+.token-cond-count{
+  position:absolute;top:-10%;right:-10%;width:40%;height:40%;min-width:15px;min-height:15px;
+  border-radius:999px;background:#8a3b2b;color:#fff;font-size:.6rem;font-weight:700;
   display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.5);
-  pointer-events:auto;z-index:2;cursor:default;
+  z-index:4;pointer-events:auto;cursor:default;
 }
+.token-cond-count .info-tooltip{bottom:auto;top:calc(100% + 10px);text-align:center;}
 @keyframes conc-ring-spin{to{transform:rotate(360deg);}}
 .token-concentration-ring{
   position:absolute;inset:-6px;border-radius:50%;
   border:2px dashed #3f6ea5;
   animation:conc-ring-spin 7s linear infinite;
-  cursor:default;
+  pointer-events:none;
 }
 .cell-effect{
   position:absolute;display:flex;align-items:center;justify-content:center;
@@ -368,12 +425,13 @@ button:hover .icon-label, button:focus-visible .icon-label{opacity:1;}
 }
 .mood-empty{font-size:.82rem;color:var(--ink-soft);}
 
-.char-library-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+.char-library-grid{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px;}
 .char-library-card{
-  display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--parchment-line);
-  border-radius:999px;padding:5px 6px 5px 6px;cursor:pointer;font-size:.78rem;color:var(--ink);
+  position:relative;display:flex;align-items:center;justify-content:center;
+  background:none;border:none;padding:0;cursor:pointer;
 }
-.char-library-card .swatch{width:16px;height:16px;border-radius:50%;flex:none;border:1px solid rgba(0,0,0,.2);background-size:cover;background-position:center;}
+.char-library-card .swatch{width:72px;height:72px;border-radius:50%;flex:none;border:2px solid rgba(0,0,0,.2);background-size:cover;background-position:center;box-shadow:var(--shadow-sm);}
+.char-library-card:hover .swatch{filter:brightness(1.08);}
 .char-library-card .del{background:none;border:none;color:var(--ink-soft);font-size:.72rem;padding:0 4px;cursor:pointer;}
 .char-library-card .del:hover{color:var(--warn);}
 
@@ -512,6 +570,12 @@ button:hover .icon-label, button:focus-visible .icon-label{opacity:1;}
 .npc-picker-row .swatch{width:26px;height:26px;border-radius:50%;flex:none;background-size:cover;background-position:center;border:1px solid rgba(0,0,0,.2);}
 .npc-picker-row .name{flex:1;font-size:.85rem;}
 .hint{font-size:.78rem;color:var(--ink-soft);max-width:60ch;margin:0 0 12px;}
+.icon-toggle-btn{display:flex;align-items:center;justify-content:flex-start;gap:8px;width:100%;box-sizing:border-box;padding:4px 10px;}
+.toggle-btn-icon{width:26px;height:26px;object-fit:contain;flex:none;}
+.stat-chip-col{display:flex;flex-direction:column;justify-content:center;gap:3px;height:64px;box-sizing:border-box;}
+.stat-chip{display:inline-flex;align-items:center;gap:6px;font-size:.85rem;font-weight:600;}
+.stat-chip-icon{width:18px;height:18px;object-fit:contain;flex:none;}
+.section-icon{width:16px;height:16px;object-fit:contain;flex:none;}
 
 .my-ability-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:6px;}
 .my-ability{display:flex;flex-direction:column;align-items:center;background:var(--panel);border:1px solid var(--parchment-line);border-radius:6px;padding:4px 2px;}
@@ -520,19 +584,26 @@ button.my-ability:hover{border-color:var(--gold-strong);}
 .my-ability-k{font-size:.68rem;color:var(--ink-soft);letter-spacing:.03em;}
 .my-ability-v{font-size:.82rem;font-weight:700;font-variant-numeric:tabular-nums;}
 .my-inventory-list{list-style:none;padding:0;margin:0 0 6px;font-size:.82rem;}
-.my-inventory-list li{padding:2px 0;border-bottom:1px solid var(--parchment-line);}
-.cond-chip-wrap{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;}
+.my-inventory-list li{padding:2px 4px;border-bottom:1px solid var(--parchment-line);}
+.my-inventory-list li.equipped{font-weight:600;background:color-mix(in srgb, var(--gold-strong) 12%, transparent);border-radius:4px;}
+.cond-chip-wrap{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;}
 .cond-chip-wrap[hidden]{display:none;}
 .cond-chip{
-  background:var(--panel);border:1px solid var(--parchment-line);border-radius:999px;
-  padding:3px 8px;font-size:.7rem;color:var(--ink-soft);cursor:pointer;
+  position:relative;display:inline-flex;align-items:center;justify-content:center;
+  width:38px;height:38px;padding:0;border-radius:50%;
+  background:var(--panel);border:1px solid var(--parchment-line);cursor:pointer;
 }
-.cond-chip.active{background:var(--warn);border-color:var(--warn);color:#fff;}
-.cond-active-badges{display:flex;flex-wrap:wrap;gap:5px;margin:-2px 0 8px;}
+.cond-chip-icon{width:26px;height:26px;object-fit:contain;flex:none;}
+.cond-chip.active{background:var(--warn);border-color:var(--warn);}
+.cond-chip.active .cond-chip-icon{filter:drop-shadow(0 0 3px rgba(255,255,255,.8));}
+.cond-chip.concentration-chip.active{background:#3f6ea5;border-color:#3f6ea5;}
+.cond-active-badges{display:flex;flex-wrap:wrap;gap:8px;margin:-2px 0 8px;}
 .cond-badge{
-  background:var(--warn);color:#fff;border-radius:999px;padding:3px 9px;
-  font-size:.7rem;font-weight:600;letter-spacing:.02em;
+  position:relative;display:inline-flex;align-items:center;justify-content:center;
+  width:30px;height:30px;border-radius:50%;
+  background:var(--warn);box-shadow:0 1px 3px rgba(0,0,0,.4);cursor:default;
 }
+.cond-badge-icon{width:22px;height:22px;object-fit:contain;flex:none;}
 .conc-badge{background:#3f6ea5;}
 .hp-row{display:flex;align-items:center;gap:6px;margin-bottom:8px;}
 .hp-bar{position:relative;flex:1;height:18px;border-radius:9px;background:#2a1414;border:1px solid rgba(0,0,0,.35);overflow:hidden;}
@@ -543,7 +614,7 @@ button.my-ability:hover{border-color:var(--gold-strong);}
 .atk-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:.82rem;}
 .skill-row{width:100%;border:none;background:none;color:inherit;font-family:inherit;text-transform:none;letter-spacing:normal;padding:2px 4px;margin:0 -4px;border-radius:4px;cursor:pointer;text-align:left;}
 .skill-row:hover{background:var(--parchment-line);}
-.atk-weapon-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:.88rem;padding:2px 4px;margin:0 -4px;border-radius:4px;}
+.atk-weapon-row{position:relative;display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:.88rem;padding:2px 4px;margin:0 -4px;border-radius:4px;}
 button.atk-attack-row,button.concentration-row{
   width:100%;border:none;background:none;color:inherit;cursor:pointer;text-align:left;
   font-family:inherit;text-transform:none;letter-spacing:normal;
@@ -553,6 +624,16 @@ button.atk-attack-row:hover,button.concentration-row:hover{background:var(--parc
    read as the same highlight used for a selected/armed state elsewhere in the UI. */
 button.concentration-row.active{background:color-mix(in srgb, #3f6ea5 16%, transparent);}
 button.atk-attack-row.turn-gated{opacity:.45;}
+/* Out of range: just the text greys, same tone already used for secondary/hint text
+   elsewhere. A ranged weapon's long-range band gets a faint hatch on the background
+   instead — the shot is still worth taking there (disadvantage, not impossible), so
+   the text stays full-strength. */
+button.atk-attack-row.range-out{color:var(--ink-soft);opacity:.55;cursor:url('assets/icons/cursor-no-entry.png') 10 10,not-allowed;}
+button.atk-attack-row.range-out .mono{color:var(--ink-soft);}
+button.atk-attack-row.range-out:hover{background:none;}
+button.atk-attack-row.range-long{
+  background-image:repeating-linear-gradient(45deg, color-mix(in srgb, var(--ink) 10%, transparent) 0 6px, transparent 6px 12px);
+}
 .mono{font-variant-numeric:tabular-nums;white-space:nowrap;}
 </style>
 </head>
@@ -1000,6 +1081,28 @@ const selectionInfo = document.getElementById("selection-info");
 const myCharacterSelect = document.getElementById("my-character-select");
 const myCharacterPanel = document.getElementById("my-character-panel");
 const CONDITION_NAMES = ["Agrippé","À terre","Aveuglé","Assourdi","Charmé","Effrayé","Empoisonné","Entravé","Étourdi","Incapacité","Inconscient","Invisible","Paralysé","Pétrifié","Épuisement"];
+// One small badge icon per condition, shown on the chip, the active badge, and (small)
+// on the token itself — plus a Concentration icon for the separate concentratingOn
+// badge, which isn't one of the 15 toggleable conditions above.
+const CONDITION_ICONS = {
+  "Agrippé":"icon-cond-agrippe.png",
+  "À terre":"icon-cond-aterre.png",
+  "Aveuglé":"icon-cond-aveugle.png",
+  "Assourdi":"icon-cond-assourdi.png",
+  "Charmé":"icon-cond-charme.png",
+  "Effrayé":"icon-cond-effraye.png",
+  "Empoisonné":"icon-cond-empoisonne.png",
+  "Entravé":"icon-cond-entrave.png",
+  "Étourdi":"icon-cond-etourdi.png",
+  "Incapacité":"icon-cond-incapacite.png",
+  "Inconscient":"icon-cond-inconscient.png",
+  "Invisible":"icon-cond-invisible.png",
+  "Paralysé":"icon-cond-paralyse.png",
+  "Pétrifié":"icon-cond-petrifie.png",
+  "Épuisement":"icon-cond-epuisement.png",
+  "Concentration":"icon-cond-concentration.png"
+};
+const CONCENTRATION_ICON = "icon-cond-concentration.png";
 // A plain emoji glyph instead of a hand-drawn icon — renders with the viewer's own
 // system emoji font (the exact ☠️ everyone already recognizes), shared between a
 // board pion and a portrait in the side panels (see .skull-overlay).
@@ -1043,6 +1146,48 @@ const dragLine = document.getElementById("drag-line");
 const zoomLabel = document.getElementById("zoom-label");
 const METERS_PER_CELL = 1.5;
 function fmtMetersFr(m){ return m.toString().replace(".", ",") + " m"; }
+
+// There's no separate numeric range field on an attack — a ranged weapon's range
+// only ever exists as free text in its props ("Munitions (24/96 m)", "Lancer (6/18
+// m)..."), copied straight from the character tool's weapon table, so that's the one
+// place to read it back from. A melee weapon has no such parenthetical: its reach is
+// the standard 1 case, or 2 with "allonge" (hallebarde, lance...).
+const MELEE_REACH_DEFAULT = METERS_PER_CELL;
+const MELEE_REACH_LONG = METERS_PER_CELL * 2;
+function parseWeaponRange(props){
+  const m = (props||"").match(/\((\d+)\s*\/\s*(\d+)\s*m\)/);
+  if(m) return { kind:"ranged", short:Number(m[1]), long:Number(m[2]) };
+  return { kind:"melee", reach: /allonge/i.test(props||"") ? MELEE_REACH_LONG : MELEE_REACH_DEFAULT };
+}
+// Same grid-distance rule as the measuring tool and token movement (the larger of
+// the two axis deltas, "5-foot diagonal" at the table) — kept consistent so a
+// weapon's range reads the same distance the MJ would get out of the ruler.
+function tokenGridDistanceMeters(tokenA, tokenB){
+  if(!tokenA || !tokenB) return null;
+  return Math.max(Math.abs(tokenA.x - tokenB.x), Math.abs(tokenA.y - tokenB.y)) * METERS_PER_CELL;
+}
+// "normal" (in range) | "long" (ranged weapon's far band — not out, just at
+// disadvantage per the rules) | "out" (can't reach the target at all) | null when
+// there isn't enough info on the board to tell (no pion for the attacker, or no
+// target selected).
+// The one pion on the board linked to this character, if any — a player isn't
+// guaranteed to have placed their own token (see getLeftPanelTokenId's own comment),
+// so every range/origin computation has to tolerate this coming back null.
+function findTokenForCharacter(characterId){
+  return Object.values(boardData.tokens).find(t => t.characterId === characterId) || null;
+}
+function attackRangeState(attacker, weapon){
+  if(!attacker) return null;
+  const attackerToken = findTokenForCharacter(attacker.id);
+  const targetToken = selectedTokenId ? boardData.tokens[selectedTokenId] : null;
+  const dist = tokenGridDistanceMeters(attackerToken, targetToken);
+  if(dist == null) return null;
+  const range = parseWeaponRange(weapon.props);
+  if(range.kind === "melee") return dist <= range.reach ? "normal" : "out";
+  if(dist <= range.short) return "normal";
+  if(dist <= range.long) return "long";
+  return "out";
+}
 
 document.getElementById("btn-delete-token").addEventListener("click", () => { if(selectedTokenId) deleteToken(selectedTokenId); });
 document.getElementById("btn-zoom-in").addEventListener("click", () => setZoom(zoomLevel + 0.2));
@@ -1444,22 +1589,38 @@ function renderBoard(){
       }
     }
     // A quick glance at the board should be enough to notice "this one's affected by
-    // something" without clicking through to the character card — the badge just
-    // shows how many conditions are active; hovering (title) lists which ones, since
-    // there isn't room to spell them out on a token this small.
+    // something" without clicking through to the character card — up to 4 active
+    // conditions each get their own small badge spread around the pion's edge (not
+    // stacked in one spot), each with a hover tooltip naming it. Past 4 there's no
+    // room to keep them legible, so a single count badge replaces them all, with the
+    // full list only on hover.
     if(ch){
-      const conditions = resolveInstanceConditions(ch, id);
+      // Concentration folded into the same array as the real conditions — same
+      // slots, same overflow counter — instead of a separate ring treatment.
+      const conditions = resolveInstanceConditions(ch, id).concat(ch.concentratingOn ? ["Concentration"] : []);
       if(conditions.length){
-        const badge = document.createElement("div");
-        badge.className = "token-conditions";
-        badge.title = conditions.join(", ");
-        badge.textContent = conditions.length;
-        el.appendChild(badge);
+        if(conditions.length > 4){
+          const count = document.createElement("div");
+          count.className = "token-cond-count hover-reveal";
+          count.innerHTML = conditions.length + '<span class="info-tooltip"><strong>États actifs</strong>' + conditions.join(", ") + '</span>';
+          el.appendChild(count);
+        }else{
+          const slots = ["token-cond-slot-a","token-cond-slot-b","token-cond-slot-c","token-cond-slot-d"];
+          conditions.forEach((n, i) => {
+            const wrap = document.createElement("div");
+            wrap.className = "token-cond-icon-wrap hover-reveal " + slots[i];
+            const tip = n === "Concentration" ? ("Concentration : " + ch.concentratingOn.replace(/</g,"&lt;")) : n;
+            wrap.innerHTML = '<img class="token-cond-icon" src="assets/icons/' + (CONDITION_ICONS[n] || "") + '" alt=""><span class="info-tooltip">' + tip + '</span>';
+            el.appendChild(wrap);
+          });
+        }
       }
+      // The ring is a purely visual "this one is concentrating" cue around the
+      // whole pion — kept alongside the icon (which still carries the spell name
+      // on hover and competes for a slot like any other condition).
       if(ch.concentratingOn){
         const concRing = document.createElement("div");
         concRing.className = "token-concentration-ring";
-        concRing.title = "Concentration : " + ch.concentratingOn;
         el.appendChild(concRing);
       }
     }
@@ -1494,6 +1655,10 @@ function renderBoard(){
 
 function renderSelection(id){
   renderInitiativeBar(); // reflect the new selection (highlighted chip) right away
+  // Also covers "the target (or the attacker's own pion) just moved" — renderBoard()
+  // re-runs this for the current selection after every token-position change, which
+  // is exactly when the attack rows' range-based styling needs to catch up too.
+  renderMyCharacterPanel();
   const t = boardData.tokens[id];
   if(!t){
     selectionInfo.innerHTML = '<p class="hint">Glisse un pion pour le déplacer sur la carte.</p>';
@@ -1649,13 +1814,19 @@ function onTokenPointerDown(e){
   if(!t) return;
   // Don't call renderBoard() here: it destroys/recreates every token element,
   // which would detach e.currentTarget mid-drag and silently break the drag.
-  if(selectedTokenId && selectedTokenId !== id){
-    const prevEl = board.querySelector('.token[data-id="' + selectedTokenId + '"]');
-    if(prevEl) prevEl.classList.remove("selected");
+  // A player (not the MJ) can still drag their own pion to move it below, but
+  // can't put themselves in the "Sélection" panel as their own target — that
+  // would let them attack themselves, which is an MJ-only kind of move.
+  const isOwnCharacter = !isMJ && t.characterId && t.characterId === myCharacterId;
+  if(!isOwnCharacter){
+    if(selectedTokenId && selectedTokenId !== id){
+      const prevEl = board.querySelector('.token[data-id="' + selectedTokenId + '"]');
+      if(prevEl) prevEl.classList.remove("selected");
+    }
+    selectedTokenId = id;
+    e.currentTarget.classList.add("selected");
+    renderSelection(id);
   }
-  selectedTokenId = id;
-  e.currentTarget.classList.add("selected");
-  renderSelection(id);
   dragState = { id, el: e.currentTarget, startCol: t.x, startRow: t.y, col: t.x, row: t.y };
   try{ e.currentTarget.setPointerCapture(e.pointerId); }catch(err){}
   e.currentTarget.addEventListener("pointermove", onTokenPointerMove);
@@ -1910,6 +2081,13 @@ board.addEventListener("pointercancel", () => {
 
 board.addEventListener("click", async (e) => {
   if(suppressNextClick){ suppressNextClick = false; return; }
+  if(pendingSpellArea){
+    const { col, row } = cellFromEvent(e);
+    const { caster, sp } = pendingSpellArea;
+    pendingSpellArea = null;
+    await resolveSpellArea(caster, sp, col, row);
+    return;
+  }
   if(pingArmed){
     const { col, row } = cellFromEvent(e);
     // Stays armed for a short grace window instead of disarming right away, so
@@ -2409,16 +2587,16 @@ function renderCharacterLibrary(){
   }
   visible.forEach(ch => {
     const card = document.createElement("div");
-    card.className = "char-library-card";
+    card.className = "char-library-card hover-reveal";
     card.draggable = true;
     card.title = "Clique pour poser sur une case libre, ou glisse-dépose directement sur la carte.";
     const swatchStyle = ch.portrait ? ("background-image:url('"+ch.portrait.replace(/'/g,"%27")+"');background-size:100% 100%;") : "background:#7c5e20";
     const isNpc = ch.kind === "npc";
     const race = RACE_LABELS[ch.raceKey] || "";
     const cls = CLASS_LABELS[ch.classKey] || "";
-    const label = isNpc ? '<span class="hint" style="margin:0;font-size:.65rem;">PNJ</span> ' : "";
+    const nameLabel = (isNpc ? "PNJ · " : "") + (ch.name || "Sans nom") + (ch.playerName ? " (" + ch.playerName + ")" : "");
     card.innerHTML = '<span class="swatch" style="' + swatchStyle + '"></span>' +
-      '<span>' + label + (ch.name || "Sans nom") + (ch.playerName ? " (" + ch.playerName + ")" : "") + '</span>';
+      '<span class="icon-label">' + nameLabel.replace(/</g,"&lt;") + '</span>';
     card.title += isNpc ? (ch.descriptor ? " — " + ch.descriptor : "") : (race || cls ? " — " + [race, cls].filter(Boolean).join(" ") : "");
     card.addEventListener("click", () => {
       placeCharacterPickingPortrait(ch, findFreeCell());
@@ -2426,6 +2604,18 @@ function renderCharacterLibrary(){
     card.addEventListener("dragstart", (e) => {
       e.dataTransfer.setData("text/plain", "char:" + ch.id);
       e.dataTransfer.effectAllowed = "copy";
+      // The library thumbnail (72px) is sized for browsing, not for dropping — show a
+      // drag preview at the pion's REAL size on the map instead, so the MJ can judge
+      // where it'll land without guessing from a thumbnail that's a different size.
+      const { w, h } = cellSize();
+      const pad = Math.max(2, Math.min(w, h) * 0.1);
+      const size = Math.max(16, Math.min(w, h) - pad * 2);
+      const ghost = document.createElement("div");
+      ghost.style.cssText = "position:fixed;top:-9999px;left:-9999px;border-radius:50%;" +
+        "width:" + size + "px;height:" + size + "px;border:1px solid rgba(0,0,0,.4);" + swatchStyle;
+      document.body.appendChild(ghost);
+      e.dataTransfer.setDragImage(ghost, size / 2, size / 2);
+      setTimeout(() => ghost.remove(), 0);
     });
     characterLibraryList.appendChild(card);
   });
@@ -2560,6 +2750,14 @@ function fmtSigned(n){ return (n>=0?"+":"") + n; }
 // just-opened panel snap shut a moment later for no reason the user clicked.
 let cardTogglesOpen = {};
 function toggleKey(ch, section){ return ch.id + ":" + section; }
+// Shared icon+label markup for the card's expand/collapse buttons (skills, spells,
+// inventory, conditions) — each one swaps to a visually "open" variant of its icon
+// (lid lifted, book open, etc.) rather than just flipping a ▸/▾ glyph. The label
+// stays a single short word regardless of state since the icon swap already carries
+// the open/closed meaning.
+function toggleBtnLabel(isOpen, iconOpen, iconClosed, label){
+  return '<img src="assets/icons/' + (isOpen ? iconOpen : iconClosed) + '" class="toggle-btn-icon" alt="">' + label;
+}
 
 // Placing the same NPC on the board several times (a wolf pack...) used to make every
 // copy share one Firestore character doc — hurting one "forked" all of them to the
@@ -2668,19 +2866,28 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
   }).join("");
   const passivePerception = 10 + ((ch.skillBonuses && ch.skillBonuses["Perception"]) || 0);
   const active = resolveInstanceConditions(ch, tokenId);
+  // Icon-only now (bigger, so it actually reads at a glance) — the name and full
+  // rules text move into the hover info-tooltip instead of sitting as permanent
+  // inline text, the same trade as every other icon control in this tool.
+  // Concentration is folded into the same list as every other condition — same
+  // chip in the toggle grid, same badge strip, same slot rotation on the board —
+  // instead of a one-off ring/badge treatment. It can only ever be switched OFF from
+  // here (there's no spell to pick from this chip), which is why clicking it while
+  // inactive is a no-op — see wireCharacterCard.
+  const concActive = !!ch.concentratingOn;
   const condChips = CONDITION_NAMES.map(n => {
     const on = active.includes(n);
-    const effect = (CONDITIONS_GLOSSARY[n]||"").replace(/"/g,"&quot;");
-    return '<button type="button" class="cond-chip' + (on?" active":"") + '" data-cond="' + n + '" title="' + effect + '">' + n + '</button>';
-  }).join("");
-  // Concentration shown the same way as an active condition (same badge strip under
-  // the portrait) — generic "Concentration" text, with the actual spell name only on
-  // hover, since the badge itself has no room for a full spell name.
-  const concBadgeHtml = ch.concentratingOn
-    ? '<span class="cond-badge conc-badge" title="Concentration : ' + ch.concentratingOn.replace(/"/g,"&quot;") + '">Concentration</span>'
-    : '';
-  const activeBadgesHtml = (active.length || concBadgeHtml)
-    ? '<div class="cond-active-badges">' + active.map(n => '<span class="cond-badge" title="' + (CONDITIONS_GLOSSARY[n]||"").replace(/"/g,"&quot;") + '">' + n + '</span>').join("") + concBadgeHtml + '</div>'
+    const effect = CONDITIONS_GLOSSARY[n]||"";
+    return '<button type="button" class="cond-chip' + (on?" active":"") + '" data-cond="' + n + '"><img src="assets/icons/' + CONDITION_ICONS[n] + '" class="cond-chip-icon" alt=""><span class="info-tooltip"><strong>' + n + '</strong>' + effect + '</span></button>';
+  }).join("") + '<button type="button" class="cond-chip concentration-chip' + (concActive?" active":"") + '" data-cond="Concentration"><img src="assets/icons/' + CONCENTRATION_ICON + '" class="cond-chip-icon" alt=""><span class="info-tooltip"><strong>Concentration</strong>' + (concActive ? ch.concentratingOn.replace(/</g,"&lt;") : "Aucun sort actif — se lance depuis la liste des sorts.") + '</span></button>';
+  const activeAll = active.concat(concActive ? ["Concentration"] : []);
+  const activeBadgesHtml = activeAll.length
+    ? '<div class="cond-active-badges">' + activeAll.map(n => {
+        const isConc = n === "Concentration";
+        const icon = isConc ? CONCENTRATION_ICON : CONDITION_ICONS[n];
+        const detail = isConc ? ch.concentratingOn.replace(/</g,"&lt;") : (CONDITIONS_GLOSSARY[n]||"");
+        return '<span class="cond-badge' + (isConc?" conc-badge":"") + ' hover-reveal"><img src="assets/icons/' + icon + '" class="cond-badge-icon" alt=""><span class="info-tooltip"><strong>' + n + '</strong>' + detail + '</span></span>';
+      }).join("") + '</div>'
     : '';
   const condOpen = !!cardTogglesOpen[toggleKey(ch,"cond")];
   const hpPct = (typeof hpMax === "number" && hpMax > 0 && typeof hpCur === "number")
@@ -2713,8 +2920,15 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
           // line below the name — a tooltip on hover keeps the row to one compact line.
           const attackHint = turnGated ? "Ce n'est pas ton tour" : "Attaquer la cible sélectionnée";
           const propsAttr = a.props ? (' title="' + a.props.replace(/"/g,"&quot;") + (isAttacker?(' — '+attackHint):'') + '"') : (isAttacker?(' title="'+attackHint+'"'):'');
+          // Out of range (melee reach, or past a ranged weapon's long range) greys the
+          // text out; a ranged weapon's long-range band (past short, within long —
+          // disadvantage per the rules, not impossible) gets a hatched background
+          // instead, since the attack is still worth attempting there.
+          const rangeState = isAttacker ? attackRangeState(ch, a) : null;
+          const rangeClass = rangeState === "out" ? " range-out" : rangeState === "long" ? " range-long" : "";
+          const rangeDisabled = rangeState === "out" ? " disabled" : "";
           return isAttacker
-            ? '<button type="button" class="atk-weapon-row atk-attack-row' + (turnGated?" turn-gated":"") + '" data-attack-idx="' + i + '"' + propsAttr + '>' + head + '</button>'
+            ? '<button type="button" class="atk-weapon-row atk-attack-row' + (turnGated?" turn-gated":"") + rangeClass + '" data-attack-idx="' + i + '"' + rangeDisabled + propsAttr + '>' + head + '</button>'
             : '<div class="atk-weapon-row"' + propsAttr + '>' + head + '</div>';
         }).join("")
       : '<p class="hint" style="margin:0 0 6px;">Aucune arme équipée.</p>';
@@ -2733,11 +2947,11 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
           '<button type="button" class="atk-row skill-row" data-skill="' + name + '" title="Lancer 1d20' + fmtSigned(b) + ' pour ' + name + '"><span>' + name + '</span><span class="mono">' + fmtSigned(b) + '</span></button>'
         ).join("");
       skillsBlock =
-        '<button type="button" class="ghost btn-sm skills-toggle" style="margin-top:6px;">' + (skillsOpen?"▾ Masquer les compétences":"▸ Voir les compétences") + '</button>'+
+        '<button type="button" class="ghost btn-sm icon-toggle-btn skills-toggle" style="margin-top:6px;">' + toggleBtnLabel(skillsOpen,"icon-compass-open.png","icon-compass-closed.png","Compétences") + '</button>'+
         '<div class="atk-block skills-block"' + (skillsOpen?"":" hidden") + '>' + rows + '</div>';
     }else if(ch.skillsText){
       skillsBlock =
-        '<button type="button" class="ghost btn-sm skills-toggle" style="margin-top:6px;">' + (skillsOpen?"▾ Masquer les compétences":"▸ Voir les compétences") + '</button>'+
+        '<button type="button" class="ghost btn-sm icon-toggle-btn skills-toggle" style="margin-top:6px;">' + toggleBtnLabel(skillsOpen,"icon-compass-open.png","icon-compass-closed.png","Compétences") + '</button>'+
         '<p class="hint skills-block" style="margin-top:4px;"' + (skillsOpen?"":" hidden") + '>' + ch.skillsText + '</p>';
     }
     if(isNpc){
@@ -2755,7 +2969,7 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
       ].filter(Boolean);
       const detailsOpen = !!cardTogglesOpen[toggleKey(ch,"details")];
       managedBlock =
-        '<h3 class="sub" style="margin-top:8px;">Attaques</h3>'+
+        '<h3 class="sub" style="margin-top:8px;display:flex;align-items:center;gap:6px;"><img src="assets/icons/icon-sword.png" class="section-icon" alt="">Attaques</h3>'+
         '<div class="atk-block">' + attackRows + '</div>'+
         skillsBlock +
         (details.length ? (
@@ -2764,10 +2978,22 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
         ) : '');
     }else{
       const inv = ch.inventory || [];
+      // Equipping itself only happens in the character tool (it needs the class
+      // rules — proficiencies, two-handed/shield conflicts, ability requirements —
+      // that table-de-jeu doesn't have) — this just mirrors, read-only, which
+      // inventory rows that tool already has equipped, the same way it decides
+      // that itself (weapon slot item ids, armorKey, shield).
+      const equippedWeaponIds = new Set([ch.weapon1ItemId, ch.weapon2ItemId, ch.weaponRangedItemId].filter(x => x != null).map(String));
       const invRows = inv.length
-        ? inv.map(it => '<li data-inv-id="' + it.id + '">' + (it.name||"") + (it.qty>1?(" ×"+it.qty):"") +
-            (canManage ? ' <button type="button" class="ghost inv-item-del" data-inv-id="' + it.id + '" title="Retirer cet objet" style="padding:0 5px;font-size:.72rem;float:right;">✕</button>' : '') +
-          '</li>').join("")
+        ? inv.map(it => {
+            const isEquipped = (it.cat === "weapon" && equippedWeaponIds.has(String(it.id)))
+              || (it.cat === "armor" && ch.armorKey != null && ch.armorKey === it.refKey)
+              || (it.cat === "shield" && !!ch.shield);
+            return '<li class="inv-item' + (isEquipped?" equipped":"") + '" data-inv-id="' + it.id + '">' + (it.name||"") + (it.qty>1?(" ×"+it.qty):"") +
+              (isEquipped ? ' <span class="hint" style="margin:0;font-size:.66rem;">(équipé)</span>' : '') +
+              (canManage ? ' <button type="button" class="ghost inv-item-del" data-inv-id="' + it.id + '" title="Retirer cet objet" style="padding:0 5px;font-size:.72rem;float:right;">✕</button>' : '') +
+            '</li>';
+          }).join("")
         : '<li class="hint">Inventaire vide.</li>';
       const invOpen = !!cardTogglesOpen[toggleKey(ch,"inv")];
       // MJ (or the player on their own character) can grant/spend gold and add/remove
@@ -2812,20 +3038,32 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
         // see resolveConcentrationBadge below); every other row is just text to read.
         const spellRows=(sd.spells||[]).map((sp,i)=>{
           const levelTag=sp.level===0?"cantrip":"niv. "+sp.level;
-          const tooltip=(sp.school+' · '+sp.time+' · '+sp.range+' · '+sp.duration+(sp.domain?' · domaine, toujours préparé':'')+'. '+sp.effect).replace(/"/g,"&quot;");
+          const detail=sp.school+' · '+sp.time+' · '+sp.range+' · '+sp.duration+(sp.domain?' · domaine, toujours préparé':'')+'. '+sp.effect;
           // The "concentration" mark sits on its own smaller/italic line under the name
           // rather than inline next to it — inline made the name line run long and
           // crowded the level tag over on the right.
           const nameCell='<span style="display:flex;flex-direction:column;">'+sp.name+(sp.concentration?'<span class="hint" style="margin:0;font-size:.66rem;font-style:italic;">concentration</span>':'')+'</span>';
-          const label=nameCell+'<span class="hint" style="margin:0;">'+levelTag+'</span>';
+          const label=nameCell+'<span class="hint" style="margin:0;">'+levelTag+'</span>'+
+            '<span class="info-tooltip"><strong>'+sp.name+'</strong>'+detail+'</span>';
+          // A sort enriched with atkType (see personnage/index.html's SPELLS_DB) casts
+          // for real: attack roll vs AC, or the target's save vs this caster's DD,
+          // damage rolled and applied automatically — an AoE one instead arms the
+          // board for a click to place its shape (see armSpellArea).
+          if(isAttacker && sp.atkType){
+            const castTurnGated=isPcTurnGated(ch);
+            const castHint=castTurnGated?"Ce n'est pas ton tour":(sp.aoe?"Cliquer puis désigner une zone sur la carte":"Lancer sur la cible sélectionnée");
+            const castTip='<span class="info-tooltip"><strong>'+sp.name+'</strong>'+detail+' — '+castHint+'.</span>';
+            return '<button type="button" class="atk-weapon-row atk-attack-row cast-spell-row'+(castTurnGated?" turn-gated":"")+'" data-spell-idx="'+i+'">'+nameCell+'<span class="hint" style="margin:0;">'+levelTag+'</span>'+castTip+'</button>';
+          }
           if(isAttacker && sp.concentration){
             const isOn=ch.concentratingOn===sp.name;
-            return '<button type="button" class="atk-weapon-row concentration-row'+(isOn?" active":"")+'" data-spell-name="'+sp.name.replace(/"/g,"&quot;")+'" title="'+tooltip+' — Cliquer pour '+(isOn?"arrêter de":"commencer à")+' vous concentrer dessus">'+label+'</button>';
+            const clickHint='<span class="info-tooltip"><strong>'+sp.name+'</strong>'+detail+' — Cliquer pour '+(isOn?"arrêter de":"commencer à")+' vous concentrer dessus.</span>';
+            return '<button type="button" class="atk-weapon-row concentration-row'+(isOn?" active":"")+'" data-spell-name="'+sp.name.replace(/"/g,"&quot;")+'">'+nameCell+'<span class="hint" style="margin:0;">'+levelTag+'</span>'+clickHint+'</button>';
           }
-          return '<div class="atk-weapon-row" title="'+tooltip+'">'+label+'</div>';
+          return '<div class="atk-weapon-row hover-reveal">'+label+'</div>';
         }).join("");
         spellsBlock=
-          '<button type="button" class="ghost btn-sm spells-toggle" style="margin-top:6px;">'+(spellsOpen?"▾ Masquer les sorts":"▸ Voir les sorts")+'</button>'+
+          '<button type="button" class="ghost btn-sm icon-toggle-btn spells-toggle" style="margin-top:6px;">'+toggleBtnLabel(spellsOpen,"icon-book-open.png","icon-book-closed.png","Sorts")+'</button>'+
           '<div class="atk-block spells-block"'+(spellsOpen?"":" hidden")+'>'+
             '<p class="hint" style="margin:0 0 6px;">'+sd.ability+' · DD '+sd.dc+' · Attaque '+fmtSigned(sd.atk)+'</p>'+
             slotRows+
@@ -2833,12 +3071,12 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
           '</div>';
       }
       managedBlock =
-        '<h3 class="sub" style="margin-top:8px;">Attaques</h3>'+
+        '<h3 class="sub" style="margin-top:8px;display:flex;align-items:center;gap:6px;"><img src="assets/icons/icon-sword.png" class="section-icon" alt="">Attaques</h3>'+
         '<div class="atk-block">' + attackRows + '</div>'+
         goldBlock +
         skillsBlock +
         spellsBlock+
-        '<button type="button" class="ghost btn-sm inv-toggle" style="margin-top:6px;">' + (invOpen?"▾ Masquer l'inventaire":"▸ Voir l'inventaire") + '</button>'+
+        '<button type="button" class="ghost btn-sm icon-toggle-btn inv-toggle" style="margin-top:6px;">' + toggleBtnLabel(invOpen,"icon-chest-open.png","icon-chest-closed.png","Inventaire") + '</button>'+
         '<ul class="my-inventory-list"' + (invOpen?"":" hidden") + '>' + invRows + '</ul>'+
         '<div class="inv-add-row-wrap"' + (invOpen?"":" hidden") + '>' + invAddRow + '</div>';
     }
@@ -2884,26 +3122,31 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
     '</div>'
   ) : '';
 
+  // The name/subtitle text block that used to sit to the right of the portrait is
+  // replaced by the enlarged CA/Vit/PP chips — the name is still reachable as a
+  // hover label on the portrait itself (same floating-tag treatment as the toolbar
+  // icons) so it's not lost, just out of the way by default.
+  const portraitTooltip = (
+    (ch.name || "Sans nom") + (isNpc ? " (PNJ)" : "") +
+    (ch.playerName ? " — Joueur : " + ch.playerName : "") +
+    (subtitle ? " — " + subtitle : "")
+  ).replace(/</g,"&lt;");
   return (
-    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'+
-    '<span class="' + portraitClass + '"' + portraitDataAttrs + ' style="width:64px;height:64px;border-radius:50%;display:inline-block;flex:none;border:1px solid rgba(0,0,0,.2);' + swatchStyle + '">' + portraitSkullHtml + '</span>'+
-    '<div>' +
-    (isAttacker ? '' : ('<strong style="font-family:\'Cinzel\',serif;display:block;">' + (ch.name||"Sans nom") + (isNpc?' <span class="hint" style="margin:0;">(PNJ)</span>':'') + '</strong>')) +
-    (ch.playerName ? ('<span class="hint" style="margin:0;display:block;">Joueur : ' + ch.playerName + '</span>') : '') +
-    '<span class="hint" style="margin:0;">' + subtitle + '</span></div>'+
+    '<div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:8px;">'+
+    '<span class="' + portraitClass + ' hover-reveal"' + portraitDataAttrs + ' style="width:64px;height:64px;border-radius:50%;display:inline-block;flex:none;border:1px solid rgba(0,0,0,.2);' + swatchStyle + '">' + portraitSkullHtml + '<span class="icon-label">' + portraitTooltip + '</span></span>'+
+    '<div class="stat-chip-col">'+
+    (ch.ac!=null ? ('<span class="stat-chip"' + (ch.equippedArmor?(' title="'+ch.equippedArmor.replace(/"/g,"&quot;")+'"'):'') + '><img src="assets/icons/icon-shield.png" class="stat-chip-icon" alt="">CA ' + ch.ac + '</span>') : '') +
+    (ch.speed!=null ? ('<span class="stat-chip" title="Vitesse"><img src="assets/icons/icon-boot.png" class="stat-chip-icon" alt="">Vit. ' + ch.speed + ' m</span>') : '') +
+    '<span class="stat-chip" title="Perception passive"><img src="assets/icons/icon-eye.png" class="stat-chip-icon" alt="">PP ' + passivePerception + '</span>'+
+    '</div>'+
     '</div>'+
     '<div class="hp-row">' + hpControls + '</div>'+
     deathSavesHtml +
     activeBadgesHtml +
-    '<div class="field-row" style="align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;">'+
-    (ch.ac!=null ? ('<span' + (ch.equippedArmor?(' title="'+ch.equippedArmor.replace(/"/g,"&quot;")+'"'):'') + '>CA ' + ch.ac + '</span>') : '') +
-    (ch.speed!=null ? ('<span title="Vitesse">Vit. ' + ch.speed + ' m</span>') : '') +
-    '<span title="Perception passive">PP ' + passivePerception + '</span>'+
-    '</div>'+
     moveTrackerHtml +
     '<div class="my-ability-row">' + abilityRow + '</div>'+
     managedBlock +
-    '<button type="button" class="ghost btn-sm cond-toggle" style="margin-top:6px;">' + (condOpen ? "▾ Masquer les états actifs" : ("▸ États actifs" + (active.length ? " (" + active.length + ")" : ""))) + '</button>'+
+    '<button type="button" class="ghost btn-sm icon-toggle-btn cond-toggle" style="margin-top:6px;">' + toggleBtnLabel(condOpen,"icon-potion-glowing.png","icon-potion-sealed.png","États" + (active.length ? " (" + active.length + ")" : "")) + '</button>'+
     '<div class="cond-chip-wrap"' + (condOpen?"":" hidden") + '>' + condChips + '</div>'
   );
 }
@@ -2934,6 +3177,15 @@ function wireCharacterCard(container, ch, tokenId, isAttacker){
   container.querySelectorAll(".cond-chip").forEach(btn => {
     btn.addEventListener("click", () => {
       const name = btn.dataset.cond;
+      // Concentration toggles on/off just like any other condition here — ON with
+      // a generic placeholder label when nothing more specific is set, OFF if it's
+      // already active (whatever it's concentrating on, spell or placeholder).
+      // Clicking an actual concentration spell row in Sorts still sets/clears the
+      // real spell name through this same field, same toggleConcentration() call.
+      if(name === "Concentration"){
+        toggleConcentration(ch, ch.concentratingOn || "Concentration");
+        return;
+      }
       const active = resolveInstanceConditions(ch, tokenId);
       const next = active.includes(name) ? active.filter(n => n !== name) : active.concat([name]);
       patchInstanceConditions(ch, tokenId, next);
@@ -2949,7 +3201,7 @@ function wireCharacterCard(container, ch, tokenId, isAttacker){
       list.hidden = !willShow;
       if(addWrap) addWrap.hidden = !willShow;
       cardTogglesOpen[toggleKey(ch,"inv")] = willShow;
-      invToggle.textContent = (willShow ? "▾ Masquer " : "▸ Voir ") + "l'inventaire";
+      invToggle.innerHTML = toggleBtnLabel(willShow,"icon-chest-open.png","icon-chest-closed.png","Inventaire");
     });
   }
 
@@ -3041,6 +3293,12 @@ function wireCharacterCard(container, ch, tokenId, isAttacker){
     container.querySelectorAll(".concentration-row").forEach(btn => {
       btn.addEventListener("click", () => toggleConcentration(ch, btn.dataset.spellName));
     });
+    container.querySelectorAll(".cast-spell-row").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const sp = ch.spellDisplay && ch.spellDisplay.spells[Number(btn.dataset.spellIdx)];
+        if(sp) performSpellCast(ch, sp);
+      });
+    });
   }
 
   const skillsToggle = container.querySelector(".skills-toggle");
@@ -3050,7 +3308,7 @@ function wireCharacterCard(container, ch, tokenId, isAttacker){
       const willShow = block.hidden;
       block.hidden = !willShow;
       cardTogglesOpen[toggleKey(ch,"skills")] = willShow;
-      skillsToggle.textContent = willShow ? "▾ Masquer les compétences" : "▸ Voir les compétences";
+      skillsToggle.innerHTML = toggleBtnLabel(willShow,"icon-compass-open.png","icon-compass-closed.png","Compétences");
     });
   }
   const spellsToggle = container.querySelector(".spells-toggle");
@@ -3060,7 +3318,7 @@ function wireCharacterCard(container, ch, tokenId, isAttacker){
       const willShow = block.hidden;
       block.hidden = !willShow;
       cardTogglesOpen[toggleKey(ch,"spells")] = willShow;
-      spellsToggle.textContent = willShow ? "▾ Masquer les sorts" : "▸ Voir les sorts";
+      spellsToggle.innerHTML = toggleBtnLabel(willShow,"icon-book-open.png","icon-book-closed.png","Sorts");
     });
   }
   const applySlotDelta = (level, delta) => {
@@ -3096,7 +3354,7 @@ function wireCharacterCard(container, ch, tokenId, isAttacker){
       wrap.hidden = !willShow;
       cardTogglesOpen[toggleKey(ch,"cond")] = willShow;
       const activeCount = resolveInstanceConditions(ch, tokenId).length;
-      condToggle.textContent = willShow ? "▾ Masquer les états actifs" : ("▸ États actifs" + (activeCount ? " (" + activeCount + ")" : ""));
+      condToggle.innerHTML = toggleBtnLabel(willShow,"icon-potion-glowing.png","icon-potion-sealed.png","États" + (activeCount ? " (" + activeCount + ")" : ""));
     });
   }
 }
@@ -3378,6 +3636,9 @@ async function insertRevealedTokensIntoInitiative(tokenIds){
 
 function selectTokenById(id){
   if(!id || !boardData.tokens[id]) return;
+  // Same MJ-only restriction as clicking the pion directly — see onTokenPointerDown.
+  const t = boardData.tokens[id];
+  if(!isMJ && t.characterId && t.characterId === myCharacterId) return;
   selectedTokenId = id;
   renderBoard();
   renderSelection(id);
@@ -3665,14 +3926,25 @@ function rollD20WithMode(mode){
 
 let actionNoticeTimer = null;
 // Local-only, never written to Firestore — purely "you clicked something that can't
-// happen right now," shown instantly in the browser that clicked it.
-function showActionNotice(text){
+// happen right now," shown instantly in the browser that clicked it. The blue
+// "info" variant is for a spell in preparation / its result — same placement and
+// mechanics, just a different tone and (optionally) no auto-hide, since reading a
+// spell's effect or its rolled damage takes longer than a one-line warning.
+function showActionNotice(text, opts){
   const el = document.getElementById("action-notice");
   if(!el) return;
   el.textContent = text;
+  el.classList.toggle("notice-info", !!(opts && opts.info));
   el.hidden = false;
   clearTimeout(actionNoticeTimer);
-  actionNoticeTimer = setTimeout(() => { el.hidden = true; }, 2500);
+  if(!(opts && opts.persist)){
+    actionNoticeTimer = setTimeout(() => { el.hidden = true; }, (opts && opts.durationMs) || 2500);
+  }
+}
+function hideActionNotice(){
+  const el = document.getElementById("action-notice");
+  if(el) el.hidden = true;
+  clearTimeout(actionNoticeTimer);
 }
 
 // Once initiative is rolled, a PJ can only attack/move on their own turn — matched by
@@ -3705,7 +3977,12 @@ async function performAttack(weaponIdx){
     return;
   }
 
-  const advModeUsed = diceAdvMode;
+  // Firing into a ranged weapon's long-range band is disadvantage per the rules,
+  // not just a visual hint on the button — combines with whatever the player had
+  // already chosen (advantage + this disadvantage cancel out to a flat roll, same
+  // as the table-top rule for stacking sources).
+  const forcedDisadvantage = attackRangeState(attacker, weapon) === "long";
+  const advModeUsed = forcedDisadvantage ? (diceAdvMode === "adv" ? "normal" : "dis") : diceAdvMode;
   const d20Roll = rollD20WithMode(advModeUsed);
   const d20 = d20Roll.kept;
   const atkTotal = d20 + (weapon.atk||0);
@@ -3759,8 +4036,183 @@ async function performAttack(weaponIdx){
   await saveCombatLog(combatLogData);
   // Avantage/désavantage is a one-shot choice for the next roll, not a standing
   // mode — reset so the following roll defaults back to normal instead of silently
-  // re-applying it.
-  if(advModeUsed !== "normal") setSharedAdvMode("normal");
+  // re-applying it. Checked against the player's own chosen mode, not advModeUsed:
+  // a long-range shot can force "dis" (or cancel a chosen "adv" to "normal") without
+  // that having been an actual choice to consume.
+  if(diceAdvMode !== "normal") setSharedAdvMode("normal");
+}
+
+// Only spells enriched with atkType in personnage/index.html's SPELLS_DB reach here
+// (see the cast-spell-row branch in characterCardHtml) — everything else is still
+// just an informational row, same as before this feature existed.
+function performSpellCast(caster, sp){
+  if(isPcTurnGated(caster)){
+    const current = initData.entries[initData.currentIndex];
+    showActionNotice((current ? current.name : "Un autre personnage") + " doit jouer avant — attends ton tour d'initiative.");
+    return;
+  }
+  if(sp.aoe){
+    armSpellArea(caster, sp);
+    return;
+  }
+  resolveSingleTargetSpell(caster, sp);
+}
+
+// A sort à zone d'effet doesn't have a single "the" target — it arms the board for
+// one click (sphere: where to center it: cône: which direction from the caster) and
+// shows the spell's own effect text in the blue banner while waiting, the same way
+// isPcTurnGated's red banner shows while a weapon click is refused.
+let pendingSpellArea = null;
+function armSpellArea(caster, sp){
+  pendingSpellArea = { caster, sp };
+  const instruction = sp.aoe.shape === "cone"
+    ? "Clique une direction sur la carte (Échap pour annuler)."
+    : "Clique le centre de la zone sur la carte (Échap pour annuler).";
+  showActionNotice(sp.name + " — " + sp.effect + " " + instruction, { info: true, persist: true });
+}
+function cancelSpellArea(){
+  if(!pendingSpellArea) return;
+  pendingSpellArea = null;
+  hideActionNotice();
+}
+document.addEventListener("keydown", (e) => {
+  if(e.key === "Escape" && pendingSpellArea) cancelSpellArea();
+});
+
+async function resolveSingleTargetSpell(caster, sp){
+  const target = getRightPanelCharacter();
+  const targetTokenId = selectedTokenId;
+  if(!target){
+    showActionNotice("Sélectionne une cible (clic gauche sur un pion) avant de lancer ce sort.");
+    return;
+  }
+  const sd = caster.spellDisplay || {};
+  const formula = parseDiceFormulaFromDmgText(sp.dmgFormula || "");
+  const isSave = sp.atkType === "save";
+  let d20, atkBonus, atkTotal, isCrit = false, isFumble = false, hit, targetAc = null;
+  let saveAbility = null, saveDc = null, saveSuccess = null, halved = false;
+  let advModeForEntry = "normal", d20RollsForEntry;
+  if(isSave){
+    saveAbility = sp.saveAbility;
+    saveDc = sd.dc;
+    atkBonus = (target.saveBonuses && target.saveBonuses[saveAbility]) || 0;
+    d20 = rollDie(20);
+    atkTotal = d20 + atkBonus;
+    saveSuccess = atkTotal >= saveDc;
+    halved = saveSuccess && !!sp.halfOnSave;
+    hit = !saveSuccess || halved;
+    d20RollsForEntry = [d20];
+  }else{
+    const advModeUsed = diceAdvMode;
+    const d20Roll = rollD20WithMode(advModeUsed);
+    d20 = d20Roll.kept;
+    atkBonus = sd.atk || 0;
+    atkTotal = d20 + atkBonus;
+    isCrit = d20 === 20; isFumble = d20 === 1;
+    targetAc = target.ac != null ? target.ac : null;
+    hit = isCrit || (!isFumble && targetAc != null && atkTotal >= targetAc);
+    advModeForEntry = advModeUsed;
+    d20RollsForEntry = d20Roll.rolls;
+  }
+
+  let dmg = null, hpBefore = null, hpAfter = null, concSave = null;
+  if(hit && formula){
+    dmg = rollDamage(formula, isCrit);
+    if(halved) dmg = { rolls: dmg.rolls, modifier: dmg.modifier, total: Math.floor(dmg.total / 2) };
+    hpBefore = resolveInstanceHp(target, targetTokenId);
+    hpAfter = Math.max(0, hpBefore - dmg.total);
+    const wasConcentrating = target.concentratingOn;
+    await patchInstanceHp(target, targetTokenId, hpAfter);
+    if(wasConcentrating && hpAfter > 0){
+      const conBonus = (target.saveBonuses && target.saveBonuses.CON) || 0;
+      const dc = Math.max(10, Math.floor(dmg.total / 2));
+      const roll = rollDie(20);
+      const total = roll + conBonus;
+      const success = total >= dc;
+      concSave = { spell: wasConcentrating, dc, roll, bonus: conBonus, total, success };
+      if(!success) await patchCharacter(target.id, { concentratingOn: null });
+    }
+  }
+
+  const entry = {
+    id: "c" + Date.now() + Math.random().toString(36).slice(2,6),
+    ts: Date.now(),
+    attackerName: caster.name || "Sans nom",
+    targetId: target.id, targetTokenId, targetName: target.name || "Sans nom",
+    weaponName: sp.name, weaponHand: null,
+    d20, d20Rolls: d20RollsForEntry, advMode: advModeForEntry, atkBonus, atkTotal, targetAc, isCrit, isFumble, hit,
+    isSpellSave: isSave, saveAbility, saveDc, saveSuccess, halved,
+    dmgTotal: dmg ? dmg.total : null, dmgRolls: dmg ? dmg.rolls : null, dmgModifier: dmg ? dmg.modifier : null,
+    hpBefore, hpAfter, concSave, undone: false
+  };
+  const entries = [entry, ...combatLogData.entries].slice(0, 30);
+  combatLogData = { entries };
+  await saveCombatLog(combatLogData);
+  if(!isSave && diceAdvMode !== "normal") setSharedAdvMode("normal");
+}
+
+// Materializes a cône/sphère on the board (a few seconds, then fades) and rolls the
+// spell's damage once — who it actually catches, and each creature's own save, stay
+// the MJ's call (there's no reliable automatic way here to know who else is on that
+// patch of the board versus just passing through it), so this stops short of
+// touching anyone's PV the way a single-target cast does above.
+async function resolveSpellArea(caster, sp, col, row){
+  const { w } = cellSize();
+  const pxPerMeter = w / METERS_PER_CELL;
+  const aoe = sp.aoe;
+  if(aoe.shape === "cone"){
+    const casterToken = findTokenForCharacter(caster.id);
+    if(!casterToken){
+      showActionNotice("Ton personnage doit être placé sur la carte pour orienter ce sort.");
+      return;
+    }
+    const origin = cellCenterPx(casterToken.x, casterToken.y);
+    const aim = cellCenterPx(col, row);
+    const ang = Math.atan2(aim.y - origin.y, aim.x - origin.x);
+    const lengthPx = aoe.size * pxPerMeter;
+    const halfAngle = (53 * Math.PI / 180) / 2; // ~5e's grid cone, approximated as a true angle
+    const p2 = { x: origin.x + Math.cos(ang - halfAngle) * lengthPx, y: origin.y + Math.sin(ang - halfAngle) * lengthPx };
+    const p3 = { x: origin.x + Math.cos(ang + halfAngle) * lengthPx, y: origin.y + Math.sin(ang + halfAngle) * lengthPx };
+    showSpellAreaShape('<polygon points="' + origin.x + ',' + origin.y + ' ' + p2.x + ',' + p2.y + ' ' + p3.x + ',' + p3.y + '" fill="rgba(224,89,42,.3)" stroke="#e0592a" stroke-width="2" stroke-dasharray="6,4"/>');
+  }else{
+    const center = cellCenterPx(col, row);
+    const radiusPx = aoe.size * pxPerMeter;
+    showSpellAreaShape('<circle cx="' + center.x + '" cy="' + center.y + '" r="' + radiusPx + '" fill="rgba(224,89,42,.3)" stroke="#e0592a" stroke-width="2" stroke-dasharray="6,4"/>');
+  }
+
+  const formula = parseDiceFormulaFromDmgText(sp.dmgFormula || "");
+  const dmg = formula ? rollDamage(formula, false) : null;
+  const sd = caster.spellDisplay || {};
+  const saveText = sp.atkType === "save" ? ("JS " + sp.saveAbility + " DD " + sd.dc + (sp.halfOnSave ? " (moitié si réussi)" : "")) : "";
+  const dmgText = dmg ? (dmg.rolls.join("+") + " = " + dmg.total + " dégâts de " + (sp.dmgType || "")) : "dégâts non calculables";
+  showActionNotice(sp.name + " — " + dmgText + (saveText ? " · " + saveText : "") + " — applique les PV à la main pour chaque créature touchée.", { info: true, durationMs: 9000 });
+
+  const entry = {
+    id: "c" + Date.now() + Math.random().toString(36).slice(2,6),
+    ts: Date.now(),
+    attackerName: caster.name || "Sans nom",
+    targetId: null, targetTokenId: null, targetName: "zone (" + (aoe.shape === "cone" ? "cône" : "sphère") + " " + aoe.size + " m)",
+    weaponName: sp.name, weaponHand: null,
+    d20: null, d20Rolls: null, advMode: "normal", atkBonus: null, atkTotal: null, targetAc: null, isCrit: false, isFumble: false, hit: true,
+    isSpellSave: sp.atkType === "save", saveAbility: sp.saveAbility || null, saveDc: sd.dc || null, saveSuccess: null, halved: false, isAoe: true,
+    dmgTotal: dmg ? dmg.total : null, dmgRolls: dmg ? dmg.rolls : null, dmgModifier: dmg ? dmg.modifier : null,
+    hpBefore: null, hpAfter: null, concSave: null, undone: false
+  };
+  const entries = [entry, ...combatLogData.entries].slice(0, 30);
+  combatLogData = { entries };
+  await saveCombatLog(combatLogData);
+}
+// Dropped onto the same SVG layer the measuring tool's dashed line already uses —
+// same coordinate space (board pixels), already positioned/overflow-visible — then
+// faded out and removed a few seconds later instead of persisting like a token would.
+function showSpellAreaShape(svgMarkup){
+  const svg = document.getElementById("drag-line-svg");
+  const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  g.innerHTML = svgMarkup;
+  g.style.transition = "opacity 1s ease";
+  svg.appendChild(g);
+  setTimeout(() => { g.style.opacity = "0"; }, 5000);
+  setTimeout(() => g.remove(), 6000);
 }
 
 async function undoCombatEntry(entryId){
@@ -3865,19 +4317,39 @@ function renderLastRollBanner(){
   if(text){ el.textContent = text; el.hidden = false; } else { el.hidden = true; }
 }
 function combatEntryRowHtml(e){
+  // A zone sort has no single roll of its own to show — just the damage it rolled
+  // once, for the MJ to apply by hand to whoever it actually caught.
+  if(e.isAoe){
+    const dmgBreakdown = e.dmgTotal != null
+      ? ("(" + e.dmgRolls.join("+") + ")" + (e.dmgModifier ? fmtSigned(e.dmgModifier) : "") + " = " + e.dmgTotal)
+      : "dégâts non calculables";
+    const saveLine = e.saveDc != null ? (" · JS " + e.saveAbility + " DD " + e.saveDc) : "";
+    return '<div class="dice-roll-row" style="flex-direction:column;align-items:stretch;gap:2px;">'+
+      '<div style="display:flex;justify-content:space-between;"><span class="who">' + e.attackerName + ' → ' + e.targetName + ' (' + e.weaponName + ')</span></div>'+
+      '<span class="hint" style="margin:0;">' + dmgBreakdown + ' dégâts' + saveLine + '</span>'+
+    '</div>';
+  }
   const rollDetail = e.isCrit ? " — critique !" : e.isFumble ? " — échec critique" : "";
-  const acText = e.targetAc != null ? (" vs CA " + e.targetAc) : "";
+  const isSpellSave = !!e.isSpellSave;
+  const acText = isSpellSave ? (" vs DD " + e.saveDc) : (e.targetAc != null ? (" vs CA " + e.targetAc) : "");
+  const saveResultText = isSpellSave ? (e.saveSuccess ? " (réussi)" : " (raté)") : "";
   const advLabel = e.advMode === "adv" ? " (avantage)" : e.advMode === "dis" ? " (désavantage)" : "";
   const d20Detail = (e.d20Rolls && e.d20Rolls.length > 1) ? (" [" + e.d20Rolls.join(", ") + "]") : "";
   const handLabel = e.weaponHand === "main" ? ", main principale" : e.weaponHand === "off" ? ", main secondaire" : e.weaponHand === "ranged" ? ", à distance" : "";
   const line1 = e.attackerName + " → " + e.targetName + " (" + e.weaponName + handLabel + ")";
-  const line2 = "Jet : " + e.d20 + d20Detail + fmtSigned(e.atkBonus) + " = " + e.atkTotal + acText + advLabel + rollDetail;
+  const line2 = isSpellSave
+    ? ("JS " + e.saveAbility + " : " + e.d20 + d20Detail + fmtSigned(e.atkBonus) + " = " + e.atkTotal + acText + saveResultText)
+    : ("Jet : " + e.d20 + d20Detail + fmtSigned(e.atkBonus) + " = " + e.atkTotal + acText + advLabel + rollDetail);
   const dmgBreakdown = e.dmgTotal != null
-    ? ("(" + e.dmgRolls.join("+") + ")" + (e.dmgModifier ? fmtSigned(e.dmgModifier) : "") + " = " + e.dmgTotal)
+    ? ("(" + e.dmgRolls.join("+") + ")" + (e.dmgModifier ? fmtSigned(e.dmgModifier) : "") + (e.halved ? " ÷2" : "") + " = " + e.dmgTotal)
     : "";
-  const dmgLine = e.hit
-    ? (e.dmgTotal != null ? ("Touché — " + dmgBreakdown + " dégâts · PV " + e.hpBefore + " → " + e.hpAfter) : "Touché — dégâts non calculables (arme sans dés reconnus)")
-    : "Manqué";
+  const dmgLine = isSpellSave
+    ? (e.hit
+        ? (e.dmgTotal != null ? ((e.saveSuccess ? "Réussi (moitié) — " : "Échoué — ") + dmgBreakdown + " dégâts · PV " + e.hpBefore + " → " + e.hpAfter) : "Dégâts non calculables")
+        : "Réussi — aucun dégât")
+    : (e.hit
+        ? (e.dmgTotal != null ? ("Touché — " + dmgBreakdown + " dégâts · PV " + e.hpBefore + " → " + e.hpAfter) : "Touché — dégâts non calculables (arme sans dés reconnus)")
+        : "Manqué");
   const undoBtn = (!e.undone && e.hpBefore != null) ? ('<button type="button" class="undo-btn" data-undo="'+e.id+'">annuler</button>') : (e.undone ? '<span class="hint" style="margin:0;">(annulé)</span>' : '');
   const concLine = e.concSave
     ? ('<span class="hint conc-save-line' + (e.concSave.success?'':' conc-save-fail') + '" style="margin:0;">Concentration (' + e.concSave.spell + ') — JS Constitution DD ' + e.concSave.dc + ' : ' + e.concSave.roll + fmtSigned(e.concSave.bonus) + ' = ' + e.concSave.total + ' — ' + (e.concSave.success ? 'réussi, concentration conservée' : 'échoué, concentration perdue') + '</span>')
