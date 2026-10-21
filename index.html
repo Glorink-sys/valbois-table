@@ -196,6 +196,36 @@ button:disabled{opacity:.5;cursor:not-allowed;transform:none;}
   display:flex;align-items:center;justify-content:center;
 }
 .zoom-btn:hover{border-color:var(--gold-strong);}
+/* Cold (idle) / warm (hover) / a brighter glow filter on top for the instant of a
+   click — each +/−/zoom-fit icon swaps its own background-image for hover instead
+   of a generic brightness bump, so idle and interactive states actually look like
+   two different button states, not the same icon with a filter slapped on. */
+.zoom-btn.zoom-btn-icon{background:none;border:none;box-shadow:none;padding:1px;background-size:100% 100%;background-repeat:no-repeat;}
+.zoom-btn.zoom-btn-icon.icon-minus{background-image:url('assets/icons/icon-minus.png');}
+.zoom-btn.zoom-btn-icon.icon-plus{background-image:url('assets/icons/icon-plus.png');}
+.zoom-btn.zoom-btn-icon.icon-zoom-fit{background-image:url('assets/icons/icon-zoom-fit.png');}
+.zoom-btn.zoom-btn-icon.icon-minus:hover{background-image:url('assets/icons/icon-minus-hover.png');}
+.zoom-btn.zoom-btn-icon.icon-plus:hover{background-image:url('assets/icons/icon-plus-hover.png');}
+.zoom-btn.zoom-btn-icon.icon-zoom-fit:hover{background-image:url('assets/icons/icon-zoom-fit-hover.png');}
+/* Shared small icon stepper — replaces the plain text "−"/"+" ghost buttons used for
+   PV, or, and spell slots throughout the character card. */
+.icon-step-btn{
+  width:22px;height:22px;padding:0;border:none;background:none;box-shadow:none;
+  background-size:100% 100%;background-repeat:no-repeat;flex:none;cursor:pointer;
+}
+.icon-step-btn.icon-minus{background-image:url('assets/icons/icon-minus.png');}
+.icon-step-btn.icon-plus{background-image:url('assets/icons/icon-plus.png');}
+.icon-step-btn.icon-minus:hover{background-image:url('assets/icons/icon-minus-hover.png');}
+.icon-step-btn.icon-plus:hover{background-image:url('assets/icons/icon-plus-hover.png');}
+/* The real culprit behind the "square cut at the top" on click: the base
+   button:active rule (higher specificity than a single class) was still
+   pushing its own translateY(1px) + inset box-shadow line on these icon
+   buttons underneath our filter — that inset line IS the square edge.
+   button.* here matches/beats that specificity so both are neutralized. */
+button.icon-step-btn:active, button.zoom-btn.zoom-btn-icon:active{
+  filter:brightness(1.45) saturate(1.35);
+  transform:none;box-shadow:none;
+}
 .icon-btn-bare{
   position:relative;background:none;border:none;box-shadow:none;padding:2px;width:auto;height:auto;
   display:inline-flex;align-items:center;justify-content:center;cursor:pointer;
@@ -213,6 +243,12 @@ button:disabled{opacity:.5;cursor:not-allowed;transform:none;}
   padding:4px 9px;border-radius:6px;pointer-events:none;z-index:60;
   opacity:0;transition:opacity .12s ease;
 }
+/* The real reason a hovered tooltip near the side panel could render BEHIND it:
+   button:hover below applies a filter, and any filter creates a new stacking
+   context — that traps icon-label's z-index:60 inside the button, so the
+   button itself (z-index:auto) then loses to the panel's z-index:5. Giving the
+   hovered/focused button its own z-index above the panel fixes it at the source. */
+button:has(.icon-label):hover, button:has(.icon-label):focus-visible{position:relative;z-index:61;}
 button:hover .icon-label, button:focus-visible .icon-label, .hover-reveal:hover .icon-label{opacity:1;}
 .hover-reveal{position:relative;}
 /* A roomier hover tooltip for content worth actually reading (a condition's name +
@@ -390,9 +426,61 @@ button:hover .info-tooltip, button:focus-visible .info-tooltip, .hover-reveal:ho
 }
 .cell-effect{
   position:absolute;display:flex;align-items:center;justify-content:center;
-  pointer-events:none;z-index:2;border-radius:3px;color:var(--ink);
+  pointer-events:none;z-index:2;border-radius:3px;color:var(--ink);overflow:hidden;
 }
-.cell-effect svg{width:55%;height:55%;max-width:26px;max-height:26px;}
+.cell-effect .fx-tint,.cell-effect .fx-glow,.cell-effect .fx-particles{position:absolute;inset:0;}
+.cell-effect .fx-icon{position:relative;z-index:2;width:55%;height:55%;display:flex;align-items:center;justify-content:center;}
+.cell-effect .fx-icon svg{width:100%;height:100%;max-width:26px;max-height:26px;}
+.cell-effect .fx-particles span{position:absolute;border-radius:50%;opacity:0;}
+@media (prefers-reduced-motion:reduce){
+  .cell-effect .fx-glow,.cell-effect .fx-icon,.cell-effect .fx-particles span{animation:none !important;}
+}
+/* Dynamic zone-effect cells — mockup approved, same cost as the static
+   version: only the effect's key is ever synced, each client animates its
+   own copy of these layers from that same data, nothing extra hits Firebase.
+   flicker = warm flame + rising embers; breathe = slow glowing pulse;
+   shimmer = a light sweep across the cell; flash = an irregular bright jolt. */
+.fx-mode-flicker .fx-glow{
+  background:radial-gradient(circle, color-mix(in srgb, var(--fx-color) 75%, transparent) 0%, transparent 72%);
+  animation:fx-flicker-pulse 1.6s ease-in-out infinite;
+}
+.fx-mode-flicker .fx-icon{animation:fx-flicker-shake 1.6s ease-in-out infinite;}
+@keyframes fx-flicker-pulse{0%,100%{opacity:.45;transform:scale(.85);}50%{opacity:.95;transform:scale(1.12);}}
+@keyframes fx-flicker-shake{0%,100%{transform:scale(1) rotate(0deg);}30%{transform:scale(1.05) rotate(-2deg);}60%{transform:scale(.97) rotate(2deg);}}
+.fx-mode-flicker .fx-particles span{width:12%;height:12%;background:color-mix(in srgb, var(--fx-color) 50%, #ffb04a);animation:fx-ember 2.2s ease-in infinite;}
+.fx-mode-flicker .fx-particles span:nth-child(1){left:32%;bottom:14%;animation-delay:0s;}
+.fx-mode-flicker .fx-particles span:nth-child(2){left:50%;bottom:10%;animation-delay:.7s;}
+.fx-mode-flicker .fx-particles span:nth-child(3){left:63%;bottom:16%;animation-delay:1.4s;}
+@keyframes fx-ember{0%{opacity:0;transform:translateY(0) scale(1);}18%{opacity:1;}75%{opacity:.5;}100%{opacity:0;transform:translateY(-70%) scale(.3);}}
+
+.fx-mode-breathe .fx-glow{
+  background:radial-gradient(circle, color-mix(in srgb, var(--fx-color) 65%, transparent) 0%, transparent 75%);
+  filter:blur(1px);
+  animation:fx-breathe 3.2s ease-in-out infinite;
+}
+@keyframes fx-breathe{0%,100%{opacity:.4;transform:scale(.9);}50%{opacity:.8;transform:scale(1.15);}}
+
+.fx-mode-shimmer .fx-glow{
+  background:linear-gradient(115deg, transparent 40%, color-mix(in srgb, var(--fx-color) 85%, white) 50%, transparent 60%);
+  background-size:260% 260%;
+  animation:fx-shimmer 2.8s linear infinite;
+}
+.fx-mode-shimmer .fx-icon{animation:fx-twinkle 2.8s ease-in-out infinite;}
+@keyframes fx-shimmer{0%{background-position:160% 160%;}100%{background-position:-60% -60%;}}
+@keyframes fx-twinkle{0%,100%{opacity:.85;}50%{opacity:1;filter:drop-shadow(0 0 3px color-mix(in srgb, var(--fx-color) 80%, white));}}
+
+.fx-mode-flash .fx-glow{
+  background:radial-gradient(circle, color-mix(in srgb, var(--fx-color) 90%, white) 0%, transparent 68%);
+  animation:fx-flash 2.4s steps(1,end) infinite;
+}
+.fx-mode-flash .fx-icon{animation:fx-jolt 2.4s steps(1,end) infinite;}
+@keyframes fx-flash{
+  0%,100%{opacity:0;} 38%{opacity:0;} 40%{opacity:1;} 44%{opacity:.15;} 47%{opacity:.9;} 52%{opacity:0;}
+  78%{opacity:0;} 80%{opacity:.8;} 84%{opacity:0;}
+}
+@keyframes fx-jolt{
+  0%,100%{transform:scale(1);} 40%{transform:scale(1.18);} 52%{transform:scale(1);} 80%{transform:scale(1.1);} 84%{transform:scale(1);}
+}
 .effect-btn .ic{display:inline-flex;align-items:center;justify-content:center;width:1.5em;height:1.5em;border-radius:50%;flex:none;}
 .effect-btn .ic svg{width:62%;height:62%;}
 #drag-line-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;overflow:visible;}
@@ -570,22 +658,85 @@ button:hover .info-tooltip, button:focus-visible .info-tooltip, .hover-reveal:ho
 .npc-picker-row .swatch{width:26px;height:26px;border-radius:50%;flex:none;background-size:cover;background-position:center;border:1px solid rgba(0,0,0,.2);}
 .npc-picker-row .name{flex:1;font-size:.85rem;}
 .hint{font-size:.78rem;color:var(--ink-soft);max-width:60ch;margin:0 0 12px;}
-.icon-toggle-btn{display:flex;align-items:center;justify-content:flex-start;gap:8px;width:100%;box-sizing:border-box;padding:4px 10px;}
-.toggle-btn-icon{width:26px;height:26px;object-fit:contain;flex:none;}
 .stat-chip-col{display:flex;flex-direction:column;justify-content:center;gap:3px;height:64px;box-sizing:border-box;}
 .stat-chip{display:inline-flex;align-items:center;gap:6px;font-size:.85rem;font-weight:600;}
 .stat-chip-icon{width:18px;height:18px;object-fit:contain;flex:none;}
 .section-icon{width:16px;height:16px;object-fit:contain;flex:none;}
 
-.my-ability-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:6px;}
-.my-ability{display:flex;flex-direction:column;align-items:center;background:var(--panel);border:1px solid var(--parchment-line);border-radius:6px;padding:4px 2px;}
-button.my-ability{cursor:pointer;font-family:inherit;text-transform:none;letter-spacing:normal;color:inherit;}
-button.my-ability:hover{border-color:var(--gold-strong);}
-.my-ability-k{font-size:.68rem;color:var(--ink-soft);letter-spacing:.03em;}
-.my-ability-v{font-size:.82rem;font-weight:700;font-variant-numeric:tabular-nums;}
+/* Fills the same content width as every other row in the card (HP bar, attack
+   rows, etc.) — minmax(0,1fr) keeps the 3 equal columns from ever blowing out
+   past that width (a plain 1fr track refuses to shrink below its content). */
+.my-ability-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px 6px;width:100%;box-sizing:border-box;margin:0 0 10px;}
+/* Each box's own medallion frame (FOR/DEX/.../CHA) is set inline per ability — see
+   ABILITY_FRAME. Every box keeps the exact same aspect-ratio (so all 6 are the
+   same size); background-size:cover (not 100% 100%, and not contain) fills each
+   box completely at the frame's own native proportions — contain left visible
+   gaps for frames whose ratio didn't match the box, making those look smaller
+   than the others; cover crops the (tiny) excess instead of leaving a gap. */
+.my-ability{
+  position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background-size:cover;background-repeat:no-repeat;background-position:center;
+  border:none;border-radius:0;box-shadow:none;padding:25% 7px 10%;aspect-ratio:4/3.25;box-sizing:border-box;
+}
+/* box-shadow:none above also matters for the clickable (button) variant — the
+   base button rule's drop-shadow/sheen was showing through the medallion's own
+   transparent corners, looking like a plain button peeking out from under it. */
+button.my-ability{cursor:pointer;font-family:inherit;text-transform:none;letter-spacing:normal;color:inherit;background-color:transparent;}
+button.my-ability:hover{filter:brightness(1.1);}
+/* Pulled in a notch from the earlier size so the letters/number stay clear of
+   the medallion's own carved border instead of running into it. */
+.my-ability-k{font-size:.56rem;color:var(--ink-soft);letter-spacing:0;}
+.my-ability-v{font-size:.64rem;font-weight:700;font-variant-numeric:tabular-nums;}
 .my-inventory-list{list-style:none;padding:0;margin:0 0 6px;font-size:.82rem;}
 .my-inventory-list li{padding:2px 4px;border-bottom:1px solid var(--parchment-line);}
 .my-inventory-list li.equipped{font-weight:600;background:color-mix(in srgb, var(--gold-strong) 12%, transparent);border-radius:4px;}
+.gold-widget{position:relative;}
+/* Every side-panel menu entry (Compétences, Sorts, Inventaire, États, Or) is a
+   plain, borderless row — button.icon-toggle-btn (not just .icon-toggle-btn) is
+   needed for the border/background reset: button.ghost's own shorthand rules
+   have equal-or-higher specificity than a lone class and were winning instead. */
+.icon-toggle-btn{
+  display:flex;align-items:center;justify-content:flex-start;gap:8px;width:100%;box-sizing:border-box;
+  padding:8px 10px;
+}
+button.icon-toggle-btn{border:none;background:none;box-shadow:none;}
+.toggle-btn-icon{width:32px;height:32px;object-fit:contain;flex:none;}
+/* Breathing room on both sides (not glued to the divider above, nor to the
+   Compétences divider right below) — one inline row: amount, then the two
+   action icons right after it, all vertically centered, and the whole row
+   centered in the panel now that the icons no longer stretch edge to edge. */
+.gold-menu{display:flex;align-items:center;justify-content:center;gap:8px;margin:14px 0 14px;}
+.gold-menu[hidden]{display:none;}
+/* ~5 digits' worth of width — plenty for any realistic amount — and the native
+   spin arrows are dropped since amounts are typed, not nudged. */
+.gold-amount{width:4.5ch;box-sizing:content-box;}
+.gold-amount::-webkit-inner-spin-button,.gold-amount::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+.gold-amount{-moz-appearance:textfield;}
+/* Dépenser/Recevoir (new art, explicit +/− and arrow): dark idle, swaps to
+   the lighter "normal" art on hover, and to the glowing art on click — with a
+   brightness pop layered on top of that click art, not instead of it. */
+.icon-gold-btn{
+  width:58px;height:58px;flex:none;padding:0;border:none;background:none;box-shadow:none;
+  background-size:100% 100%;background-repeat:no-repeat;cursor:pointer;position:relative;
+}
+.icon-gold-btn.icon-gold-spend{background-image:url('assets/icons/icon-gold-spend.png');}
+.icon-gold-btn.icon-gold-spend:hover{background-image:url('assets/icons/icon-gold-spend-hover.png');}
+.icon-gold-btn.icon-gold-receive{background-image:url('assets/icons/icon-gold-receive.png');}
+.icon-gold-btn.icon-gold-receive:hover{background-image:url('assets/icons/icon-gold-receive-hover.png');}
+button.icon-gold-btn.icon-gold-spend:active{background-image:url('assets/icons/icon-gold-spend-click.png');}
+button.icon-gold-btn.icon-gold-receive:active{background-image:url('assets/icons/icon-gold-receive-click.png');}
+button.icon-gold-btn:active{filter:brightness(1.45) saturate(1.35);}
+/* The ornate rule between two menu rows: its own box in the layout is only
+   2px tall (that's the real gap between rows — the line's thin tapered tips),
+   but the <img> inside is absolutely centered on it at its natural height and
+   free to spill out over both neighbouring rows, which is where the carved
+   diamond motif actually shows. pointer-events:none so the overlap never
+   blocks clicks on the row underneath. */
+.panel-divider{position:relative;height:2px;}
+.panel-divider img{
+  position:absolute;left:0;top:50%;width:100%;height:auto;
+  transform:translateY(-50%);pointer-events:none;
+}
 .cond-chip-wrap{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;}
 .cond-chip-wrap[hidden]{display:none;}
 .cond-chip{
@@ -612,11 +763,11 @@ button.my-ability:hover{border-color:var(--gold-strong);}
 .atk-block{display:flex;flex-direction:column;gap:4px;margin-bottom:6px;}
 .atk-block[hidden]{display:none;}
 .atk-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:.82rem;}
-.skill-row{width:100%;border:none;background:none;color:inherit;font-family:inherit;text-transform:none;letter-spacing:normal;padding:2px 4px;margin:0 -4px;border-radius:4px;cursor:pointer;text-align:left;}
+.skill-row{width:100%;border:none;background:none;box-shadow:none;color:inherit;font-family:inherit;text-transform:none;letter-spacing:normal;padding:2px 4px;margin:0 -4px;border-radius:4px;cursor:pointer;text-align:left;}
 .skill-row:hover{background:var(--parchment-line);}
 .atk-weapon-row{position:relative;display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:.88rem;padding:2px 4px;margin:0 -4px;border-radius:4px;}
 button.atk-attack-row,button.concentration-row{
-  width:100%;border:none;background:none;color:inherit;cursor:pointer;text-align:left;
+  width:100%;border:none;background:none;box-shadow:none;color:inherit;cursor:pointer;text-align:left;
   font-family:inherit;text-transform:none;letter-spacing:normal;
 }
 button.atk-attack-row:hover,button.concentration-row:hover{background:var(--parchment-line);}
@@ -740,10 +891,10 @@ button.atk-attack-row.range-long{
         </div>
       </div>
       <div class="zoom-row" id="zoom-row">
-        <button type="button" class="zoom-btn" id="btn-zoom-out" title="Dézoomer">−</button>
+        <button type="button" class="zoom-btn zoom-btn-icon icon-minus" id="btn-zoom-out" title="Dézoomer"></button>
         <span id="zoom-label">100%</span>
-        <button type="button" class="zoom-btn" id="btn-zoom-in" title="Zoomer">+</button>
-        <button type="button" class="zoom-btn" id="btn-zoom-reset" title="Réinitialiser le zoom" style="width:auto;padding:0 8px;font-size:.68rem;">100%</button>
+        <button type="button" class="zoom-btn zoom-btn-icon icon-plus" id="btn-zoom-in" title="Zoomer"></button>
+        <button type="button" class="zoom-btn zoom-btn-icon icon-zoom-fit" id="btn-zoom-reset" title="Réinitialiser le zoom"></button>
         <button type="button" class="icon-btn-bare" id="btn-ping-mode" title="Cliquer puis cliquer sur la carte pour signaler un endroit à tous"><img src="assets/icons/icon-pin.png" alt=""><span class="icon-label">Signaler un endroit</span></button>
         <button type="button" class="icon-btn-bare" id="btn-measure-mode" title="Cliquer puis glisser sur la carte pour mesurer une distance"><img src="assets/icons/icon-ruler.png" alt=""><span class="icon-label">Mesurer une distance</span></button>
         <div class="global-adv-group" style="display:flex;gap:2px;" title="S'applique aux jets de compétence et de sauvegarde cliqués sur une fiche">
@@ -934,23 +1085,30 @@ const SVG_ICONS = {
   illusion: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 0-7-7 5 5 0 0 0-5 5 3 3 0 0 0 3 3"/></svg>'
 };
 
+// "mode" picks the cell's animation family (see .fx-mode-* below) — left out
+// entirely for the few mundane, non-magical effects (plain terrain, a hidden
+// trap) that shouldn't visually call attention to themselves on the board.
+//   flicker = warm flame + rising embers (feu, lave)
+//   breathe = slow glowing pulse, for gas/vapor/magic auras
+//   shimmer = a light sweep across the cell, for cold/reflective/shifting things
+//   flash   = an irregular bright jolt, for electricity
 const EFFECTS_LIBRARY = [
   {key:"difficile", label:"Terrain difficile", icon:SVG_ICONS.difficile, color:"#8a7048"},
-  {key:"feu", label:"Feu", icon:SVG_ICONS.feu, color:"#c1440e"},
-  {key:"toile", label:"Toile d'araignée", icon:SVG_ICONS.toile, color:"#6b6b6b"},
-  {key:"brouillard", label:"Brouillard", icon:SVG_ICONS.brouillard, color:"#8a97a8"},
-  {key:"tenebres", label:"Ténèbres magiques", icon:SVG_ICONS.tenebres, color:"#3a2a52"},
-  {key:"poison", label:"Gaz toxique", icon:SVG_ICONS.poison, color:"#4c7c3f"},
-  {key:"givre", label:"Givre / Glace", icon:SVG_ICONS.givre, color:"#6fa8c9"},
-  {key:"foudre", label:"Électricité", icon:SVG_ICONS.foudre, color:"#c9a227"},
-  {key:"acide", label:"Acide", icon:SVG_ICONS.acide, color:"#8fae1b"},
-  {key:"eau", label:"Eau profonde", icon:SVG_ICONS.eau, color:"#2e6f9e"},
-  {key:"lave", label:"Lave", icon:SVG_ICONS.lave, color:"#9e2e1f"},
+  {key:"feu", label:"Feu", icon:SVG_ICONS.feu, color:"#c1440e", mode:"flicker"},
+  {key:"toile", label:"Toile d'araignée", icon:SVG_ICONS.toile, color:"#6b6b6b", mode:"shimmer"},
+  {key:"brouillard", label:"Brouillard", icon:SVG_ICONS.brouillard, color:"#8a97a8", mode:"breathe"},
+  {key:"tenebres", label:"Ténèbres magiques", icon:SVG_ICONS.tenebres, color:"#3a2a52", mode:"breathe"},
+  {key:"poison", label:"Gaz toxique", icon:SVG_ICONS.poison, color:"#4c7c3f", mode:"breathe"},
+  {key:"givre", label:"Givre / Glace", icon:SVG_ICONS.givre, color:"#6fa8c9", mode:"shimmer"},
+  {key:"foudre", label:"Électricité", icon:SVG_ICONS.foudre, color:"#c9a227", mode:"flash"},
+  {key:"acide", label:"Acide", icon:SVG_ICONS.acide, color:"#8fae1b", mode:"breathe"},
+  {key:"eau", label:"Eau profonde", icon:SVG_ICONS.eau, color:"#2e6f9e", mode:"shimmer"},
+  {key:"lave", label:"Lave", icon:SVG_ICONS.lave, color:"#9e2e1f", mode:"flicker"},
   {key:"epines", label:"Épines / Ronces", icon:SVG_ICONS.epines, color:"#3f6b3f"},
   {key:"piege", label:"Piège", icon:SVG_ICONS.piege, color:"#c17a1f"},
-  {key:"sanctuaire", label:"Zone bénie", icon:SVG_ICONS.sanctuaire, color:"#c9a227"},
-  {key:"silence", label:"Silence", icon:SVG_ICONS.silence, color:"#5a5a6b"},
-  {key:"illusion", label:"Illusion", icon:SVG_ICONS.illusion, color:"#7a4f9e"}
+  {key:"sanctuaire", label:"Zone bénie", icon:SVG_ICONS.sanctuaire, color:"#c9a227", mode:"breathe"},
+  {key:"silence", label:"Silence", icon:SVG_ICONS.silence, color:"#5a5a6b", mode:"shimmer"},
+  {key:"illusion", label:"Illusion", icon:SVG_ICONS.illusion, color:"#7a4f9e", mode:"shimmer"}
 ];
 
 const boardRef = doc(db, "state", "board");
@@ -1103,6 +1261,33 @@ const CONDITION_ICONS = {
   "Concentration":"icon-cond-concentration.png"
 };
 const CONCENTRATION_ICON = "icon-cond-concentration.png";
+// Each ability score box's background frame — a themed medallion per ability
+// (chained fist = FOR, dagger+shield = DEX, tree = CON, lantern = INT, owl = SAG,
+// laurel = CHA), picked by the user to match each ability's feel.
+const ABILITY_FRAME = {
+  FOR:"frame-ability-for.png", DEX:"frame-ability-dex.png", CON:"frame-ability-con.png",
+  INT:"frame-ability-int.png", SAG:"frame-ability-sag.png", CHA:"frame-ability-cha.png"
+};
+// The gold bandeau's medallion shows a bag/coffer whose fullness reflects the
+// character's current gold — ordered poorest to richest, each entry's "max"
+// is the highest gold amount that still uses that image (last entry has no cap).
+const GOLD_POUCH_TIERS = [
+  {max:0,   img:"pouch-1-empty.png"},
+  {max:24,  img:"pouch-2-low.png"},
+  {max:99,  img:"pouch-3-half.png"},
+  {max:499, img:"pouch-4-full.png"},
+  {max:Infinity, img:"pouch-5-chest.png"}
+];
+function goldPouchImage(gold){
+  const g = gold || 0;
+  const tier = GOLD_POUCH_TIERS.find(t => g <= t.max);
+  return (tier || GOLD_POUCH_TIERS[GOLD_POUCH_TIERS.length-1]).img;
+}
+// Rounds to at most 2 decimals (silver/copper fractions of a gold piece) and
+// also rounds away the float noise that "+ delta" arithmetic would otherwise
+// leave behind (e.g. 2.55 + 0.1 landing on 2.6499999999999995) — a trailing
+// zero is dropped (2.50 -> "2.5", 3.00 -> "3") rather than padded back on.
+function fmtGold(n){ return String(Math.round((n||0) * 100) / 100); }
 // A plain emoji glyph instead of a hand-drawn icon — renders with the viewer's own
 // system emoji font (the exact ☠️ everyone already recognizes), shared between a
 // board pion and a portrait in the side panels (see .skull-overlay).
@@ -1508,14 +1693,19 @@ function renderBoard(){
     const [col,row] = key.split("_").map(Number);
     const fx = EFFECTS_LIBRARY.find(f => f.key === boardData.effects[key].key) || boardData.effects[key];
     const el = document.createElement("div");
-    el.className = "cell-effect";
+    el.className = "cell-effect" + (fx.mode ? " fx-mode-" + fx.mode : "");
     el.style.left = (col*w) + "px";
     el.style.top = (row*h) + "px";
     el.style.width = w + "px";
     el.style.height = h + "px";
-    el.style.background = (fx.color||"#888") + "55";
     el.title = fx.label || "";
-    el.innerHTML = fx.icon || "";
+    const color = fx.color || "#888";
+    el.style.setProperty("--fx-color", color);
+    el.innerHTML =
+      '<div class="fx-tint" style="background:' + color + '55;"></div>' +
+      (fx.mode ? '<div class="fx-glow"></div>' : '') +
+      '<div class="fx-icon">' + (fx.icon || "") + '</div>' +
+      (fx.mode === "flicker" ? '<div class="fx-particles"><span></span><span></span><span></span></div>' : '');
     board.appendChild(el);
   });
 
@@ -2858,11 +3048,12 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
     const m = abilityMod(ch, k);
     const save = ch.saveBonuses ? ch.saveBonuses[k] : m;
     const inner = '<span class="my-ability-k">' + k + '</span><span class="my-ability-v">' + fmtSigned(m) + '</span>';
+    const frameStyle = ' style="background-image:url(\'assets/ui/' + ABILITY_FRAME[k] + '\');"';
     // Clickable for the same reason skills are: one click rolls 1d20 + the save bonus
     // into the shared log instead of the MJ asking and the player doing the math.
     return canManage
-      ? '<button type="button" class="my-ability save-row" data-save-ability="' + k + '" title="Lancer 1d20' + fmtSigned(save) + ' (jet de sauvegarde)">' + inner + '</button>'
-      : '<div class="my-ability" title="Jet de sauvegarde : ' + fmtSigned(save) + '">' + inner + '</div>';
+      ? '<button type="button" class="my-ability save-row" data-save-ability="' + k + '"' + frameStyle + ' title="Lancer 1d20' + fmtSigned(save) + ' (jet de sauvegarde)">' + inner + '</button>'
+      : '<div class="my-ability"' + frameStyle + ' title="Jet de sauvegarde : ' + fmtSigned(save) + '">' + inner + '</div>';
   }).join("");
   const passivePerception = 10 + ((ch.skillBonuses && ch.skillBonuses["Perception"]) || 0);
   const active = resolveInstanceConditions(ch, tokenId);
@@ -2898,44 +3089,83 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
     : '<div class="hp-bar"><div class="hp-bar-fill" style="width:' + hpPct + '%;background:' + hpColor + ';"></div>'+
       '<span class="hp-bar-label"><span class="hp-value">' + hpCur + '</span> / ' + hpMax + '</span></div>';
   const hpControls = canManage
-    ? ('<button type="button" class="ghost btn-sm hp-minus" style="padding:2px 8px;">−</button>' + hpBar + '<button type="button" class="ghost btn-sm hp-plus" style="padding:2px 8px;">+</button>')
+    ? ('<button type="button" class="icon-step-btn icon-minus hp-minus" title="−1 PV"></button>' + hpBar + '<button type="button" class="icon-step-btn icon-plus hp-plus" title="+1 PV"></button>')
     : hpBar;
+
+  // Reused before every side-panel menu row (Or / Compétences / Sorts /
+  // Inventaire / États) — see .panel-divider: a 2px-tall seam with the
+  // ornate image overlapping both neighbouring rows above and below it.
+  const panelDivider = '<div class="panel-divider"><img src="assets/ui/divider-ornate-short.png" alt=""></div>';
+  // Same diamond-tipped line used between spells, reused to separate each
+  // row inside a dropdown list (skills, inventory, equipment) — same overlap
+  // mechanics, just a different image.
+  const itemDivider = '<div class="panel-divider"><img src="assets/ui/divider-line-diamond.png" alt=""></div>';
+  // Hoisted above the canManage block below: the always-visible in-combat quick
+  // panel (further down, near moveTrackerHtml) needs these too, and a const
+  // declared inside that block's braces wouldn't be reachable out here.
+  const attacks = ch.attacks || [];
+  // Clicking a weapon here attacks the token currently selected as target (right
+  // panel) with it, straight away — only wired when this card is rendered as the
+  // attacker (left "Personnage" panel); the right panel shows the same markup for
+  // the TARGET's own weapons, which would attack with the wrong character's stats
+  // if it were clickable too, so it stays inert there.
+  // Dimmed (not disabled — the click still goes through performAttack(), which has
+  // the actual guard and shows the explanatory notice) when initiative is running
+  // and it isn't this PJ's turn yet, so the restriction is visible before clicking.
+  const turnGated = isAttacker && isPcTurnGated(ch);
+  const weaponRowsArr = attacks.map((a,i) => {
+    const head='<span>' + a.name + '</span><span class="mono">' + fmtSigned(a.atk) + ' · ' + a.dmgText + '</span>';
+    // The weapon's properties (Finesse, légère...) used to always take their own
+    // line below the name — a tooltip on hover keeps the row to one compact line.
+    const attackHint = turnGated ? "Ce n'est pas ton tour" : "Attaquer la cible sélectionnée";
+    const propsAttr = a.props ? (' title="' + a.props.replace(/"/g,"&quot;") + (isAttacker?(' — '+attackHint):'') + '"') : (isAttacker?(' title="'+attackHint+'"'):'');
+    // Out of range (melee reach, or past a ranged weapon's long range) greys the
+    // text out; a ranged weapon's long-range band (past short, within long —
+    // disadvantage per the rules, not impossible) gets a hatched background
+    // instead, since the attack is still worth attempting there.
+    const rangeState = isAttacker ? attackRangeState(ch, a) : null;
+    const rangeClass = rangeState === "out" ? " range-out" : rangeState === "long" ? " range-long" : "";
+    const rangeDisabled = rangeState === "out" ? " disabled" : "";
+    return isAttacker
+      ? '<button type="button" class="atk-weapon-row atk-attack-row' + (turnGated?" turn-gated":"") + rangeClass + '" data-attack-idx="' + i + '"' + rangeDisabled + propsAttr + '>' + head + '</button>'
+      : '<div class="atk-weapon-row"' + propsAttr + '>' + head + '</div>';
+  });
+  // Weapons only, separated the same way as every other dropdown list — used
+  // on its own in the in-combat quick panel (combatQuickHtml) further down.
+  const attackRows = weaponRowsArr.length
+    ? weaponRowsArr.join(itemDivider)
+    : '<p class="hint" style="margin:0 0 6px;">Aucune arme équipée.</p>';
+  // Everything actually equipped, not just weapons — armor/shield come straight
+  // from the inventory the same way Inventaire's own "(équipé)" tag does (see
+  // invRows below), read-only here since (un)equipping only happens in the
+  // character tool itself.
+  const equippedArmorShieldArr = (ch.inventory || []).filter(it =>
+    (it.cat === "armor" && ch.armorKey != null && ch.armorKey === it.refKey) ||
+    (it.cat === "shield" && !!ch.shield)
+  ).map(it =>
+    '<div class="atk-weapon-row"><span>' + (it.name||"") + '</span><span class="hint" style="margin:0;">' + (it.cat==="shield"?"Bouclier":"Armure") + '</span></div>'
+  );
+  const equipAllRowsArr = weaponRowsArr.concat(equippedArmorShieldArr);
 
   let managedBlock = "";
   if(canManage){
-    const attacks = ch.attacks || [];
-    // Clicking a weapon here attacks the token currently selected as target (right
-    // panel) with it, straight away — only wired when this card is rendered as the
-    // attacker (left "Personnage" panel); the right panel shows the same markup for
-    // the TARGET's own weapons, which would attack with the wrong character's stats
-    // if it were clickable too, so it stays inert there.
-    // Dimmed (not disabled — the click still goes through performAttack(), which has
-    // the actual guard and shows the explanatory notice) when initiative is running
-    // and it isn't this PJ's turn yet, so the restriction is visible before clicking.
-    const turnGated = isAttacker && isPcTurnGated(ch);
-    const attackRows = attacks.length
-      ? attacks.map((a,i) => {
-          const head='<span>' + a.name + '</span><span class="mono">' + fmtSigned(a.atk) + ' · ' + a.dmgText + '</span>';
-          // The weapon's properties (Finesse, légère...) used to always take their own
-          // line below the name — a tooltip on hover keeps the row to one compact line.
-          const attackHint = turnGated ? "Ce n'est pas ton tour" : "Attaquer la cible sélectionnée";
-          const propsAttr = a.props ? (' title="' + a.props.replace(/"/g,"&quot;") + (isAttacker?(' — '+attackHint):'') + '"') : (isAttacker?(' title="'+attackHint+'"'):'');
-          // Out of range (melee reach, or past a ranged weapon's long range) greys the
-          // text out; a ranged weapon's long-range band (past short, within long —
-          // disadvantage per the rules, not impossible) gets a hatched background
-          // instead, since the attack is still worth attempting there.
-          const rangeState = isAttacker ? attackRangeState(ch, a) : null;
-          const rangeClass = rangeState === "out" ? " range-out" : rangeState === "long" ? " range-long" : "";
-          const rangeDisabled = rangeState === "out" ? " disabled" : "";
-          return isAttacker
-            ? '<button type="button" class="atk-weapon-row atk-attack-row' + (turnGated?" turn-gated":"") + rangeClass + '" data-attack-idx="' + i + '"' + rangeDisabled + propsAttr + '>' + head + '</button>'
-            : '<div class="atk-weapon-row"' + propsAttr + '>' + head + '</div>';
-        }).join("")
-      : '<p class="hint" style="margin:0 0 6px;">Aucune arme équipée.</p>';
     // Skills: PCs get a real computed bonus per skill (synced from the character
     // tool); NPCs only ever had a free-text "Discrétion +4, Perception +3" line —
     // showing that verbatim under the same toggle is good enough for now.
     const skillsOpen = !!cardTogglesOpen[toggleKey(ch,"skills")];
+    // Weapons, armor and shield used to sit in an always-visible "Attaques"
+    // heading above every other menu — folded into a regular collapsible entry
+    // (like Sorts, Inventaire...) so the panel reads as one consistent list of
+    // menus. The weapon rows also reappear, always unfolded, in the in-combat
+    // quick panel further down (see combatQuickHtml) — same buttons, same
+    // wiring, just reachable without opening this dropdown mid-fight.
+    const equipOpen = !!cardTogglesOpen[toggleKey(ch,"equip")];
+    const equipBlock =
+      panelDivider +
+      '<button type="button" class="ghost btn-sm icon-toggle-btn equip-toggle">' + toggleBtnLabel(equipOpen,"icon-helmet-open.png","icon-helmet-closed.png","Équipement") + '</button>'+
+      '<div class="atk-block equip-block"' + (equipOpen?"":" hidden") + '>' +
+        (equipAllRowsArr.length ? equipAllRowsArr.join(itemDivider) : '<p class="hint" style="margin:0 0 6px;">Rien d\'équipé.</p>') +
+      '</div>';
     let skillsBlock = "";
     if(ch.skillBonuses){
       // Clicking a skill rolls 1d20 + that skill's bonus for this exact character,
@@ -2945,13 +3175,15 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
         .sort((a, b) => SKILL_ORDER.indexOf(a[0]) - SKILL_ORDER.indexOf(b[0]))
         .map(([name,b]) =>
           '<button type="button" class="atk-row skill-row" data-skill="' + name + '" title="Lancer 1d20' + fmtSigned(b) + ' pour ' + name + '"><span>' + name + '</span><span class="mono">' + fmtSigned(b) + '</span></button>'
-        ).join("");
+        ).join(itemDivider);
       skillsBlock =
-        '<button type="button" class="ghost btn-sm icon-toggle-btn skills-toggle" style="margin-top:6px;">' + toggleBtnLabel(skillsOpen,"icon-compass-open.png","icon-compass-closed.png","Compétences") + '</button>'+
+        panelDivider +
+        '<button type="button" class="ghost btn-sm icon-toggle-btn skills-toggle">' + toggleBtnLabel(skillsOpen,"icon-compass-open.png","icon-compass-closed.png","Compétences") + '</button>'+
         '<div class="atk-block skills-block"' + (skillsOpen?"":" hidden") + '>' + rows + '</div>';
     }else if(ch.skillsText){
       skillsBlock =
-        '<button type="button" class="ghost btn-sm icon-toggle-btn skills-toggle" style="margin-top:6px;">' + toggleBtnLabel(skillsOpen,"icon-compass-open.png","icon-compass-closed.png","Compétences") + '</button>'+
+        panelDivider +
+        '<button type="button" class="ghost btn-sm icon-toggle-btn skills-toggle">' + toggleBtnLabel(skillsOpen,"icon-compass-open.png","icon-compass-closed.png","Compétences") + '</button>'+
         '<p class="hint skills-block" style="margin-top:4px;"' + (skillsOpen?"":" hidden") + '>' + ch.skillsText + '</p>';
     }
     if(isNpc){
@@ -2969,8 +3201,7 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
       ].filter(Boolean);
       const detailsOpen = !!cardTogglesOpen[toggleKey(ch,"details")];
       managedBlock =
-        '<h3 class="sub" style="margin-top:8px;display:flex;align-items:center;gap:6px;"><img src="assets/icons/icon-sword.png" class="section-icon" alt="">Attaques</h3>'+
-        '<div class="atk-block">' + attackRows + '</div>'+
+        equipBlock +
         skillsBlock +
         (details.length ? (
           '<button type="button" class="ghost btn-sm npc-details-toggle" style="margin-top:6px;">' + (detailsOpen?"▾ Masquer les détails":"▸ Voir les détails (traits, actions...)") + '</button>'+
@@ -2999,13 +3230,22 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
       // MJ (or the player on their own character) can grant/spend gold and add/remove
       // items right from the board — same direct-patch pattern as the HP stepper above,
       // instead of having to relay it to the player so they update their own sheet.
+      // The bandeau button itself just opens/closes the little "dépenser/recevoir"
+      // menu below it — it doesn't move gold on its own.
       const goldBlock = canManage ? (
-        '<div class="field-row" style="align-items:center;gap:6px;margin:6px 0 2px;">'+
-        '<button type="button" class="ghost btn-sm gold-minus" style="padding:2px 8px;">−</button>'+
-        '<span class="hint" style="margin:0;">Or : <strong class="gold-value">' + (ch.gold||0) + '</strong> po</span>'+
-        '<button type="button" class="ghost btn-sm gold-plus" style="padding:2px 8px;">+</button>'+
+        panelDivider +
+        '<div class="gold-widget">'+
+        '<button type="button" class="ghost btn-sm icon-toggle-btn gold-bandeau-btn" title="Gérer l\'or">'+
+          '<img class="toggle-btn-icon gold-pouch-icon" src="assets/ui/' + goldPouchImage(ch.gold) + '" alt="">'+
+          '<span class="gold-value">' + fmtGold(ch.gold) + '</span> po'+
+        '</button>'+
+        '<div class="gold-menu" hidden>'+
+          '<input type="number" class="gold-amount" value="1" min="0.01" step="0.01" style="font-size:.78rem;padding:4px 6px;">'+
+          '<button type="button" class="icon-gold-btn icon-gold-spend gold-spend"><span class="icon-label">Dépenser</span></button>'+
+          '<button type="button" class="icon-gold-btn icon-gold-receive gold-receive"><span class="icon-label">Recevoir</span></button>'+
+        '</div>'+
         '</div>'
-      ) : (ch.gold!=null ? ('<p class="hint" style="margin:6px 0 2px;">Or : ' + ch.gold + ' po</p>') : '');
+      ) : (ch.gold!=null ? ('<p class="hint" style="margin:6px 0 2px;">Or : ' + fmtGold(ch.gold) + ' po</p>') : '');
       const invAddRow = canManage ? (
         '<div class="field-row" style="margin-top:6px;gap:6px;">'+
         '<input type="text" class="inv-add-name" placeholder="Nom de l\'objet" style="flex:1;min-width:90px;font-size:.78rem;padding:4px 6px;">'+
@@ -3025,9 +3265,9 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
           '<div class="field-row" style="align-items:center;gap:6px;margin-bottom:2px;">'+
           '<span style="flex:1;font-size:.82rem;">Emplacements niv. '+s.level+'</span>'+
           (canManage?(
-            '<button type="button" class="ghost btn-sm slot-minus" data-slot-level="'+s.level+'" style="padding:2px 7px;">−</button>'+
+            '<button type="button" class="icon-step-btn icon-minus slot-minus" data-slot-level="'+s.level+'" title="Utiliser un emplacement"></button>'+
             '<span class="mono slot-value" data-slot-level="'+s.level+'" style="min-width:40px;text-align:center;display:inline-block;">'+(s.max-s.used)+' / '+s.max+'</span>'+
-            '<button type="button" class="ghost btn-sm slot-plus" data-slot-level="'+s.level+'" style="padding:2px 7px;">+</button>'
+            '<button type="button" class="icon-step-btn icon-plus slot-plus" data-slot-level="'+s.level+'" title="Récupérer un emplacement"></button>'
           ):('<span class="mono">'+(s.max-s.used)+' / '+s.max+'</span>'))+
           '</div>'
         ).join("");
@@ -3061,9 +3301,10 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
             return '<button type="button" class="atk-weapon-row concentration-row'+(isOn?" active":"")+'" data-spell-name="'+sp.name.replace(/"/g,"&quot;")+'">'+nameCell+'<span class="hint" style="margin:0;">'+levelTag+'</span>'+clickHint+'</button>';
           }
           return '<div class="atk-weapon-row hover-reveal">'+label+'</div>';
-        }).join("");
+        }).join(itemDivider);
         spellsBlock=
-          '<button type="button" class="ghost btn-sm icon-toggle-btn spells-toggle" style="margin-top:6px;">'+toggleBtnLabel(spellsOpen,"icon-book-open.png","icon-book-closed.png","Sorts")+'</button>'+
+          panelDivider +
+          '<button type="button" class="ghost btn-sm icon-toggle-btn spells-toggle">'+toggleBtnLabel(spellsOpen,"icon-book-open.png","icon-book-closed.png","Sorts")+'</button>'+
           '<div class="atk-block spells-block"'+(spellsOpen?"":" hidden")+'>'+
             '<p class="hint" style="margin:0 0 6px;">'+sd.ability+' · DD '+sd.dc+' · Attaque '+fmtSigned(sd.atk)+'</p>'+
             slotRows+
@@ -3071,12 +3312,12 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
           '</div>';
       }
       managedBlock =
-        '<h3 class="sub" style="margin-top:8px;display:flex;align-items:center;gap:6px;"><img src="assets/icons/icon-sword.png" class="section-icon" alt="">Attaques</h3>'+
-        '<div class="atk-block">' + attackRows + '</div>'+
+        equipBlock +
         goldBlock +
         skillsBlock +
         spellsBlock+
-        '<button type="button" class="ghost btn-sm icon-toggle-btn inv-toggle" style="margin-top:6px;">' + toggleBtnLabel(invOpen,"icon-chest-open.png","icon-chest-closed.png","Inventaire") + '</button>'+
+        panelDivider +
+        '<button type="button" class="ghost btn-sm icon-toggle-btn inv-toggle">' + toggleBtnLabel(invOpen,"icon-chest-open.png","icon-chest-closed.png","Inventaire") + '</button>'+
         '<ul class="my-inventory-list"' + (invOpen?"":" hidden") + '>' + invRows + '</ul>'+
         '<div class="inv-add-row-wrap"' + (invOpen?"":" hidden") + '>' + invAddRow + '</div>';
     }
@@ -3103,6 +3344,18 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
   const moveTrackerHtml = (isAttacker && myInitEntry && ch.speed != null)
     ? ('<p class="hint" style="margin:0 0 6px;">Déplacement ce tour : ' + fmtMetersFr(myInitEntry.movedThisTurn || 0) + ' / ' + fmtMetersFr(ch.speed) + '</p>')
     : '';
+  // Same attackRows as the Équipement dropdown (same buttons, same wiring) but
+  // always unfolded and only shown once initiative is actually running for this
+  // PJ — quick access to "what can I attack with" without opening a menu mid-fight.
+  // Styled like the other menu entries (same icon/title size) via the same
+  // icon-toggle-btn classes, just on a non-clickable button (nothing to fold).
+  const combatQuickHtml = (isAttacker && myInitEntry && attacks.length) ? (
+    panelDivider +
+    '<button type="button" class="ghost btn-sm icon-toggle-btn" style="cursor:default;">'+
+      '<img src="assets/icons/icon-weapons-crossed.png" class="toggle-btn-icon" alt="">Attaques'+
+    '</button>'+
+    '<div class="atk-block">' + attackRows + '</div>'
+  ) : '';
 
   // Death saves: a PJ-only mechanic (RAW), shown only once actually down. The roll
   // button needs canManage (same bar as HP +/-), but the pips themselves are read-only
@@ -3145,8 +3398,10 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
     activeBadgesHtml +
     moveTrackerHtml +
     '<div class="my-ability-row">' + abilityRow + '</div>'+
+    combatQuickHtml +
     managedBlock +
-    '<button type="button" class="ghost btn-sm icon-toggle-btn cond-toggle" style="margin-top:6px;">' + toggleBtnLabel(condOpen,"icon-potion-glowing.png","icon-potion-sealed.png","États" + (active.length ? " (" + active.length + ")" : "")) + '</button>'+
+    '<div class="panel-divider"><img src="assets/ui/divider-ornate-short.png" alt=""></div>'+
+    '<button type="button" class="ghost btn-sm icon-toggle-btn cond-toggle">' + toggleBtnLabel(condOpen,"icon-potion-glowing.png","icon-potion-sealed.png","États" + (active.length ? " (" + active.length + ")" : "")) + '</button>'+
     '<div class="cond-chip-wrap"' + (condOpen?"":" hidden") + '>' + condChips + '</div>'
   );
 }
@@ -3205,17 +3460,26 @@ function wireCharacterCard(container, ch, tokenId, isAttacker){
     });
   }
 
-  const goldMinus = container.querySelector(".gold-minus");
-  const goldPlus = container.querySelector(".gold-plus");
+  const goldBandeauBtn = container.querySelector(".gold-bandeau-btn");
+  const goldMenu = container.querySelector(".gold-menu");
+  if(goldBandeauBtn && goldMenu){
+    goldBandeauBtn.addEventListener("click", () => { goldMenu.hidden = !goldMenu.hidden; });
+  }
   const applyGoldDelta = (delta) => {
-    const next = Math.max(0, (ch.gold||0) + delta);
+    const next = Math.max(0, Math.round(((ch.gold||0) + delta) * 100) / 100);
     ch.gold = next;
     const valEl = container.querySelector(".gold-value");
-    if(valEl) valEl.textContent = next;
+    if(valEl) valEl.textContent = fmtGold(next);
+    const pouchEl = container.querySelector(".gold-pouch-icon");
+    if(pouchEl) pouchEl.src = "assets/ui/" + goldPouchImage(next);
     patchCharacter(ch.id, { gold: next });
   };
-  if(goldMinus) goldMinus.addEventListener("click", () => applyGoldDelta(-1));
-  if(goldPlus) goldPlus.addEventListener("click", () => applyGoldDelta(1));
+  const goldAmountInput = container.querySelector(".gold-amount");
+  const readGoldAmount = () => Math.max(0.01, Math.round((parseFloat(goldAmountInput && goldAmountInput.value) || 1) * 100) / 100);
+  const goldSpendBtn = container.querySelector(".gold-spend");
+  const goldReceiveBtn = container.querySelector(".gold-receive");
+  if(goldSpendBtn) goldSpendBtn.addEventListener("click", () => applyGoldDelta(-readGoldAmount()));
+  if(goldReceiveBtn) goldReceiveBtn.addEventListener("click", () => applyGoldDelta(readGoldAmount()));
 
   container.querySelectorAll(".inv-item-del").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -3319,6 +3583,16 @@ function wireCharacterCard(container, ch, tokenId, isAttacker){
       block.hidden = !willShow;
       cardTogglesOpen[toggleKey(ch,"spells")] = willShow;
       spellsToggle.innerHTML = toggleBtnLabel(willShow,"icon-book-open.png","icon-book-closed.png","Sorts");
+    });
+  }
+  const equipToggle = container.querySelector(".equip-toggle");
+  if(equipToggle){
+    equipToggle.addEventListener("click", () => {
+      const block = container.querySelector(".equip-block");
+      const willShow = block.hidden;
+      block.hidden = !willShow;
+      cardTogglesOpen[toggleKey(ch,"equip")] = willShow;
+      equipToggle.innerHTML = toggleBtnLabel(willShow,"icon-helmet-open.png","icon-helmet-closed.png","Équipement");
     });
   }
   const applySlotDelta = (level, delta) => {
