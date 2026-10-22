@@ -247,8 +247,11 @@ button.icon-step-btn:active, button.zoom-btn.zoom-btn-icon:active{
    button:hover below applies a filter, and any filter creates a new stacking
    context — that traps icon-label's z-index:60 inside the button, so the
    button itself (z-index:auto) then loses to the panel's z-index:5. Giving the
-   hovered/focused button its own z-index above the panel fixes it at the source. */
-button:has(.icon-label):hover, button:has(.icon-label):focus-visible{position:relative;z-index:61;}
+   hovered/focused button its own z-index above the panel fixes it at the source.
+   Excludes the floating drawer toggles: they're already position:fixed with their
+   own z-index:70, and this rule's higher specificity was overriding that fixed
+   positioning on hover, making the button visibly jump to its static-flow spot. */
+button:has(.icon-label):hover:not(.dice-drawer-toggle):not(.mood-drawer-toggle), button:has(.icon-label):focus-visible:not(.dice-drawer-toggle):not(.mood-drawer-toggle){position:relative;z-index:61;}
 button:hover .icon-label, button:focus-visible .icon-label, .hover-reveal:hover .icon-label{opacity:1;}
 .hover-reveal{position:relative;}
 /* A roomier hover tooltip for content worth actually reading (a condition's name +
@@ -270,7 +273,11 @@ button:hover .icon-label, button:focus-visible .icon-label, .hover-reveal:hover 
   font-size:.74rem;line-height:1.45;text-align:left;text-transform:none;letter-spacing:normal;
   padding:7px 8px;
   pointer-events:none;z-index:70;
-  opacity:0;transition:opacity .12s ease;
+  /* Unlike .icon-label (a plain title replacement, fine instantly), this one
+     carries real reading material — a short pause before it appears keeps a
+     casual mouse pass from flashing text at you, same reasoning as a native
+     OS tooltip delay. Fading out stays instant (no delay on this base rule). */
+  opacity:0;transition:opacity .15s ease;transition-delay:0s;
   box-shadow:0 4px 10px rgba(0,0,0,.4);
 }
 .info-tooltip strong{
@@ -278,7 +285,7 @@ button:hover .icon-label, button:focus-visible .icon-label, .hover-reveal:hover 
   letter-spacing:.03em;color:var(--gold-strong);margin-bottom:4px;
   padding-bottom:3px;border-bottom:1px solid var(--parchment-line);
 }
-button:hover .info-tooltip, button:focus-visible .info-tooltip, .hover-reveal:hover .info-tooltip{opacity:1;}
+button:hover .info-tooltip, button:focus-visible .info-tooltip, .hover-reveal:hover .info-tooltip{opacity:1;transition-delay:.45s;}
 /* Centered-under-the-icon only works away from the page edge — the two 220px side
    panels sit close enough to the left/right edge of the window that a centered
    tooltip this wide would run off-screen there, so anchor it to whichever side of
@@ -786,6 +793,24 @@ button.atk-attack-row.range-long{
   background-image:repeating-linear-gradient(45deg, color-mix(in srgb, var(--ink) 10%, transparent) 0 6px, transparent 6px 12px);
 }
 .mono{font-variant-numeric:tabular-nums;white-space:nowrap;}
+/* Équipement reads at the same size as every other dropdown list (Compétences) —
+   the in-combat quick panel below keeps the slightly larger default instead, as
+   part of making the two visually distinct even though the buttons do the same
+   thing (see .combat-atk-block). */
+.equip-block .atk-weapon-row{font-size:.82rem;}
+/* The in-combat "Attaques" panel: just the weapon's name, bold, one line —
+   the to-hit/damage numbers already live on the character's own sheet
+   (Équipement, or the full sheet), no need to repeat them here too. */
+.combat-atk-block .atk-weapon-row{font-weight:700;}
+/* A standing red glow on the crossed-weapons icon (this one has no baked-in
+   glow, unlike the earlier art), brightening further on hover in place of a
+   separate hover-state image. */
+.combat-weapon-icon{filter:drop-shadow(0 0 3px rgba(200,35,25,.8)) drop-shadow(0 0 7px rgba(200,35,25,.45));}
+.combat-atk-header:hover .combat-weapon-icon{filter:drop-shadow(0 0 4px rgba(220,45,30,1)) drop-shadow(0 0 10px rgba(220,45,30,.7));}
+/* Same warm hover glow on every menu icon (Or, Compétences, Sorts, Équipement,
+   Inventaire, États) — Attaques is the one deliberately different menu, with
+   its own red glow above, so it's excluded here. */
+.icon-toggle-btn:hover .toggle-btn-icon:not(.combat-weapon-icon){filter:drop-shadow(0 0 4px rgba(230,180,90,.75));}
 </style>
 </head>
 <body>
@@ -1268,6 +1293,23 @@ const ABILITY_FRAME = {
   FOR:"frame-ability-for.png", DEX:"frame-ability-dex.png", CON:"frame-ability-con.png",
   INT:"frame-ability-int.png", SAG:"frame-ability-sag.png", CHA:"frame-ability-cha.png"
 };
+// Mirrors personnage/index.html's own (small, fixed) ARMOR_DATA catalog just
+// enough to show the CA and DEX-bonus cap of whichever armor is equipped —
+// table-de-jeu doesn't otherwise know any 5e rules, this is the one exception,
+// and since the catalog only ever has these 4 entries it's not worth syncing.
+const ARMOR_INFO = {
+  cuir:       {base:11, dexCap:null},
+  cuirCloute: {base:12, dexCap:null},
+  mailles:    {base:13, dexCap:2},
+  cotte:      {base:16, dexCap:0}
+};
+function armorInfoText(refKey){
+  const info = ARMOR_INFO[refKey];
+  if(!info) return "";
+  if(info.dexCap === 0) return "CA " + info.base + " (pas de mod. DEX)";
+  if(info.dexCap === null) return "CA " + info.base + " + mod. DEX";
+  return "CA " + info.base + " + mod. DEX (max " + info.dexCap + ")";
+}
 // The gold bandeau's medallion shows a bag/coffer whose fullness reflects the
 // character's current gold — ordered poorest to richest, each entry's "max"
 // is the highest gold amount that still uses that image (last entry has no cap).
@@ -3113,8 +3155,14 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
   // the actual guard and shows the explanatory notice) when initiative is running
   // and it isn't this PJ's turn yet, so the restriction is visible before clicking.
   const turnGated = isAttacker && isPcTurnGated(ch);
-  const weaponRowsArr = attacks.map((a,i) => {
-    const head='<span>' + a.name + '</span><span class="mono">' + fmtSigned(a.atk) + ' · ' + a.dmgText + '</span>';
+  // Two renders per weapon, sharing the same range/turn-gating logic and the
+  // same data-attack-idx (so either copy fires the exact same attack): the full
+  // one (name + to-hit + damage) for Équipement, and a bare bold name for the
+  // in-combat quick panel (see combatAttackRows) — just enough to pick a weapon
+  // mid-fight, the numbers are already on the character's own sheet.
+  const weaponRowsArr = [];
+  const combatRowsArr = [];
+  attacks.forEach((a,i) => {
     // The weapon's properties (Finesse, légère...) used to always take their own
     // line below the name — a tooltip on hover keeps the row to one compact line.
     const attackHint = turnGated ? "Ce n'est pas ton tour" : "Attaquer la cible sélectionnée";
@@ -3126,15 +3174,23 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
     const rangeState = isAttacker ? attackRangeState(ch, a) : null;
     const rangeClass = rangeState === "out" ? " range-out" : rangeState === "long" ? " range-long" : "";
     const rangeDisabled = rangeState === "out" ? " disabled" : "";
-    return isAttacker
-      ? '<button type="button" class="atk-weapon-row atk-attack-row' + (turnGated?" turn-gated":"") + rangeClass + '" data-attack-idx="' + i + '"' + rangeDisabled + propsAttr + '>' + head + '</button>'
-      : '<div class="atk-weapon-row"' + propsAttr + '>' + head + '</div>';
+    const fullHead = '<span>' + a.name + '</span><span class="mono">' + fmtSigned(a.atk) + ' · ' + a.dmgText + '</span>';
+    const simpleHead = '<span>' + a.name + '</span>';
+    if(isAttacker){
+      const attrs = (turnGated?" turn-gated":"") + rangeClass + '" data-attack-idx="' + i + '"' + rangeDisabled + propsAttr;
+      weaponRowsArr.push('<button type="button" class="atk-weapon-row atk-attack-row' + attrs + '>' + fullHead + '</button>');
+      combatRowsArr.push('<button type="button" class="atk-weapon-row atk-attack-row combat-weapon-row' + attrs + '>' + simpleHead + '</button>');
+    }else{
+      weaponRowsArr.push('<div class="atk-weapon-row"' + propsAttr + '>' + fullHead + '</div>');
+      combatRowsArr.push('<div class="atk-weapon-row combat-weapon-row"' + propsAttr + '>' + simpleHead + '</div>');
+    }
   });
-  // Weapons only, separated the same way as every other dropdown list — used
-  // on its own in the in-combat quick panel (combatQuickHtml) further down.
-  const attackRows = weaponRowsArr.length
-    ? weaponRowsArr.join(itemDivider)
-    : '<p class="hint" style="margin:0 0 6px;">Aucune arme équipée.</p>';
+  const noWeaponsHtml = '<p class="hint" style="margin:0 0 6px;">Aucune arme équipée.</p>';
+  // Weapons only, separated the same way as every other dropdown list — the
+  // full-detail version goes into Équipement.
+  const attackRows = weaponRowsArr.length ? weaponRowsArr.join(itemDivider) : noWeaponsHtml;
+  // Bare-name version, used on its own in the in-combat quick panel further down.
+  const combatAttackRows = combatRowsArr.length ? combatRowsArr.join(itemDivider) : noWeaponsHtml;
   // Everything actually equipped, not just weapons — armor/shield come straight
   // from the inventory the same way Inventaire's own "(équipé)" tag does (see
   // invRows below), read-only here since (un)equipping only happens in the
@@ -3142,9 +3198,12 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
   const equippedArmorShieldArr = (ch.inventory || []).filter(it =>
     (it.cat === "armor" && ch.armorKey != null && ch.armorKey === it.refKey) ||
     (it.cat === "shield" && !!ch.shield)
-  ).map(it =>
-    '<div class="atk-weapon-row"><span>' + (it.name||"") + '</span><span class="hint" style="margin:0;">' + (it.cat==="shield"?"Bouclier":"Armure") + '</span></div>'
-  );
+  ).map(it => {
+    // The item's own name ("Armure de cuir") already says it's armor — only a
+    // shield (whose name alone wouldn't carry any CA info) still gets a label.
+    const tag = it.cat === "shield" ? "Bouclier" : armorInfoText(it.refKey);
+    return '<div class="atk-weapon-row"><span>' + (it.name||"") + '</span><span class="hint" style="margin:0;">' + tag + '</span></div>';
+  });
   const equipAllRowsArr = weaponRowsArr.concat(equippedArmorShieldArr);
 
   let managedBlock = "";
@@ -3351,10 +3410,10 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
   // icon-toggle-btn classes, just on a non-clickable button (nothing to fold).
   const combatQuickHtml = (isAttacker && myInitEntry && attacks.length) ? (
     panelDivider +
-    '<button type="button" class="ghost btn-sm icon-toggle-btn" style="cursor:default;">'+
-      '<img src="assets/icons/icon-weapons-crossed.png" class="toggle-btn-icon" alt="">Attaques'+
+    '<button type="button" class="ghost btn-sm icon-toggle-btn combat-atk-header" style="cursor:default;">'+
+      '<img src="assets/icons/icon-weapons-crossed-v2.png" class="toggle-btn-icon combat-weapon-icon" alt="">Attaques'+
     '</button>'+
-    '<div class="atk-block">' + attackRows + '</div>'
+    '<div class="atk-block combat-atk-block">' + combatAttackRows + '</div>'
   ) : '';
 
   // Death saves: a PJ-only mechanic (RAW), shown only once actually down. The roll
