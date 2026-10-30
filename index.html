@@ -94,7 +94,10 @@ h1,h2,h3{font-family:'Cinzel',serif;color:var(--gold-strong);margin:0;}
 h1{font-size:1.3rem;letter-spacing:.04em;text-transform:uppercase;}
 h2{font-size:.9rem;letter-spacing:.03em;text-transform:uppercase;margin-bottom:8px;}
 h3.sub{font-size:.76rem;letter-spacing:.03em;text-transform:uppercase;color:var(--gold-strong);margin:14px 0 6px;}
-.topbar{position:relative;display:flex;justify-content:flex-end;margin-bottom:14px;}
+/* Replaced by the gear-triggered launch menu (title, role toggle, export all moved
+   there) — kept in the DOM (its elements are still used programmatically) but never
+   shown. */
+.topbar{display:none;}
 .topbar-status{display:flex;flex-direction:column;gap:8px;align-items:flex-end;}
 .status-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:.78rem;}
 .status-pill{
@@ -156,8 +159,100 @@ button:disabled{opacity:.5;cursor:not-allowed;transform:none;}
   .side-panel{order:2;}
   .center-panel{order:1;}
 }
+/* Player view only: the right "Sélection" column goes away (replaced by the compact
+   card below, right on the map), so the map gets that width back. The MJ keeps the
+   panel — they still need the fuller board-managed view it gives (delete pion, etc).
+   Also trims the top padding/margin a bit — there's no title banner left to leave
+   room for, and every pixel counts more with the browser chrome hidden (F11 etc). */
+body.player-view{padding-block:6px;}
+/* The narrow-viewport rule above swaps visual order (map first, panel second) for its
+   own single-column stacked layout — player view keeps its own explicit 2-column grid
+   at any width instead, so that reorder has to be cancelled here or the panel and map
+   land in each other's grid track (panel stretching full-width, map squeezed to 100px). */
+body.player-view .side-panel,
+body.player-view .center-panel{order:0;}
+body.player-view #panel-right{display:none;}
+body.player-view .game-layout{grid-template-columns:220px minmax(0,1fr);margin-top:6px;}
+/* Both map badges keep the decorative square frame asset (so what's selected / the
+   player's own character stays clearly marked — André's call), but the ICON inside it
+   is round, same shape as every pion normally has on the map ("laisse les icons des
+   pions ronds comme ils sont normalement") — only the recrop into a square was the
+   problem, not the frame around it. The icon-wrap is the plain, unclipped positioning
+   box the condition badges/concentration ring (applyIconConditions) anchor to, since
+   those deliberately poke out past the icon's own circle — only the icon itself
+   (.target-info-icon / .my-portrait-icon) is clipped to that circle. HP shows as a red
+   "flood" rising from the bottom of the icon itself (proportional to PV LOST, not
+   remaining) instead of a separate bar — a bar stays useful only in the side panel
+   (full sheet), per André's call. .damage-overlay is a plain absolutely-positioned
+   div appended/resized by applyDamageOverlay() in JS. */
+.target-info-card{
+  /* 56, not 15: a hovered token jumps to z-index:55 (see .token:has(.hover-reveal:hover))
+     to clear ITS OWN neighbours, and this card's tooltip (z-index:70) is scoped inside
+     this card's own stacking context — it can't out-rank a hovered token sitting in a
+     higher context than its card, so the card itself has to sit above that 55 too. */
+  position:absolute;top:10px;right:10px;z-index:56;display:none;
+  flex-direction:column;align-items:center;gap:2px;
+  background-color:#cfc0a0;
+  border-style:solid;border-width:10px;border-color:transparent;
+  border-image-source:url('assets/ui/frame-square.png');
+  border-image-slice:28 fill;
+  border-image-width:10px;
+  border-image-repeat:stretch;
+  padding:6px 6px 7px;
+}
+body.player-view .target-info-card:not([hidden]){display:flex;}
+.target-info-icon-wrap{position:relative;width:48px;height:48px;flex:none;}
+.target-info-icon{
+  position:absolute;inset:0;overflow:hidden;border-radius:50%;
+  background-size:cover;background-position:center;border:2px solid rgba(0,0,0,.2);
+}
+.target-info-name{
+  font-family:'Cinzel',serif;font-size:.64rem;font-weight:600;color:var(--ink);
+  text-align:center;line-height:1.2;width:48px;max-width:48px;overflow:hidden;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+}
+.damage-overlay{position:absolute;left:0;right:0;bottom:0;height:0;background:rgba(138,59,43,.6);pointer-events:none;transition:height .25s ease;}
+/* Left panel, collapsed: hidden entirely — the map's own badge (.my-portrait-badge)
+   already shows icon+name, so a second "mini" copy of them in a reserved column was
+   pure redundancy. The map gets that whole column back (single-track grid) and
+   .center-panel (flex, align-items:center) naturally re-centers the board in it once
+   renderBoard() re-measures (triggered on toggle). */
+body.player-view.left-collapsed .side-panel{display:none;}
+body.player-view.left-collapsed .game-layout{grid-template-columns:minmax(0,1fr);}
+/* Visible only while collapsed — once expanded, the portrait inside the full sheet
+   (.portrait-swatch in #my-character-panel) takes over as the fold/unfold target, so
+   there's never two clickable copies of "your own portrait" on screen at once. */
+.my-portrait-badge{
+  /* Same reasoning as .target-info-card above — above a hovered token's z-index:55. */
+  position:absolute;top:10px;left:10px;z-index:56;display:none;cursor:pointer;
+  flex-direction:column;align-items:center;gap:2px;
+  background-color:#cfc0a0;
+  border-style:solid;border-width:10px;border-color:transparent;
+  border-image-source:url('assets/ui/frame-square.png');
+  border-image-slice:28 fill;
+  border-image-width:10px;
+  border-image-repeat:stretch;
+  padding:6px 6px 7px;
+}
+body.player-view.left-collapsed .my-portrait-badge:not([hidden]){display:flex;}
+.my-portrait-icon-wrap{position:relative;width:48px;height:48px;}
+.my-portrait-icon{
+  position:absolute;inset:0;overflow:hidden;border-radius:50%;
+  background-size:cover;background-position:center;background-color:var(--panel);
+  border:3px solid var(--gold-strong);box-shadow:0 0 0 1px rgba(0,0,0,.4), 0 3px 8px rgba(0,0,0,.4);
+}
+.my-portrait-name{
+  font-family:'Cinzel',serif;font-size:.64rem;color:var(--ink);text-align:center;line-height:1.2;
+  width:48px;max-width:48px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+}
 .side-panel{
-  position:relative;z-index:5;min-height:140px;background:transparent;
+  /* z-index:5 used to trap every tooltip inside this panel below z-index:6 (a
+     token at rest) or 55 (a hovered token) — .side-panel establishes its own
+     stacking context (position+z-index), so no descendant tooltip, however high
+     its OWN z-index, can ever paint above a token once it overflows the panel's
+     220px column onto the map (the equip grid's 3-column tooltips do exactly
+     that for the 2nd/3rd column). 56 clears a hovered token outright. */
+  position:relative;z-index:56;min-height:140px;background:transparent;
   border-style:solid;border-width:14px 6px;border-color:transparent;
   border-image-source:url('assets/ui/frame-sidepanel.png');
   border-image-slice:175 85 175 85 fill;
@@ -285,6 +380,10 @@ button:hover .icon-label, button:focus-visible .icon-label, .hover-reveal:hover 
   letter-spacing:.03em;color:var(--gold-strong);margin-bottom:4px;
   padding-bottom:3px;border-bottom:1px solid var(--parchment-line);
 }
+/* L'image de l'objet équipé, en grand au-dessus du texte — la case elle-même ne
+   montre qu'une toute petite icône, l'infobulle est l'endroit pour vraiment la
+   voir (demande explicite d'André). */
+.info-tooltip-icon{display:block;width:84px;height:84px;object-fit:contain;margin:0 auto 6px;}
 button:hover .info-tooltip, button:focus-visible .info-tooltip, .hover-reveal:hover .info-tooltip{opacity:1;transition-delay:.45s;}
 /* Centered-under-the-icon only works away from the page edge — the two 220px side
    panels sit close enough to the left/right edge of the window that a centered
@@ -320,9 +419,18 @@ button:hover .info-tooltip, button:focus-visible .info-tooltip, .hover-reveal:ho
   100%{transform:scale(2.4);opacity:0;}
 }
 .board-wrap{
-  overflow:auto;background:var(--panel);max-height:96vh;max-width:100%;border-radius:3px;
+  /* hidden, pas auto : plus d'ascenseur ni de défilement à la molette/au doigt —
+     on ne se déplace plus que par glisser-déposer sur la carte (le pan existant,
+     voir #board pointerdown/move/up) qui continue de piloter scrollLeft/scrollTop
+     directement en JS ; ça marche identiquement avec overflow:hidden, seul le
+     chrome visible du navigateur disparaît. */
+  overflow:hidden;background:var(--panel);max-height:96vh;max-width:100%;border-radius:3px;
   border:4px solid #46423a;
   box-shadow:inset 0 0 0 1px #847d6c, 0 0 0 1px #221f19;
+  /* 96vh is only the pre-JS fallback for the very first paint — renderBoard()
+     immediately overrides it with the real pixel budget (computeAvailableBoardHeight),
+     the same number its own "is a scrollbar about to appear?" check now uses, so the
+     two can never disagree the way the old 96vh-vs-JS-guess mismatch did. */
 }
 #board{
   position:relative;
@@ -336,12 +444,49 @@ button:hover .info-tooltip, button:focus-visible .info-tooltip, .hover-reveal:ho
   touch-action:none;cursor:grab;
 }
 #board.panning{cursor:grabbing;}
+/* Brume sur les bords de la carte tactique — indique qu'il reste de la carte
+   hors champ dans cette direction (plus d'ascenseur : seul le glisser-déposer
+   déplace la vue désormais, voir le pan existant plus bas). Un seul calque par
+   bord, caché par défaut (opacity:0) et affiché seulement si on peut encore
+   défiler dans ce sens (voir updateBoardFogEdges) — jamais visible sur une
+   carte qui tient déjà entièrement dans le cadre. */
+.board-fog-edges{position:absolute;inset:0;pointer-events:none;z-index:40;}
+/* L'opacité du bord lui-même reste pilotée en JS (0/1, montré ou pas) — le
+   "souffle" animé vit sur un ::after séparé, jamais sur le même élément/la même
+   propriété qu'un style posé en JS (une animation CSS gagnerait sinon toujours
+   sur un opacity inline, et figerait l'apparition/disparition réelle). Les deux
+   opacités se multiplient visuellement, donc un bord cassé (parent à 0) reste
+   invisible quoi que fasse l'animation. Décalage différent par bord pour ne pas
+   respirer en rythme, plus organique qu'une pulsation synchronisée. */
+.board-fog-edge{position:absolute;opacity:0;transition:opacity .2s ease;}
+.board-fog-edge::after{content:"";position:absolute;inset:0;animation:board-fog-breathe 6s ease-in-out infinite;}
+.board-fog-top{top:0;left:0;right:0;height:52px;}
+.board-fog-bottom{bottom:0;left:0;right:0;height:52px;}
+.board-fog-left{top:0;bottom:0;left:0;width:52px;}
+.board-fog-right{top:0;bottom:0;right:0;width:52px;}
+.board-fog-top::after{background:linear-gradient(to bottom, rgba(150,150,150,.55), transparent);}
+.board-fog-bottom::after{background:linear-gradient(to top, rgba(150,150,150,.55), transparent);animation-delay:1.5s;}
+.board-fog-left::after{background:linear-gradient(to right, rgba(150,150,150,.55), transparent);animation-delay:3s;}
+.board-fog-right::after{background:linear-gradient(to left, rgba(150,150,150,.55), transparent);animation-delay:4.5s;}
+@keyframes board-fog-breathe{
+  0%,100%{opacity:.6;}
+  50%{opacity:1;}
+}
 .token{
   position:absolute;border-radius:50%;display:flex;align-items:center;justify-content:center;
   font-size:.68rem;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5);
   cursor:pointer;border:2px solid rgba(255,255,255,.75);user-select:none;box-sizing:border-box;
-  box-shadow:0 3px 6px rgba(0,0,0,.45);background-size:cover;background-position:center;
+  box-shadow:0 3px 6px rgba(0,0,0,.45);
   z-index:6;
+}
+/* Holds the artwork/color fill and its .damage-overlay (see applyDamageOverlay), clipped
+   to the circle — kept OFF .token itself so skull-overlay, the condition badges (which
+   deliberately sit outside its edge) and floating damage numbers (which rise above it)
+   are never clipped by it. */
+.token-face{
+  position:absolute;inset:0;border-radius:50%;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+  background-size:100% 100%;background-position:center;
 }
 /* A hovered condition badge's tooltip is a descendant of ITS OWN pion — at equal (or
    even lower) z-index than a neighbouring pion, the whole subtree, tooltip included,
@@ -357,7 +502,7 @@ button:hover .info-tooltip, button:focus-visible .info-tooltip, .hover-reveal:ho
 .token.current-turn{animation:turn-pulse 1.4s ease-in-out infinite;}
 /* 0 PV (down/unconscious) — the heavier treatment, since this is the state that
    actually matters most at a glance. */
-.token.downed, .portrait-swatch.downed{filter:grayscale(.8) brightness(.8);opacity:.7;}
+.token.downed, .portrait-swatch.downed, .target-info-icon.downed, .my-portrait-icon.downed{filter:grayscale(.8) brightness(.8);opacity:.7;}
 /* Already played its turn this round — a lighter cue than "downed" (just a fade),
    since it's informational rather than a state that changes how the fight is read. */
 .token.played, .portrait-swatch.played{opacity:.75;}
@@ -401,11 +546,6 @@ button:hover .info-tooltip, button:focus-visible .info-tooltip, .hover-reveal:ho
 .ds-pip{width:14px;height:14px;border-radius:50%;border:2px solid var(--ink-soft);display:inline-block;}
 .ds-pip.ds-success.filled{background:#2f6b3e;border-color:#2f6b3e;}
 .ds-pip.ds-fail.filled{background:#8a3b2b;border-color:#8a3b2b;}
-.token-hpbar{
-  position:absolute;left:0;bottom:-6px;width:100%;height:4px;border-radius:2px;
-  background:rgba(20,15,8,.55);overflow:hidden;pointer-events:none;z-index:1;
-}
-.token-hpbar-fill{height:100%;transition:width .25s ease,background .25s ease;}
 /* Up to 4 active conditions get their own small badge spread around the pion's edge
    instead of stacked in one spot — past 4 there's no room to keep them legible, so a
    single count badge replaces them all, with the full list only on hover. Sized in %
@@ -558,7 +698,10 @@ button:hover .info-tooltip, button:focus-visible .info-tooltip, .hover-reveal:ho
 
 #ambiance-overlay{
   position:absolute;inset:0;background:#000;display:flex;align-items:center;justify-content:center;
-  z-index:50;border-radius:6px;
+  /* Above .target-info-card/.my-portrait-badge (56) — the whole point of this overlay
+     is to black out the board for players, badges included, even now that those sit
+     above a merely-hovered token. */
+  z-index:58;border-radius:6px;
 }
 #ambiance-overlay[hidden]{display:none;}
 #ambiance-overlay img{max-width:100%;max-height:100%;object-fit:contain;}
@@ -588,6 +731,15 @@ button:hover .info-tooltip, button:focus-visible .info-tooltip, .hover-reveal:ho
 #dice-drawer-toggle{background:none;border:none;box-shadow:none;width:auto;height:auto;}
 #dice-drawer-toggle img{width:92px;height:92px;object-fit:contain;filter:drop-shadow(0 3px 5px rgba(0,0,0,.45));}
 #mood-drawer{left:18px;right:auto;}
+/* Player view: the dice toggle moves off the viewport corner and onto the map itself,
+   right next to the floating roll history — sized just a touch taller than that
+   banner (not the big 92px corner icon) so the two read as one group. The banner's
+   own "right" shifts left by the icon's width + gap so they don't overlap. */
+body.player-view #dice-drawer-toggle{
+  position:absolute;bottom:8px;right:8px;z-index:20;
+}
+body.player-view #dice-drawer-toggle img{width:40px;height:40px;}
+body.player-view #last-roll-banner{right:56px;}
 .floating-drawer{
   position:fixed;bottom:82px;z-index:65;width:300px;max-width:calc(100vw - 36px);
   background-color:color-mix(in srgb, var(--panel) 55%, transparent);
@@ -651,19 +803,56 @@ button:hover .info-tooltip, button:focus-visible .info-tooltip, .hover-reveal:ho
   padding:4px 10px 12px;
 }
 .simple-modal-scroll{max-height:calc(80vh - 130px);overflow-y:auto;}
+/* Positioned against the real title-plate painted on frame-modal.png, not just the
+   full 92px top border — measured directly on the source asset (its cream plate sits
+   at source y 144-206 out of a 280px top slice, i.e. rendered y 47-68 of the 92px
+   border), so the row is centered on the actual plate instead of the whole border. */
 .simple-modal-head{
-  position:absolute;top:-48px;left:0;right:0;max-height:54px;overflow:hidden;
+  position:absolute;top:-46px;left:0;right:0;height:24px;max-height:24px;overflow:hidden;
   display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0;padding:0 14px;
 }
 .simple-modal-head h2{font-size:.78rem;line-height:1.15;}
+/* The launch/gear menu gets its own frame asset (a plain picture-frame, not the
+   scroll-shaped frame-modal.png the other modals use) — big title, small actions,
+   nothing fighting for attention with another ornate border on top of it. */
+.launch-menu-panel{
+  position:relative;width:780px;max-width:90vw;margin:8vh auto 0;
+  background:transparent;
+  border-style:solid;border-width:82px 71px;border-color:transparent;
+  border-image-source:url('assets/ui/frame-launch-menu.png');
+  border-image-slice:55 53 55 52 fill;
+  border-image-width:82px 71px;
+  border-image-repeat:stretch;
+  padding:20px 24px 26px;
+}
+/* Close button lives inside its own frame corner — small and out of the way,
+   bottom-right, instead of competing with the title up top. */
+.launch-menu-close-btn{
+  position:absolute;bottom:10px;right:10px;transform:scale(.75);transform-origin:bottom right;
+}
+/* Reuses the same ribbon graphic as the old topbar title — "keep the title in its own
+   banner" rather than a plain heading — just rescaled to fit this frame's width. */
+.launch-menu-title{max-width:580px;margin:0 auto 20px;}
+.launch-menu-title .ribbon-title-text{font-size:2rem;}
+.launch-menu-actions{display:flex;flex-direction:column;align-items:center;gap:10px;padding:0 28px;margin-bottom:30px;}
+.launch-menu-actions button{font-size:.8rem;width:100%;max-width:300px;}
+.launch-menu-actions button{font-size:.78rem;padding:9px 10px;}
 .simple-modal-head button{
-  flex:none;padding:4px 10px;font-size:.66rem;
+  flex:none;padding:3px 8px;font-size:.58rem;
   background:var(--panel);border:1px solid var(--parchment-line);border-radius:999px;box-shadow:var(--shadow-sm);
 }
 .simple-modal-head h2{margin:0;font-size:1.05rem;}
 .npc-picker-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--parchment-line);}
 .npc-picker-row .swatch{width:26px;height:26px;border-radius:50%;flex:none;background-size:cover;background-position:center;border:1px solid rgba(0,0,0,.2);}
 .npc-picker-row .name{flex:1;font-size:.85rem;}
+.equip-picker-row{
+  all:unset;display:block;width:100%;box-sizing:border-box;padding:8px 4px;
+  border-bottom:1px solid var(--parchment-line);font-size:.85rem;cursor:pointer;
+}
+.equip-picker-row:hover:not(:disabled){background:var(--parchment-line);}
+.equip-picker-row:disabled{cursor:not-allowed;opacity:.55;}
+.equip-picker-row.equip-picker-unequip{color:var(--warn);font-weight:600;}
+.equip-picker-row-icon{width:24px;height:24px;object-fit:contain;vertical-align:middle;margin-right:6px;border-radius:4px;}
 .hint{font-size:.78rem;color:var(--ink-soft);max-width:60ch;margin:0 0 12px;}
 .stat-chip-col{display:flex;flex-direction:column;justify-content:center;gap:3px;height:64px;box-sizing:border-box;}
 .stat-chip{display:inline-flex;align-items:center;gap:6px;font-size:.85rem;font-weight:600;}
@@ -697,6 +886,19 @@ button.my-ability:hover{filter:brightness(1.1);}
 .my-inventory-list{list-style:none;padding:0;margin:0 0 6px;font-size:.82rem;}
 .my-inventory-list li{padding:2px 4px;border-bottom:1px solid var(--parchment-line);}
 .my-inventory-list li.equipped{font-weight:600;background:color-mix(in srgb, var(--gold-strong) 12%, transparent);border-radius:4px;}
+.inv-item-icon{width:16px;height:16px;object-fit:contain;vertical-align:-3px;margin-right:4px;}
+.item-catalog-tab.active{background:var(--gold-strong);color:#fff;border-color:var(--gold-strong);}
+.item-catalog-group-title{margin:12px 0 4px;font-family:'Cinzel',serif;font-size:.8rem;color:var(--gold-strong);padding-bottom:2px;border-bottom:1px solid var(--parchment-line);}
+.item-catalog-row{display:flex;align-items:center;gap:6px;padding:5px 2px;border-bottom:1px solid var(--parchment-line);flex-wrap:wrap;}
+.item-catalog-row-icon{width:20px;height:20px;object-fit:contain;flex:none;}
+.item-catalog-row-name{flex:1;min-width:110px;font-size:.82rem;}
+.item-catalog-row-name .hint{display:block;margin:0;}
+.item-catalog-row select.item-catalog-give-pc{font-size:.74rem;padding:2px 4px;}
+.item-catalog-row button{padding:2px 6px;font-size:.72rem;}
+.item-glow-label{display:flex;align-items:center;gap:4px;margin:0;white-space:nowrap;}
+.item-ignore-label{display:flex;align-items:center;gap:5px;margin:3px 0;}
+.item-catalog-validated-badge{font-size:.68rem;font-weight:700;color:var(--gold-strong);white-space:nowrap;}
+.item-item-form input[type=color]{width:28px;height:24px;padding:0;border:none;vertical-align:middle;flex:none;}
 .gold-widget{position:relative;}
 /* Every side-panel menu entry (Compétences, Sorts, Inventaire, États, Or) is a
    plain, borderless row — button.icon-toggle-btn (not just .icon-toggle-btn) is
@@ -764,7 +966,13 @@ button.icon-gold-btn:active{filter:brightness(1.45) saturate(1.35);}
 .cond-badge-icon{width:22px;height:22px;object-fit:contain;flex:none;}
 .conc-badge{background:#3f6ea5;}
 .hp-row{display:flex;align-items:center;gap:6px;margin-bottom:8px;}
-.hp-bar{position:relative;flex:1;height:18px;border-radius:9px;background:#2a1414;border:1px solid rgba(0,0,0,.35);overflow:hidden;}
+/* z-index:0 (pas "auto") referme une vraie pile locale ici : le chiffre de PV à
+   l'intérieur (.hp-bar-label, z-index:1 — juste pour rester lisible par-dessus
+   SA PROPRE barre de remplissage, .hp-bar-fill) ne doit comparer son z-index
+   qu'à ce qu'il y a dans cette petite barre, jamais s'échapper pour rivaliser
+   avec des éléments sans rapport ailleurs sur la fiche (ex. l'info-bulle d'une
+   case d'équipement, z-index:70, qui doit toujours pouvoir passer par-dessus). */
+.hp-bar{position:relative;z-index:0;flex:1;height:18px;border-radius:9px;background:#2a1414;border:1px solid rgba(0,0,0,.35);overflow:hidden;}
 .hp-bar-fill{position:absolute;left:0;top:0;bottom:0;transition:width .25s ease,background .25s ease;}
 .hp-bar-label{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;height:100%;font-size:.7rem;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.65);font-variant-numeric:tabular-nums;}
 .atk-block{display:flex;flex-direction:column;gap:4px;margin-bottom:6px;}
@@ -798,6 +1006,72 @@ button.atk-attack-row.range-long{
    part of making the two visually distinct even though the buttons do the same
    thing (see .combat-atk-block). */
 .equip-block .atk-weapon-row{font-size:.82rem;}
+/* 13 tiles (casque → munitions) above the weapon attack rows in Équipement —
+   same frame-square.png border-image already used for the map's selection
+   card/self-portrait badge, just small enough to fit the 220px side panel
+   (3 columns instead of those badges' single icon). */
+.equip-slot-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:0 0 8px;}
+.equip-slot-tile{
+  position:relative;width:100%;aspect-ratio:1;padding:0;cursor:pointer;
+  background-color:#cfc0a0;
+  border-style:solid;border-width:7px;border-color:transparent;
+  border-image-source:url('assets/ui/frame-square.png');
+  border-image-slice:28 fill;
+  border-image-width:7px;
+  border-image-repeat:stretch;
+}
+.equip-slot-icon{position:absolute;inset:0;margin:auto;width:70%;height:70%;object-fit:contain;}
+/* Nothing equipped here — same "dimmed, not there" treatment already used for
+   .downed elsewhere, just without the brightness drop (an empty slot isn't
+   hurt, it's just empty). */
+.equip-slot-tile.is-empty .equip-slot-icon{filter:grayscale(1) opacity(.45);}
+/* Main secondaire prise par une arme à deux mains — l'icône de CETTE arme s'y
+   reflète (voir equipTileIcon/mainHandTwoHandedItem), juste "légèrement effacée"
+   (demande explicite), pas en niveaux de gris comme une case vraiment vide : on
+   doit encore reconnaître l'arme, juste comprendre que la main est prise. */
+.equip-slot-tile.is-ghosted .equip-slot-icon{opacity:.5;}
+/* Munitions restantes — contrairement à .token-cond-count (qui déborde exprès du
+   cercle d'un pion), celui-ci doit rester ENTIÈREMENT dans le carré, en bas à
+   droite (demande explicite), donc pas de décalage négatif ni de débordement.
+   Couleur alignée sur le gris ardoise des badges de propriété d'arme (même jeu
+   d'icônes), plutôt que le rouge-brun des badges de condition sur les pions. */
+.ammo-qty-badge{
+  position:absolute;bottom:3px;right:3px;min-width:15px;height:15px;padding:0 3px;
+  border-radius:999px;background:#586367;color:#fff;font-size:.6rem;font-weight:700;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.5);
+  z-index:4;pointer-events:none;
+}
+/* Badges de propriété d'arme (Lourde, Finesse, Munitions...) — posés sur la case
+   elle-même, ils étaient trop petits pour être lisibles et cachaient le skin de
+   l'arme ; ils vivent maintenant en grand dans l'info-bulle au survol (voir plus
+   bas, .equip-slot-tile > .info-tooltip), jamais sur la case. */
+.prop-badge-row{display:inline-flex;flex-wrap:wrap;gap:4px;vertical-align:middle;}
+.prop-badge{position:relative;display:inline-block;pointer-events:auto;line-height:0;}
+.prop-badge img{width:28px;height:28px;border-radius:50%;box-shadow:0 1px 2px rgba(0,0,0,.6);display:block;}
+.prop-badge-tooltip{width:170px;font-size:.68rem;}
+/* La règle générale "survoler le bouton affiche toute info-bulle descendante"
+   (button:hover .info-tooltip, plus bas) ferait sinon apparaître TOUS les
+   badges en même temps que la carte de l'arme — chaque badge ne doit montrer
+   SA PROPRE explication que lorsqu'on le survole VRAIMENT, lui, pas juste la
+   carte qui le contient. */
+/* transition:none des deux côtés — en passant d'un badge à l'autre, l'ancien
+   encart doit disparaître AUSSITÔT que le nouveau apparaît, jamais un fondu qui
+   laisse les deux se chevaucher un instant. */
+.prop-badge .info-tooltip{opacity:0!important;pointer-events:none;transition:none!important;}
+.prop-badge:hover > .info-tooltip{opacity:1!important;pointer-events:auto;transition:none!important;}
+/* Même badges, répétés à l'intérieur d'une info-bulle déjà existante (panneau
+   Attaques) — simples puces avec title natif, plus petites (de la place pour du
+   texte sur la même ligne, pas pour un gros médaillon). */
+.prop-badge-inline{width:15px;height:15px;border-radius:50%;vertical-align:middle;margin-right:2px;box-shadow:0 1px 2px rgba(0,0,0,.5);}
+/* L'info-bulle de la case d'équipement (arme/armure/bouclier...) doit pouvoir se
+   survoler ELLE-MÊME pour atteindre les badges qu'elle contient désormais — les
+   autres info-bulles du jeu (pions, sorts...) restent de simples aperçus non
+   interactifs (pointer-events:none), seule celle-ci change de comportement.
+   Collée au carré (bottom:100%, zéro espace) pour que la souris n'ait jamais à
+   traverser une zone morte en passant de la case à l'info-bulle. */
+.equip-slot-tile > .info-tooltip{bottom:100%;pointer-events:none;}
+.equip-slot-tile:hover > .info-tooltip{pointer-events:auto;}
+.equip-slot-tile > .info-tooltip:hover{opacity:1!important;pointer-events:auto;transition-delay:0s;}
 /* The in-combat "Attaques" panel: just the weapon's name, bold, one line —
    the to-hit/damage numbers already live on the character's own sheet
    (Équipement, or the full sheet), no need to repeat them here too. */
@@ -846,6 +1120,7 @@ button.atk-attack-row.range-long{
 
   <main class="center-panel">
     <div class="panel" id="panel-map">
+      <button type="button" class="icon-btn-bare" id="btn-open-launch-menu" title="Menu" style="position:absolute;top:10px;right:12px;z-index:10;"><img src="assets/icons/icon-gear.png" alt=""><span class="icon-label">Menu</span></button>
       <div id="mj-map-controls" hidden>
         <h3 class="sub" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
           <span>Préparation</span>
@@ -885,6 +1160,7 @@ button.atk-attack-row.range-long{
             <button type="button" class="ghost btn-sm" id="btn-toggle-charlist" style="text-transform:none;letter-spacing:normal;font-family:inherit;">▾ Masquer</button>
             <button type="button" class="ghost btn-sm" id="btn-rest-all" title="Remet tous les PJ au maximum : PV, emplacements de sorts et jets de sauvegarde contre la mort" style="text-transform:none;letter-spacing:normal;font-family:inherit;">🌙 Repos (PJ)</button>
             <button type="button" class="ghost btn-sm" id="btn-npc-picker" style="text-transform:none;letter-spacing:normal;font-family:inherit;">Gérer les PNJ disponibles</button>
+            <button type="button" class="ghost btn-sm" id="btn-item-catalog" style="text-transform:none;letter-spacing:normal;font-family:inherit;">Préparer des objets</button>
           </span>
         </h3>
         <div id="char-roster-wrap">
@@ -934,11 +1210,26 @@ button.atk-attack-row.range-long{
           <svg id="drag-line-svg"><line id="drag-line" x1="0" y1="0" x2="0" y2="0" stroke="#d9a53f" stroke-width="3" stroke-dasharray="7,5" style="display:none;"/></svg>
           <div class="move-badge" id="move-badge" hidden></div>
         </div></div>
+        <div class="board-fog-edges" aria-hidden="true">
+          <span class="board-fog-edge board-fog-top"></span>
+          <span class="board-fog-edge board-fog-right"></span>
+          <span class="board-fog-edge board-fog-bottom"></span>
+          <span class="board-fog-edge board-fog-left"></span>
+        </div>
         <div id="ambiance-overlay" hidden>
           <img id="ambiance-img" src="" alt="Carte d'ambiance">
         </div>
         <div id="last-roll-banner" hidden></div>
         <div id="action-notice" hidden></div>
+        <div id="target-info-card" class="target-info-card" hidden>
+          <div class="target-info-icon-wrap"><span class="target-info-icon"></span></div>
+          <span class="target-info-name"></span>
+        </div>
+        <div id="my-portrait-badge" class="my-portrait-badge" hidden title="Déplier ta fiche">
+          <div class="my-portrait-icon-wrap"><span class="my-portrait-icon"></span></div>
+          <span class="my-portrait-name"></span>
+        </div>
+        <button type="button" id="dice-drawer-toggle" class="dice-drawer-toggle"><img src="assets/icons/icon-dice-pair.png" alt=""><span class="icon-label">Jets &amp; combat</span></button>
       </div>
     </div>
 
@@ -958,6 +1249,21 @@ button.atk-attack-row.range-long{
     </div>
     <div id="selection-info"><p class="hint">Glisse un pion pour le déplacer sur la carte.</p></div>
   </aside>
+</div>
+
+<div id="launch-menu-modal" class="simple-modal" hidden>
+  <div class="simple-modal-backdrop" id="launch-menu-backdrop"></div>
+  <div class="launch-menu-panel">
+    <div class="ribbon-title-banner launch-menu-title">
+      <span class="ribbon-title-text">Les Ombres de Valbois</span>
+    </div>
+    <div class="launch-menu-actions">
+      <button type="button" class="ghost" id="launch-menu-switch-char">Changer de personnage</button>
+      <button type="button" class="ghost" id="launch-menu-toggle-mj">Devenir MJ</button>
+      <button type="button" class="ghost" id="launch-menu-export">Exporter une sauvegarde</button>
+    </div>
+    <button type="button" class="ghost btn-sm launch-menu-close-btn" id="launch-menu-close">Fermer</button>
+  </div>
 </div>
 
 <div id="ambiance-indicator" hidden>
@@ -980,6 +1286,45 @@ button.atk-attack-row.range-long{
   </div>
 </div>
 
+<div id="item-catalog-modal" class="simple-modal" hidden>
+  <div class="simple-modal-backdrop" id="item-catalog-backdrop"></div>
+  <div class="simple-modal-panel" style="max-width:640px;">
+    <div class="simple-modal-head">
+      <h2>Créateur d'objets</h2>
+      <button type="button" class="ghost btn-sm" id="item-catalog-close">Fermer</button>
+    </div>
+    <div class="simple-modal-scroll" style="max-height:78vh;">
+      <div class="field-row" style="gap:6px;margin-bottom:10px;">
+        <button type="button" class="ghost btn-sm item-catalog-tab active" data-tab="base">Objets de base</button>
+        <button type="button" class="ghost btn-sm item-catalog-tab" data-tab="items">Objets personnalisés</button>
+        <button type="button" class="ghost btn-sm item-catalog-tab" data-tab="give">Donner un objet</button>
+      </div>
+      <div id="item-catalog-tab-base">
+        <p class="hint">Le catalogue complet des objets D&D, un par skin (si plusieurs skins pour un même type, un objet de base par skin), y compris les objets divers (catégorie "Autre"). Une fois le skin bon, valide — protégé contre une suppression/modification par erreur ensuite.</p>
+        <div id="item-catalog-base-form"></div>
+        <div class="panel-divider"><img src="assets/ui/divider-line-diamond.png" alt=""></div>
+        <input type="text" id="item-catalog-base-search" placeholder="Rechercher un objet de base…" style="width:100%;font-size:.78rem;padding:5px 7px;margin:6px 0;">
+        <div id="item-catalog-base-list"></div>
+      </div>
+      <div id="item-catalog-tab-items" hidden>
+        <p class="hint">Chaque objet s'appuie sur un objet de base et en respecte les règles D&D par défaut — les cases à cocher permettent d'y déroger sciemment (ex : une arme utilisable sans maîtrise, une armure sans le prérequis de Force).</p>
+        <div id="item-catalog-item-form"></div>
+        <div class="panel-divider"><img src="assets/ui/divider-line-diamond.png" alt=""></div>
+        <input type="text" id="item-catalog-search" placeholder="Rechercher un objet déjà créé…" style="width:100%;font-size:.78rem;padding:5px 7px;margin:6px 0;">
+        <div id="item-catalog-list"></div>
+      </div>
+      <div id="item-catalog-tab-give" hidden>
+        <p class="hint">Cherche parmi TOUS les objets (de base, personnalisés et divers) pour en donner un à un PJ ou un PNJ présent sur la carte.</p>
+        <div class="field-row" style="gap:6px;margin-bottom:6px;">
+          <input type="text" id="item-catalog-give-search" placeholder="Mot-clé…" style="flex:1;min-width:120px;font-size:.78rem;padding:5px 7px;">
+          <select id="item-catalog-give-cat-filter" style="font-size:.78rem;padding:5px 7px;"></select>
+        </div>
+        <div id="item-catalog-give-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="portrait-picker-modal" class="simple-modal" hidden>
   <div class="simple-modal-backdrop" id="portrait-picker-backdrop"></div>
   <div class="simple-modal-panel" style="max-width:360px;">
@@ -990,6 +1335,19 @@ button.atk-attack-row.range-long{
     <div class="simple-modal-scroll">
       <p class="hint">Ce PNJ a plusieurs images — choisis celle de ce pion.</p>
       <div id="portrait-picker-list" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;"></div>
+    </div>
+  </div>
+</div>
+
+<div id="equip-picker-modal" class="simple-modal" hidden>
+  <div class="simple-modal-backdrop" id="equip-picker-backdrop"></div>
+  <div class="simple-modal-panel" style="max-width:360px;">
+    <div class="simple-modal-head">
+      <h2 id="equip-picker-title">Équiper</h2>
+      <button type="button" class="ghost btn-sm" id="equip-picker-close">Fermer</button>
+    </div>
+    <div class="simple-modal-scroll">
+      <div id="equip-picker-list"></div>
     </div>
   </div>
 </div>
@@ -1024,7 +1382,6 @@ button.atk-attack-row.range-long{
   </div>
 </div>
 
-<button type="button" id="dice-drawer-toggle" class="dice-drawer-toggle"><img src="assets/icons/icon-dice-pair.png" alt=""><span class="icon-label">Jets &amp; combat</span></button>
 <div id="dice-drawer" class="floating-drawer">
   <div class="dice-roller">
     <h3 class="sub" style="display:flex;align-items:center;justify-content:space-between;">
@@ -1151,6 +1508,11 @@ const scenesCol = collection(db, "scenes");
 // characters land here, so a token can point straight at a player's real sheet
 // (portrait, PV, notes) instead of a hand-made template with a plain image.
 const charactersCol = collection(db, "characters");
+// Modèles d'objets réutilisables, partagés entre tous les personnages et toutes les
+// séances — alimente à la fois la liste "Type de base" du formulaire d'ajout
+// d'inventaire (ci-dessous) et l'écran "Préparer des objets" (séances à venir).
+// Doc : {name, cat, refKey, stats, icon, createdAt} — voir recomputeCustomEquipTypes.
+const itemCatalogCol = collection(db, "itemCatalog");
 // Just enough to show a readable summary on a character-linked token — not the full
 // game rules, which live in the character creator itself.
 const RACE_LABELS = {humain:"Humain", elfe:"Elfe (pur)", nain:"Nain", halfelin:"Halfelin", demiElfe:"Demi-elfe", demiOrque:"Demi-orque", gnome:"Gnome"};
@@ -1230,6 +1592,277 @@ let lastSeenCombatEntryId = null;
 // page-load replay.
 let lastSeenTurnKey;
 let moods = [], maps = [], characters = [], scenes = [];
+// itemCatalog : tous les modèles d'objets réutilisables (bruts, tels que Firestore les
+// renvoie). customWeaponTypes/customArmorTypes en sont dérivés (recomputeCustomEquipTypes,
+// appelée à chaque mise à jour) : juste les modèles "type tout neuf" (refKey vide, stats
+// renseignées), remis à la même forme que WEAPON_DATA/ARMOR_DATA pour que toute la
+// logique d'équipement existante (weaponInfo, computeAC, equipBlockedReason...) les
+// traite exactement comme un type officiel, sans dupliquer cette logique.
+let itemCatalog = [];
+let customWeaponTypes = [];
+let customArmorTypes = [];
+function recomputeCustomEquipTypes(){
+  customWeaponTypes = itemCatalog
+    .filter(t => t.cat === "weapon" && !t.refKey && t.stats)
+    .map(t => ({name:t.name, price:"—", damage:t.stats.damage||"1d4 contondant", props:t.stats.props||"", tier:"custom"}));
+  customArmorTypes = itemCatalog
+    .filter(t => t.cat === "armor" && !t.refKey && t.stats)
+    .map(t => ({key:t.name, label:t.name, base:t.stats.base||10, dexCap:(t.stats.dexCap!=null?t.stats.dexCap:null), req:t.stats.req||null}));
+}
+function allWeapons(){ return WEAPON_DATA.concat(customWeaponTypes); }
+function allArmors(){ return ARMOR_DATA.concat(customArmorTypes); }
+// Icônes toutes faites, découpées depuis les planches qu'André a fournies —
+// couvre les types OFFICIELS (WEAPON_DATA/ARMOR_DATA, retrouvés par leur refKey)
+// et quelques noms d'objets libres courants (retrouvés par leur nom exact). Un
+// objet déjà présent sur une fiche AVANT ce système (donc sans son propre champ
+// .icon) en profite quand même — voir resolveItemIcon, consultée au RENDU plutôt
+// que figée à la création de l'objet.
+const ITEM_ICONS = {
+  "Gourdin":"assets/icons/items/weapon-gourdin.png",
+  "Dague":"assets/icons/items/weapon-dague.png",
+  "Hachette":"assets/icons/items/weapon-hachette.png",
+  "Lance":"assets/icons/items/weapon-lance.png",
+  "Marteau léger":"assets/icons/items/weapon-marteau-leger.png",
+  "Masse d'armes":"assets/icons/items/weapon-masse-armes.png",
+  "Bâton":"assets/icons/items/weapon-baton.png",
+  "Faucille":"assets/icons/items/weapon-faucille.png",
+  "Arbalète de poing":"assets/icons/items/weapon-arbalete-poing.png",
+  "Arbalète légère":"assets/icons/items/weapon-arbalete-legere.png",
+  "Arc long":"assets/icons/items/weapon-arc-long.png",
+  "Arc court":"assets/icons/items/weapon-arc-court.png",
+  "Fronde":"assets/icons/items/weapon-fronde.png",
+  "Grande hache":"assets/icons/items/weapon-grande-hache.png",
+  "Javeline":"assets/icons/items/weapon-javeline.png",
+  "Rapière":"assets/icons/items/weapon-rapiere.png",
+  "Épée courte":"assets/icons/items/weapon-epee-courte.png",
+  "Épée à deux mains":"assets/icons/items/weapon-epee-deux-mains.png",
+  "Fléchette":"assets/icons/items/weapon-flechette.png",
+  "Épée longue":"assets/icons/items/weapon-epee-longue.png",
+  "Hache d'armes":"assets/icons/items/weapon-hache-armes.png",
+  "Hallebarde":"assets/icons/items/weapon-hallebarde.png",
+  "Maillet de guerre":"assets/icons/items/weapon-maillet-guerre.png",
+  "Fléau d'armes":"assets/icons/items/weapon-fleau-armes.png",
+  "Glaive":"assets/icons/items/weapon-glaive.png",
+  "Lance de cavalier":"assets/icons/items/weapon-lance-cavalier.png",
+  "Morgenstern":"assets/icons/items/weapon-morgenstern.png",
+  "Cimeterre":"assets/icons/items/weapon-cimeterre.png",
+  "Trident":"assets/icons/items/weapon-trident.png",
+  "Pic de guerre":"assets/icons/items/weapon-pic-guerre.png",
+  "Fouet":"assets/icons/items/weapon-fouet.png",
+  "Grande massue":"assets/icons/items/weapon-grande-massue.png",
+  "Marteau de guerre":"assets/icons/items/weapon-marteau-guerre.png",
+  "Pique":"assets/icons/items/weapon-pique.png",
+  "Sarbacane":"assets/icons/items/weapon-sarbacane.png",
+  "Arbalète lourde":"assets/icons/items/weapon-arbalete-lourde.png",
+  "matelassee":"assets/icons/items/armor-padded.png",
+  "cuir":"assets/icons/items/armor-cuir.png",
+  "cuirCloute":"assets/icons/items/armor-cuir-cloute.png",
+  "peaux":"assets/icons/items/armor-hide.png",
+  "mailles":"assets/icons/items/armor-mailles.png",
+  "ecailles":"assets/icons/items/armor-ecailles.png",
+  "cuirasse":"assets/icons/items/armor-cuirasse.png",
+  "demiPlate":"assets/icons/items/armor-demi-plate.png",
+  "anneaux":"assets/icons/items/armor-anneaux.png",
+  "cotte":"assets/icons/items/armor-cotte.png",
+  "bandes":"assets/icons/items/armor-lattes.png",
+  "plates":"assets/icons/items/armor-complete.png",
+  "Bouclier":"assets/icons/items/gear-shield.png",
+  "Flèches":"assets/icons/items/ammo-fleches.png",
+  "Carreaux d'arbalète":"assets/icons/items/ammo-carreaux.png",
+  "Munitions de fronde":"assets/icons/items/ammo-fronde.png",
+  "Munitions de sarbacane":"assets/icons/items/ammo-sarbacane.png",
+  "Sac à dos":"assets/icons/items/gear-backpack.png",
+  "Sac de couchage":"assets/icons/items/gear-bedroll.png",
+  "Corde (15 m)":"assets/icons/items/gear-rope.png",
+  "Torche":"assets/icons/items/gear-torch.png",
+  "Lanterne à huile":"assets/icons/items/gear-lantern.png",
+  "Rations de voyage (1 jour)":"assets/icons/items/gear-rations.png",
+  "Outre d'eau":"assets/icons/items/gear-waterskin.png",
+  "Outils de crochetage":"assets/icons/items/gear-lockpicks.png",
+  "Pied de biche":"assets/icons/items/gear-crowbar.png",
+  "Grappin":"assets/icons/items/gear-grappling-hook.png",
+  "Trousse de soins":"assets/icons/items/gear-healers-kit.png",
+  "Outils de voleur":"assets/icons/items/gear-thieves-tools.png",
+  "Potion":"assets/icons/items/gear-potion.png",
+  "Symbole sacré":"assets/icons/items/gear-holy-symbol.png",
+  "Boule de cristal":"assets/icons/items/gear-crystal-ball.png",
+  "Bourse de pièces":"assets/icons/items/gear-coin-pouch.png",
+  "Filet":"assets/icons/items/gear-net.png"
+};
+// Toutes les images déjà découpées dans assets/icons/items/ — alimente le sélecteur
+// d'image du créateur d'objets de base (André choisit dedans, pas besoin que je
+// retouche le code à chaque fois qu'il veut rattacher une image à un nouvel objet
+// de base). Mettre à jour cette liste à la main à chaque nouveau lot d'images
+// découpées pour ce dossier.
+const AVAILABLE_ITEM_ICONS = [
+  "ammo-carreaux","ammo-fleches","ammo-fronde","ammo-sarbacane",
+  "armor-anneaux","armor-complete","armor-cotte","armor-cuir-cloute","armor-cuir",
+  "armor-cuirasse","armor-demi-plate","armor-ecailles","armor-hide","armor-lattes",
+  "armor-mailles","armor-padded",
+  "gear-backpack","gear-bedroll","gear-coin-pouch","gear-crowbar","gear-crystal-ball",
+  "gear-grappling-hook","gear-healers-kit","gear-holy-symbol","gear-lantern",
+  "gear-lockpicks","gear-net","gear-potion","gear-rations","gear-rope","gear-shield",
+  "gear-thieves-tools","gear-torch","gear-waterskin",
+  "weapon-arbalete-custom","weapon-arbalete-legere","weapon-arbalete-lourde","weapon-arbalete-poing",
+  "weapon-arc-court","weapon-arc-long",
+  "weapon-baton","weapon-cimeterre","weapon-dague","weapon-epee-courte","weapon-epee-deux-mains",
+  "weapon-epee-longue","weapon-faucille","weapon-fleau-armes","weapon-flechette","weapon-fouet","weapon-fronde",
+  "weapon-glaive","weapon-gourdin","weapon-grande-hache","weapon-grande-massue","weapon-hache-armes",
+  "weapon-hachette","weapon-hallebarde","weapon-javeline","weapon-lance","weapon-lance-cavalier",
+  "weapon-maillet-guerre","weapon-marteau-leger","weapon-marteau-guerre","weapon-morgenstern","weapon-pic-guerre",
+  "weapon-pique","weapon-rapiere","weapon-sarbacane","weapon-trident",
+  // Lot du 2026-10-29 : vêtements, accessoires, boucliers et objets divers découpés
+  // depuis les planches fournies par André (voir les nouveaux modèles de base
+  // correspondants dans itemCatalog, créés dans la foulée).
+  "armor-bure-moine","armor-chasuble-clerc","armor-chemise-jabot","armor-chemise-lin-lacee",
+  "armor-chemise-rayee","armor-gambison-matelasse","armor-gambison-matelasse-renforce","armor-gilet-peau-mouton",
+  "armor-haillons","armor-manteau-brun-long","armor-manteau-fourre-gris-vert","armor-manteau-fourre-vert",
+  "armor-manteau-vert-fonce","armor-pourpoint-bigarre","armor-pourpoint-bordeaux","armor-pourpoint-creves",
+  "armor-robe-bleu-nuit","armor-robe-velours-bleu","armor-robe-verte-sombre","armor-tabard-soleil",
+  "armor-tablier-forgeron","armor-tablier-jardiniere","armor-tablier-tache","armor-tunique-paysan",
+  "armor-tunique-rapiecee","armor-veste-boutonnee","armor-veste-cuir-capuche","armor-veste-cuir-usee",
+  "armor-veste-ranger","belt-corde","belt-cuir","belt-ouvragee",
+  "belt-sacoches","boots-cuir","boots-cuir-hautes","boots-cuir-vertes",
+  "boots-equitation","boots-plates-hautes","boots-solerets","boots-ville",
+  "cloak-bordeaux-doree","cloak-capuche-brune","cloak-capuche-courte","cloak-courte-bordeaux",
+  "cloak-echarpe-brodee","cloak-echarpe-tricotee","cloak-fourree-doree","cloak-fourree-grise",
+  "cloak-verte-feuille","gear-baguette-magique","gear-baguette-tourmentee","gear-baton-cristallin",
+  "gear-bougie-noire","gear-bougie-runique","gear-boule-cristal-devin","gear-bourse-cuir-vert",
+  "gear-cachet-cire","gear-carte-fou","gear-cle-ouvragee","gear-collants-bicolores",
+  "gear-coquillage","gear-cristal-lumineux","gear-de-a-jouer","gear-disque-runique",
+  "gear-encrier","gear-figurine-hibou","gear-fiole-bleue","gear-fiole-potion-1",
+  "gear-fiole-potion-2","gear-gourde-voyage","gear-grimoire-runique","gear-grimoire-use",
+  "gear-laniere-entrelacee","gear-lettre-manuscrite","gear-lettre-scellee","gear-loupe-os",
+  "gear-luth","gear-medaillon-argent","gear-medaillon-or","gear-miche-pain",
+  "gear-miroir-main","gear-miroir-noir","gear-note-raturee","gear-objets-arcaniques",
+  "gear-osselets","gear-pantalon-ample","gear-parchemin-scelle",
+  "gear-parchemin-vierge","gear-pendentif-pierre","gear-piece-ancienne","gear-piece-argent",
+  "gear-pierre-aiguiser","gear-pierre-runique","gear-plume-blanche","gear-plume-irisee",
+  "gear-poupee-vaudou","gear-ruban-bleu-clair","gear-ruban-bleu-fonce","gear-sablier",
+  "gear-sac-billes","gear-sachet-composants","gear-sachet-herbes-gobelet","gear-sifflet-bois-1",
+  "gear-sifflet-bois-2","gear-silex-amadou","gear-tas-babioles","gear-tente",
+  "gear-vetement-plie","gloves-cloutes","gloves-cuir","gloves-cuir-brodes",
+  "gloves-mailles","gloves-plates","helmet-beret-velours","helmet-bonnet-cuir-olive",
+  "helmet-bonnet-laine","helmet-casque-nasal","helmet-casque-soldat","helmet-chapeau-fer",
+  "helmet-chapeau-paille","helmet-chapeau-plume","helmet-coiffe-blanche","helmet-heaume-croix",
+  "necklace-ambre","necklace-feuille","necklace-griffe","necklace-triskele",
+  "ring-argent-ouvrage","ring-chevaliere-doree","ring-emeraude","ring-fer",
+  "ring-lion","shield-acier","shield-bois-brut","shield-bois-ecu",
+  "shield-bordeaux","shield-cloute","shield-rond-cercle","shield-soleil",
+  "shield-vert-or","weapon-couteau-chasseur","weapon-couteau-recourbe","weapon-dague-elegante",
+  "weapon-dague-rituelle",
+  // Lot du 2026-10-29 (deuxième vague : repas, archerie, couturier, forgeron, boucher,
+  // camelot, palfrenier, tanneur, cire, herboriste, alcool, pêche, maraîcher, boulangerie).
+  "ammo-carquois-cloute","ammo-carquois-hanche","ammo-carquois-vert","ammo-carquois-voyage",
+  "ammo-carreaux-botte","ammo-fleches-botte","ammo-grande-botte-fleches","armor-cuir-cloutee-2",
+  "armor-cuir-sans-manches","armor-haubert-mailles","belt-cuir-brun","boots-basses",
+  "boots-usees","cloak-manteau-brun-seul","gear-ail","gear-ane-bate",
+  "gear-anguille","gear-baluchon-provisions","gear-bandage-roule","gear-besace-toile",
+  "gear-beurre-emballe","gear-biscuits-voyage","gear-bol-herbes","gear-bottes-bougies",
+  "gear-boudin","gear-bougeoir-bougie","gear-bougie-blanche","gear-bouquet-herbes",
+  "gear-bourse-cuir-sombre","gear-brioche-tressee","gear-brochet","gear-cadenas-cle",
+  "gear-canard-cru","gear-carottes","gear-carte-tresor","gear-chaine",
+  "gear-champignons","gear-chandelier","gear-charrette","gear-chaudron",
+  "gear-cheval","gear-chope-biere","gear-chope-fumante","gear-chou",
+  "gear-cire-cacheter","gear-coffre-tresor","gear-coffret-cadenasse","gear-corde-grappin-simple",
+  "gear-couverture-pliee","gear-cruche-alcool","gear-faisan","gear-filet-peche",
+  "gear-fiole-bleue-nouee","gear-fiole-terre-cuite","gear-fiole-verte-scellee","gear-flacon-vin-rouge",
+  "gear-flacon-vin-vert","gear-flute","gear-fromage","gear-gateau-fruits-secs",
+  "gear-gourde-cuir","gear-grand-sac-dos","gear-grande-corde","gear-grappin-corde",
+  "gear-jambon-ficele","gear-jambon-planche","gear-jambonneau","gear-kit-couture",
+  "gear-lampe-huile","gear-lanterne-fer","gear-lapin-ecorche","gear-lard",
+  "gear-lievre","gear-ligne-peche","gear-longue-vue","gear-marteau-forgeron",
+  "gear-medaillon-laiton","gear-menottes","gear-navets","gear-necessaire-alchimiste",
+  "gear-noix-noisettes","gear-oeufs","gear-oignons","gear-outre-cloutee",
+  "gear-pain-blanc-rond","gear-pain-seigle","gear-panier-ecrevisses","gear-panier-pique-nique",
+  "gear-pichet-vin","gear-pied-de-biche-2","gear-pitons-clous","gear-plat-beurre",
+  "gear-plateau-charcuterie","gear-plateau-voyageur","gear-poireaux","gear-poires",
+  "gear-poisson-grille","gear-poissons-fumes","gear-pommade","gear-pommes",
+  "gear-poney","gear-porridge","gear-pot-miel","gear-pot-saindoux",
+  "gear-potion-rouge","gear-poulet-cru","gear-poulet-roti","gear-racine-mandragore",
+  "gear-ragout","gear-rouleau-tissu","gear-sac-couchage","gear-sac-dos-cuir",
+  "gear-sac-dos-voyage","gear-sac-farine","gear-sac-shurikens","gear-sac-voyage-toile",
+  "gear-sachet-fleurs-sechees","gear-sacoche-epaule","gear-sacoche-soins","gear-saucisses-couronne",
+  "gear-saucisses-lentilles","gear-selle","gear-soupe-oignon","gear-tarte-en-croute",
+  "gear-tarte-pommes","gear-tente-2","gear-tenue-noble-verte","gear-tenue-paysanne",
+  "gear-tenue-robe-chale","gear-tenue-voyageur-cape","gear-tonneau","gear-tonneau-poissons-sales",
+  "gear-tonneau-robinet","gear-torche-enduite","gear-tourte","gear-truite",
+  "gear-viande-sechee","ring-grave","shield-bois-forgeron","weapon-arbalete-lourde-2",
+  "weapon-arc-court-2","weapon-arc-long-2","weapon-epee-courte-2","weapon-epee-longue-2",
+  "weapon-epee-longue-3","weapon-epieu","weapon-hachette-2","weapon-morgenstern-2"
+].map(n => ({ name:n, path:"assets/icons/items/" + n + ".png" }));
+// Retrouve un objet DE BASE (isBase:true) par son nom — c'est le nom du modèle de
+// base qui sert de refKey à tout objet construit dessus, quelle que soit sa
+// catégorie (pas seulement arme/armure, désormais).
+function findBaseByName(name){
+  return itemCatalog.find(t => t.isBase && t.name === name) || null;
+}
+// it.icon (propre à cet exemplaire) passe avant l'objet de base dont il hérite le
+// skin (via refKey), qui passe lui-même avant l'ancienne table câblée en dur
+// (ITEM_ICONS — gardée pour tout ce qui a été attaché avant ce système).
+function resolveItemIcon(it){
+  if(!it) return null;
+  if(it.icon) return it.icon;
+  const base = findBaseByName(it.refKey) || findBaseByName(it.name);
+  if(base && base.icon) return base.icon;
+  return ITEM_ICONS[it.refKey] || ITEM_ICONS[it.name] || null;
+}
+// Badges de propriété d'arme — un symbole + une explication précise par
+// propriété D&D, pour voir en un clin d'œil les spécificités d'une arme sans
+// devoir lire le texte brut des propriétés. "Une main"/"Deux mains"/"Polyvalente"
+// sont mutuellement exclusifs (voir leurs tests ci-dessous, dans cet ordre) ;
+// tout le reste s'ajoute librement selon ce que la chaîne .props contient.
+const WEAPON_PROPERTY_BADGES = [
+  {key:"deuxMains", icon:"assets/icons/props/badge-deux-mains.png", label:"Deux mains", test:p => /deux mains/i.test(p) && !/polyvalente/i.test(p), tooltip:"Deux mains : nécessite les deux mains pour attaquer avec cette arme."},
+  {key:"polyvalente", icon:"assets/icons/props/badge-polyvalente.png", label:"Polyvalente", test:p => /polyvalente/i.test(p), tooltip:"Polyvalente : peut s'utiliser à une main ou à deux mains — dégâts supérieurs à deux mains (dé indiqué entre parenthèses dans les propriétés)."},
+  {key:"uneMain", icon:"assets/icons/props/badge-une-main.png", label:"Une main", test:p => !/deux mains/i.test(p) && !/polyvalente/i.test(p), tooltip:"Se manipule à une seule main."},
+  {key:"legere", icon:"assets/icons/props/badge-legere.png", label:"Légère", test:p => /légère/i.test(p), tooltip:"Légère : permet l'attaque bonus au combat à deux armes (une arme légère dans chaque main)."},
+  {key:"lourde", icon:"assets/icons/props/badge-lourde.png", label:"Lourde", test:p => /lourde/i.test(p), tooltip:"Lourde : une créature de taille Petite subit un désavantage aux jets d'attaque avec cette arme."},
+  {key:"finesse", icon:"assets/icons/props/badge-finesse.png", label:"Finesse", test:p => /finesse/i.test(p), tooltip:"Finesse : le jet d'attaque et de dégâts utilise Force ou Dextérité, au choix (la même caractéristique pour les deux)."},
+  {key:"lancer", icon:"assets/icons/props/badge-lancer.png", label:"Lancer", test:p => /lancer/i.test(p), tooltip:"Lancer : peut être lancée pour effectuer une attaque à distance, en plus d'être utilisée en mêlée."},
+  {key:"allonge", icon:"assets/icons/props/badge-allonge.png", label:"Allonge", test:p => /allonge/i.test(p), tooltip:"Allonge : la portée de mêlée augmente de 1,5 m (et pour les attaques d'opportunité avec cette arme)."},
+  {key:"munitions", icon:"assets/icons/props/badge-munitions.png", label:"Munitions", test:p => /Munitions/.test(p), tooltip:"Munitions : nécessite des munitions dédiées — chaque attaque en consomme une (environ la moitié récupérable après le combat)."},
+  {key:"chargement", icon:"assets/icons/props/badge-chargement.png", label:"Chargement", test:p => /chargement/i.test(p), tooltip:"Chargement : le temps de rechargement limite à une seule attaque avec cette arme par action, action bonus ou réaction, quel que soit le nombre d'attaques normalement possible."},
+  {key:"speciale", icon:"assets/icons/props/badge-special.png", label:"Spécial", test:p => /spéciale/i.test(p), tooltip:"Règle spéciale propre à cette arme — voir sa description complète."}
+];
+function weaponPropertyBadges(props){
+  const p = props || "";
+  return WEAPON_PROPERTY_BADGES.filter(b => b.test(p));
+}
+function propertyBadgesHtml(props, extraClass){
+  const badges = weaponPropertyBadges(props);
+  if(!badges.length) return "";
+  return '<span class="prop-badge-row' + (extraClass?(" "+extraClass):"") + '">' + badges.map(b =>
+    '<span class="prop-badge hover-reveal"><img src="' + b.icon + '" alt="' + b.label + '"><span class="info-tooltip prop-badge-tooltip">' + b.tooltip + '</span></span>'
+  ).join("") + '</span>';
+}
+// Même badges, mais en simples <img> avec un title natif — pour les endroits où
+// ces icônes apparaissent DÉJÀ à l'intérieur d'une autre info-bulle au survol
+// (le panneau Attaques, la grande info-bulle de la case d'équipement) : une
+// vraie info-bulle imbriquée (hover-reveal dans hover-reveal) ne marche pas bien
+// en CSS pur à cause de l'espace entre le déclencheur et l'info-bulle flottante.
+function propertyBadgesInlineHtml(props){
+  const badges = weaponPropertyBadges(props);
+  if(!badges.length) return "";
+  return badges.map(b => '<img src="' + b.icon + '" alt="' + b.label + '" title="' + b.tooltip.replace(/"/g,"&quot;") + '" class="prop-badge-inline">').join("");
+}
+// Les chiffres précis d'UNE arme donnée (sa portée Munitions/Lancer, son dé à
+// deux mains pour Polyvalente) ne sont écrits NULLE PART ailleurs — les badges
+// n'expliquent que la règle générale, jamais le nombre propre à cette arme
+// précise (45/180 m pour l'arc long, 24/96 m pour l'arc court...). Ne jamais les
+// perdre en même temps que le nom de propriété (déjà redondant avec le badge) :
+// chaque parenthèse du texte brut porte un de ces chiffres, rien d'autre.
+function weaponPropsExtraDetail(props){
+  const matches = (props||"").match(/\([^)]*\)/g);
+  return matches ? matches.join(" · ") : "";
+}
+// La lueur de couleur est un choix fait sur L'OBJET (pas sur l'objet de base) —
+// voir le formulaire de création d'objets, onglet "Objets".
+function resolveItemGlow(it){ return (it && it.glowColor) || null; }
+function glowStyleAttr(it){
+  const c = resolveItemGlow(it);
+  return c ? (' style="filter:drop-shadow(0 0 4px ' + c + ') drop-shadow(0 0 9px ' + c + ');"') : '';
+}
 let isMJ = false;
 let selectedTokenId = null;
 let dragState = null; // {id, el, startCol, startRow, col, row}
@@ -1255,7 +1888,6 @@ const txtDb = document.getElementById("txt-db");
 const chkMJ = document.getElementById("chk-mj");
 const mjMapControls = document.getElementById("mj-map-controls");
 const mjMoodControls = document.getElementById("mj-mood-controls");
-const zoomRowEl = document.getElementById("zoom-row");
 const moodList = document.getElementById("mood-list");
 const mapList = document.getElementById("map-list");
 const sceneList = document.getElementById("scene-list");
@@ -1293,22 +1925,552 @@ const ABILITY_FRAME = {
   FOR:"frame-ability-for.png", DEX:"frame-ability-dex.png", CON:"frame-ability-con.png",
   INT:"frame-ability-int.png", SAG:"frame-ability-sag.png", CHA:"frame-ability-cha.png"
 };
-// Mirrors personnage/index.html's own (small, fixed) ARMOR_DATA catalog just
-// enough to show the CA and DEX-bonus cap of whichever armor is equipped —
-// table-de-jeu doesn't otherwise know any 5e rules, this is the one exception,
-// and since the catalog only ever has these 4 entries it's not worth syncing.
-const ARMOR_INFO = {
-  cuir:       {base:11, dexCap:null},
-  cuirCloute: {base:12, dexCap:null},
-  mailles:    {base:13, dexCap:2},
-  cotte:      {base:16, dexCap:0}
+// ---------------------------------------------------------------------------
+// Équipement — porté depuis personnage/index.html (seul propriétaire jusqu'ici
+// des règles d'équipement/armes) + les emplacements accessoires qui n'existaient
+// nulle part. Copie délibérée, pas un module partagé (même
+// précédent que l'ancien ARMOR_INFO) — si les règles de personnage changent un
+// jour (nouvelle arme, nouvelle classe), il faudra répercuter ici à la main.
+// ---------------------------------------------------------------------------
+const WEAPONS_SIMPLE = [
+  ["Gourdin","1 pa","1d4 contondant","Légère"],
+  ["Dague","2 po","1d4 perforant","Légère, finesse, lancer (6/18 m)"],
+  ["Javeline","5 pa","1d6 perforant","Lancer (9/36 m)"],
+  ["Masse d'armes","5 po","1d6 contondant","—"],
+  ["Bâton","2 pa","1d6 contondant","Polyvalente (1d8 à deux mains)"],
+  ["Fronde","1 pa","1d4 contondant","Munitions (9/36 m)"],
+  ["Arc court","25 po","1d6 perforant","Munitions (24/96 m), deux mains"],
+  ["Hachette","5 po","1d6 tranchant","Légère, lancer (6/18 m)"],
+  ["Fléchette","5 pc","1d4 perforant","Finesse, lancer (6/18 m)"],
+  ["Arbalète légère","25 po","1d8 perforant","Munitions (24/96 m), deux mains, chargement"],
+  ["Grande massue","2 pa","1d8 contondant","Deux mains"],
+  ["Marteau léger","2 po","1d4 contondant","Légère, lancer (6/18 m)"],
+  ["Faucille","1 po","1d4 tranchant","Légère"],
+  ["Lance","1 po","1d6 perforant","Lancer (6/18 m), polyvalente (1d8 à deux mains)"]
+];
+const WEAPONS_MARTIAL = [
+  ["Épée courte","10 po","1d6 perforant","Finesse, légère"],
+  ["Rapière","25 po","1d8 perforant","Finesse"],
+  ["Épée longue","15 po","1d8 tranchant","Polyvalente (1d10 à deux mains)"],
+  ["Hache d'armes","10 po","1d8 tranchant","Polyvalente (1d10 à deux mains)"],
+  ["Épée à deux mains","50 po","2d6 tranchant","Lourde, deux mains"],
+  ["Grande hache","30 po","1d12 tranchant","Lourde, deux mains"],
+  ["Hallebarde","20 po","1d10 tranchant","Lourde, allonge, deux mains"],
+  ["Arc long","50 po","1d8 perforant","Lourde, Munitions (45/180 m), deux mains"],
+  ["Arbalète de poing","75 po","1d6 perforant","Munitions (9/36 m), légère, chargement"],
+  ["Fléau d'armes","10 po","1d8 contondant","—"],
+  ["Glaive","20 po","1d10 tranchant","Lourde, allonge, deux mains"],
+  ["Lance de cavalier","10 po","1d12 perforant","Allonge, spéciale"],
+  ["Maillet de guerre","10 po","2d6 contondant","Lourde, deux mains"],
+  ["Morgenstern","15 po","1d8 perforant","—"],
+  ["Pique","5 po","1d10 perforant","Lourde, allonge, deux mains"],
+  ["Cimeterre","25 po","1d6 tranchant","Finesse, légère"],
+  ["Trident","5 po","1d6 perforant","Lancer (6/18 m), polyvalente (1d8 à deux mains)"],
+  ["Pic de guerre","5 po","1d8 perforant","—"],
+  ["Marteau de guerre","15 po","1d8 contondant","Polyvalente (1d10 à deux mains)"],
+  ["Fouet","2 po","1d4 tranchant","Finesse, allonge"],
+  ["Sarbacane","10 po","1 perforant","Munitions (7,5/30 m), chargement"],
+  ["Arbalète lourde","50 po","1d10 perforant","Munitions (30/120 m), lourde, chargement, deux mains"],
+  ["Filet","1 po","—","Spéciale, lancer"]
+];
+const ARMOR_DATA = [
+  {key:"aucune",label:"Aucune (défense sans armure)",base:10,dexCap:null,none:true},
+  {key:"matelassee",label:"Armure matelassée (11 + mod. DEX)",base:11,dexCap:null},
+  {key:"cuir",label:"Cuir (11 + mod. DEX)",base:11,dexCap:null},
+  {key:"cuirCloute",label:"Cuir clouté (12 + mod. DEX)",base:12,dexCap:null},
+  {key:"peaux",label:"Armure de peaux (12 + mod. DEX, max 2)",base:12,dexCap:2},
+  {key:"mailles",label:"Chemise de mailles (13 + mod. DEX, max 2)",base:13,dexCap:2},
+  {key:"ecailles",label:"Armure d'écailles (14 + mod. DEX, max 2)",base:14,dexCap:2},
+  {key:"cuirasse",label:"Cuirasse (14 + mod. DEX, max 2)",base:14,dexCap:2},
+  {key:"demiPlate",label:"Demi-plate (15 + mod. DEX, max 2)",base:15,dexCap:2},
+  {key:"anneaux",label:"Armure à anneaux (14)",base:14,dexCap:0},
+  {key:"cotte",label:"Cotte de mailles (16, FOR 13 requise)",base:16,dexCap:0,req:{ability:"FOR",score:13}},
+  {key:"bandes",label:"Armure à bandes (17, FOR 15 requise)",base:17,dexCap:0,req:{ability:"FOR",score:15}},
+  {key:"plates",label:"Armure de plates (18, FOR 15 requise)",base:18,dexCap:0,req:{ability:"FOR",score:15}}
+];
+const WEAPON_DATA = WEAPONS_SIMPLE.map(w => ({name:w[0], price:w[1], damage:w[2], props:w[3], tier:"simple"}))
+  .concat(WEAPONS_MARTIAL.map(w => ({name:w[0], price:w[1], damage:w[2], props:w[3], tier:"martiale"})));
+// Quel objet "Munitions" précis une arme à distance réclame — pas de billes de
+// fronde tirées avec un arc. Indexé par nom OFFICIEL (ch.weaponRanged, jamais
+// le nom d'affichage personnalisé d'un exemplaire précis).
+const WEAPON_AMMO_TYPE = {
+  "Arc court": "Flèches",
+  "Arc long": "Flèches",
+  "Arbalète légère": "Carreaux d'arbalète",
+  "Arbalète de poing": "Carreaux d'arbalète",
+  "Arbalète lourde": "Carreaux d'arbalète",
+  "Fronde": "Munitions de fronde",
+  "Sarbacane": "Munitions de sarbacane"
 };
-function armorInfoText(refKey){
-  const info = ARMOR_INFO[refKey];
-  if(!info) return "";
-  if(info.dexCap === 0) return "CA " + info.base + " (pas de mod. DEX)";
-  if(info.dexCap === null) return "CA " + info.base + " + mod. DEX";
-  return "CA " + info.base + " + mod. DEX (max " + info.dexCap + ")";
+// Groupes de maîtrise d'armure (légère/intermédiaire/lourde), pour construire
+// les armorChoices par classe sans répéter chaque clé à la main.
+const LIGHT_ARMORS = ["matelassee","cuir","cuirCloute"];
+const MEDIUM_ARMORS = ["peaux","mailles","ecailles","cuirasse","demiPlate"];
+const HEAVY_ARMORS = ["anneaux","cotte","bandes","plates"];
+// Les 23 armes de guerre officielles — ajoutées telles quelles aux classes qui
+// ont la maîtrise martiale complète (barbare/guerrier/paladin/rôdeur).
+const ALL_MARTIAL_WEAPONS = ["Épée courte","Rapière","Épée longue","Hache d'armes","Épée à deux mains","Grande hache","Hallebarde","Arc long","Arbalète de poing","Fléau d'armes","Glaive","Lance de cavalier","Maillet de guerre","Morgenstern","Pique","Cimeterre","Trident","Pic de guerre","Marteau de guerre","Fouet","Sarbacane","Arbalète lourde","Filet"];
+// Juste {weaponChoices, armorChoices, shieldProf} par classe — réduit depuis le
+// gros objet CLASSES de personnage (traits, sorts, kit de départ... inutiles ici).
+const CLASS_EQUIP_RULES = {
+  barbare:{armorChoices:["aucune",...LIGHT_ARMORS,...MEDIUM_ARMORS],shieldProf:true,weaponChoices:["Gourdin","Dague","Javeline","Masse d'armes","Bâton","Fronde","Arc court","Hachette","Fléchette","Grande massue","Marteau léger","Faucille","Lance","Arbalète légère",...ALL_MARTIAL_WEAPONS]},
+  barde:{armorChoices:["aucune",...LIGHT_ARMORS],weaponChoices:["Gourdin","Dague","Javeline","Bâton","Fronde","Arc court","Hachette","Fléchette","Épée courte","Rapière","Épée longue","Arbalète de poing"]},
+  roublard:{armorChoices:["aucune",...LIGHT_ARMORS],weaponChoices:["Gourdin","Dague","Javeline","Bâton","Fronde","Arc court","Hachette","Fléchette","Épée courte","Rapière","Épée longue","Arbalète de poing"]},
+  guerrier:{armorChoices:["aucune",...LIGHT_ARMORS,...MEDIUM_ARMORS,...HEAVY_ARMORS],shieldProf:true,weaponChoices:["Gourdin","Dague","Javeline","Masse d'armes","Bâton","Fronde","Arc court","Hachette","Fléchette","Grande massue","Marteau léger","Faucille","Lance","Arbalète légère",...ALL_MARTIAL_WEAPONS]},
+  clerc:{armorChoices:["aucune",...LIGHT_ARMORS,...MEDIUM_ARMORS],shieldProf:true,weaponChoices:["Gourdin","Dague","Javeline","Masse d'armes","Bâton","Fronde","Arc court","Hachette","Fléchette","Grande massue","Marteau léger","Faucille","Lance","Arbalète légère"]},
+  druide:{armorChoices:["aucune",...LIGHT_ARMORS,...MEDIUM_ARMORS],shieldProf:true,weaponChoices:["Gourdin","Dague","Javeline","Masse d'armes","Bâton","Fronde","Fléchette","Faucille","Lance","Cimeterre"]},
+  moine:{armorChoices:["aucune"],weaponChoices:["Gourdin","Dague","Javeline","Bâton","Fronde","Arc court","Hachette","Fléchette","Grande massue","Marteau léger","Faucille","Lance","Épée courte"]},
+  paladin:{armorChoices:["aucune",...LIGHT_ARMORS,...MEDIUM_ARMORS,...HEAVY_ARMORS],shieldProf:true,weaponChoices:["Gourdin","Dague","Javeline","Masse d'armes","Bâton","Fronde","Arc court","Hachette","Fléchette","Grande massue","Marteau léger","Faucille","Lance","Arbalète légère",...ALL_MARTIAL_WEAPONS]},
+  rodeur:{armorChoices:["aucune",...LIGHT_ARMORS,...MEDIUM_ARMORS],shieldProf:true,weaponChoices:["Gourdin","Dague","Javeline","Masse d'armes","Bâton","Fronde","Arc court","Hachette","Fléchette","Grande massue","Marteau léger","Faucille","Lance","Arbalète légère",...ALL_MARTIAL_WEAPONS]},
+  ensorceleur:{armorChoices:["aucune"],weaponChoices:["Dague","Fronde","Bâton","Fléchette","Arbalète légère"]},
+  occultiste:{armorChoices:["aucune",...LIGHT_ARMORS],weaponChoices:["Gourdin","Dague","Javeline","Masse d'armes","Bâton","Fronde","Arc court","Hachette","Fléchette","Grande massue","Marteau léger","Faucille","Lance"]},
+  magicien:{armorChoices:["aucune"],weaponChoices:["Dague","Fronde","Bâton","Fléchette","Arbalète légère"]}
+};
+// classKey -> nom du trait de sous-classe (pour retrouver le libellé choisi dans
+// ch.traitChoices, ex. ch.traitChoices["Domaine divin"] === "Domaine de la Vie").
+const SUBCLASS_TRAIT_NAME = {
+  barbare:"Voie primitive",barde:"Collège de barde",roublard:"Archétype de roublard",guerrier:"Archétype martial",
+  clerc:"Domaine divin",druide:"Cercle druidique",moine:"Tradition monastique",paladin:"Serment sacré",
+  rodeur:"Archétype de rôdeur",ensorceleur:"Origine ensorcelée",occultiste:"Protecteur occulte",magicien:"Tradition arcanique"
+};
+// Indexé par LIBELLÉ de sous-classe directement (pas par classe→sous-classe
+// imbriqué comme personnage) — seules les 3 options de clerc qui donnent
+// vraiment un bonus d'équipement sont ici ; Domaine de la Lumière n'en a pas.
+const SUBCLASS_EQUIP_BONUS = {
+  "Domaine de la Vie":{bonusArmor:HEAVY_ARMORS},
+  "Domaine de la Guerre":{bonusArmor:HEAVY_ARMORS,bonusWeapons:"martiale"},
+  "Domaine de la Tempête":{bonusArmor:HEAVY_ARMORS,bonusWeapons:"martiale"}
+};
+function profBonus(level){ return level<=4?2:level<=8?3:level<=12?4:level<=16?5:6; }
+function lightWeaponNames(){ return allWeapons().filter(w => /légère/i.test(w.props)).map(w => w.name); }
+function isTwoHanded(name){
+  const w = allWeapons().find(x => x.name === name);
+  if(!w) return false;
+  return /deux mains/i.test(w.props) && !/Polyvalente/i.test(w.props);
+}
+function fightingStyle(ch){
+  return ch.classKey === "guerrier" ? ((ch.traitChoices && ch.traitChoices["Style de combat"]) || null) : null;
+}
+function currentSubclassEquipBonus(ch){
+  const traitName = SUBCLASS_TRAIT_NAME[ch.classKey];
+  if(!traitName) return null;
+  const label = ch.traitChoices && ch.traitChoices[traitName];
+  return label ? (SUBCLASS_EQUIP_BONUS[label] || null) : null;
+}
+function effectiveWeaponChoices(ch){
+  const cls = CLASS_EQUIP_RULES[ch.classKey] || {};
+  const sub = currentSubclassEquipBonus(ch);
+  const base = cls.weaponChoices || [];
+  if(sub && sub.bonusWeapons === "martiale"){
+    const martial = WEAPON_DATA.filter(w => w.tier === "martiale").map(w => w.name);
+    return base.concat(martial.filter(n => !base.includes(n)));
+  }
+  return base;
+}
+function effectiveArmorChoices(ch){
+  const cls = CLASS_EQUIP_RULES[ch.classKey] || {};
+  const sub = currentSubclassEquipBonus(ch);
+  const base = cls.armorChoices || [];
+  const bonus = (sub && sub.bonusArmor) || [];
+  return base.concat(bonus.filter(k => !base.includes(k)));
+}
+// Le seul prérequis du jeu (Force 13 pour la cotte de mailles) a besoin du score
+// BRUT, pas du modificateur déjà arrondi (Force 12 et 13 ont le même +1) — d'où
+// ch.totalScores, écrit par personnage spécialement pour ce besoin.
+function reqMet(ch, req){
+  if(!req) return true;
+  const score = (ch.totalScores && ch.totalScores[req.ability] != null) ? ch.totalScores[req.ability] : 0;
+  return score >= req.score;
+}
+function equipBlockedReason(ch, it){
+  const cls = CLASS_EQUIP_RULES[ch.classKey] || {};
+  if(it.cat === "weapon"){
+    // Un type personnalisé (homebrew/improvisé, voir recomputeCustomEquipTypes) n'a
+    // pas de liste de maîtrise par classe — tout le monde sait s'en servir, comme un
+    // pied de chaise arraché ou un marteau de charpentier dans la vraie vie. Un
+    // objet personnalisé peut aussi IGNORER SCIEMMENT la maîtrise d'un type
+    // officiel (case à cocher dans le créateur d'objets) — même traitement.
+    const isOfficial = WEAPON_DATA.some(w => w.name === it.refKey);
+    if(isOfficial && !it.ignoreClassProf && !effectiveWeaponChoices(ch).includes(it.refKey)) return "Arme non maîtrisée par votre classe";
+    return null;
+  }
+  if(it.cat === "armor"){
+    const isOfficial = ARMOR_DATA.some(a => a.key === it.refKey);
+    if(isOfficial && !it.ignoreClassProf && !effectiveArmorChoices(ch).includes(it.refKey)) return "Armure non autorisée par votre classe";
+    // Règle 2014 (RAW) : une Force insuffisante pour une armure LOURDE ne bloque PAS
+    // l'équipement, elle réduit la vitesse de 10 ft (3 m) — voir effectiveSpeed().
+    // Ce n'est donc jamais un motif de blocage ici, juste un calcul de vitesse à part.
+    return null;
+  }
+  if(it.cat === "shield"){
+    if(!cls.shieldProf) return "Bouclier non maîtrisé par votre classe";
+    if(isTwoHanded(ch.weapon1)) return "Main occupée par une arme à deux mains";
+    return null;
+  }
+  return null;
+}
+// Règle 2014 : Force insuffisante pour une armure LOURDE équipée = vitesse -10 ft
+// (3 m), jamais moins que 0 — pas un blocage d'équipement (voir equipBlockedReason).
+function effectiveSpeed(ch){
+  const base = ch.speed != null ? ch.speed : 0;
+  if(!ch.armorKey) return base;
+  const a = allArmors().find(x => x.key === ch.armorKey);
+  // Même convention que armorLineText/currentlyEquippedItem : l'armure équipée se
+  // retrouve dans l'inventaire par son refKey, pas par un id dédié.
+  const equippedArmorItem = (ch.inventory || []).find(it => it.cat === "armor" && it.refKey === ch.armorKey);
+  const ignoreStrReq = equippedArmorItem && equippedArmorItem.ignoreStrReq;
+  if(a && a.req && !ignoreStrReq && !reqMet(ch, a.req)) return Math.max(0, base - 3);
+  return base;
+}
+// Avertissement non bloquant affiché dans la modale d'équipement pour une armure
+// pas encore équipée : prévient du -3 m de vitesse plutôt que d'empêcher de l'enfiler.
+function armorSpeedPenaltyHint(ch, it){
+  const a = allArmors().find(x => x.key === it.refKey);
+  if(!a || !a.req || it.ignoreStrReq || reqMet(ch, a.req)) return null;
+  return 'Vitesse -3 m tant que ' + a.req.ability + ' ' + a.req.score + ' n\'est pas atteinte (vous avez ' + ((ch.totalScores && ch.totalScores[a.req.ability]) || 0) + ')';
+}
+// slot: "main" | "off" | "ranged" — choisi explicitement par le bouton cliqué
+// dans la modale, jamais deviné, pour qu'équiper une arme finisse toujours dans
+// la main réellement choisie.
+// Renvoie null en cas de succès, ou un message à afficher (showActionNotice)
+// si le clic n'a RIEN fait — sans ce retour, un clic sur un choix invalide
+// fermait quand même la modale sans rien changer, comme un bug silencieux (ex.
+// vouloir un bouclier en pleine arme à deux mains). itemMatchesSlot exclut déjà
+// ces cas de la liste des choix proposés ; ce retour reste une sécurité en plus,
+// au cas où l'un d'eux serait quand même atteint.
+function equipInventoryItem(ch, it, slot){
+  if(it.cat === "armor"){
+    ch.armorKey = it.refKey;
+  }else if(it.cat === "shield"){
+    if(isTwoHanded(ch.weapon1)) return "Main occupée par une arme à deux mains — déséquipe-la d'abord.";
+    ch.shield = true;
+  }else if(it.cat === "weapon"){
+    const name = it.refKey;
+    const w = allWeapons().find(x => x.name === name);
+    const ranged = w && /Munitions/.test(w.props);
+    if(ranged || slot === "ranged"){
+      ch.weaponRanged = name; ch.weaponRangedItemId = it.id;
+    }else if(slot === "off"){
+      if(isTwoHanded(name)) return "Une arme à deux mains ne peut pas aller en main secondaire.";
+      // Symétrique du même test pour le bouclier un peu plus haut : si la main
+      // PRINCIPALE tient déjà une arme à deux mains, rien ne peut aller dans la
+      // main secondaire tant qu'elle y est — sans ce test, ensureEquipmentChoiceLite
+      // ci-dessous effaçait ch.weapon2 juste après l'avoir posé, en silence.
+      if(isTwoHanded(ch.weapon1)) return "Main occupée par une arme à deux mains — déséquipe-la d'abord.";
+      ch.weapon2 = name; ch.weapon2ItemId = it.id; ch.shield = false;
+    }else{
+      ch.weapon1 = name; ch.weapon1ItemId = it.id;
+      if(isTwoHanded(name)){ ch.weapon2 = ""; ch.weapon2ItemId = null; ch.shield = false; }
+    }
+  }
+  ensureEquipmentChoiceLite(ch);
+  return null;
+}
+function unequipInventoryItem(ch, it){
+  if(it.cat === "armor" && ch.armorKey === it.refKey) ch.armorKey = "aucune";
+  else if(it.cat === "shield") ch.shield = false;
+  else if(it.cat === "weapon"){
+    if(ch.weapon1ItemId === it.id){ ch.weapon1 = ""; ch.weapon1ItemId = null; }
+    else if(ch.weapon2ItemId === it.id){ ch.weapon2 = ""; ch.weapon2ItemId = null; }
+    else if(ch.weaponRangedItemId === it.id){ ch.weaponRanged = ""; ch.weaponRangedItemId = null; }
+  }
+  ensureEquipmentChoiceLite(ch);
+}
+// Version allégée de l'ensureEquipmentChoice de personnage — seulement les
+// garde-fous qui doivent s'appliquer juste APRÈS un équipement (arme à deux
+// mains qui vide l'autre main/bouclier, bouclier qui vide l'arme secondaire) ;
+// la partie "la classe a changé, retombe sur le kit par défaut" de personnage
+// ne concerne pas table-de-jeu, où la classe ne change jamais depuis ici.
+function ensureEquipmentChoiceLite(ch){
+  if(ch.weapon1 && isTwoHanded(ch.weapon1)){ ch.shield = false; ch.weapon2 = ""; ch.weapon2ItemId = null; }
+  if(ch.shield && ch.weapon2){ ch.weapon2 = ""; ch.weapon2ItemId = null; }
+}
+function weaponAbilityMod(ch, props){
+  const strMod = abilityMod(ch, "FOR");
+  const dexMod = abilityMod(ch, "DEX");
+  if(/Munitions/.test(props)) return dexMod;
+  if(/finesse/i.test(props)) return Math.max(strMod, dexMod);
+  return strMod;
+}
+function weaponInfo(ch, name, isOffhand){
+  const w = allWeapons().find(x => x.name === name);
+  if(!w) return null;
+  const aMod = weaponAbilityMod(ch, w.props);
+  const isRanged = /Munitions/.test(w.props);
+  const archerie = fightingStyle(ch) === "Archerie" && isRanged;
+  const atk = profBonus(ch.level||1) + aMod + (archerie?2:0);
+  const twoWeapon = fightingStyle(ch) === "Combat à deux armes";
+  const isLight = lightWeaponNames().includes(name);
+  const dmgMod = (isOffhand && isLight && !twoWeapon) ? Math.min(aMod,0) : aMod;
+  const baseDiceMatch = w.damage.match(/^(\d+)d(\d+)\s*(.*)$/);
+  let diceCount = baseDiceMatch ? baseDiceMatch[1] : null;
+  let diceSides = baseDiceMatch ? baseDiceMatch[2] : null;
+  const dmgType = baseDiceMatch ? baseDiceMatch[3] : "";
+  // Une arme "Polyvalente" frappe plus fort à deux mains — seulement pour la main
+  // principale, et seulement si l'autre main est vraiment libre (pas de bouclier,
+  // pas de seconde arme).
+  if(!isOffhand){
+    const versatileMatch = w.props.match(/Polyvalente\s*\((\d+)d(\d+)/i);
+    if(versatileMatch && !ch.shield && !ch.weapon2){
+      diceCount = versatileMatch[1];
+      diceSides = versatileMatch[2];
+    }
+  }
+  const dmgText = (diceCount && diceSides) ? (diceCount + "d" + diceSides + fmtSigned(dmgMod) + " " + dmgType) : w.damage;
+  return {name:w.name, props:w.props, atk, dmgText};
+}
+function unarmedStrikeInfo(ch){
+  const strMod = abilityMod(ch, "FOR");
+  const dexMod = abilityMod(ch, "DEX");
+  const isMonk = ch.classKey === "moine";
+  const aMod = isMonk ? Math.max(strMod, dexMod) : strMod;
+  const atk = profBonus(ch.level||1) + aMod;
+  if(isMonk){
+    const dieSize = (ch.level||1) >= 5 ? 6 : 4;
+    return {name:"Frappe à mains nues", props:"Contondant, FOR ou DEX", atk, dmgText:"1d"+dieSize+fmtSigned(aMod)+" contondant"};
+  }
+  return {name:"Frappe à mains nues", props:"Contondant", atk, dmgText:(1+aMod)+" contondant"};
+}
+// dmgText est toujours "XdY+Z type" (voir weaponInfo/unarmedStrikeInfo) — le bonus
+// aux dégâts d'un objet précis (épée +1, etc.) s'ajoute au modificateur plat déjà
+// présent, sans toucher aux dés eux-mêmes.
+function addDmgBonus(dmgText, bonus){
+  const m = (dmgText||"").match(/^(\d+d\d+)([+-]\d+)?\s*(.*)$/);
+  if(!m) return dmgText;
+  return m[1] + fmtSigned((Number(m[2])||0) + bonus) + (m[3] ? (' ' + m[3]) : '');
+}
+function equippedWeaponPairs(ch){
+  const inv = ch.inventory || [];
+  const resolveItem = (itemId) => inv.find(x => String(x.id) === String(itemId));
+  const rows = [
+    [weaponInfo(ch, ch.weapon1, false), "", "main", ch.weapon1ItemId],
+    [weaponInfo(ch, ch.weapon2, true), lightWeaponNames().includes(ch.weapon2) ? "" : " — arme de secours, pas d'attaque bonus", "off", ch.weapon2ItemId],
+    [weaponInfo(ch, ch.weaponRanged, false), "", "ranged", ch.weaponRangedItemId]
+  ].filter(pair => pair[0]);
+  // Un objet peut avoir été ajouté sous un nom perso (ex. "Pied de chaise arraché",
+  // refKey "Gourdin" pour les vraies stats) — une fois équipé, ch.weapon1/2/Ranged ne
+  // retiennent que le refKey (le type de base), donc le nom affiché en combat doit
+  // être rattrapé ici depuis l'objet d'inventaire réel. Pareil pour un bonus de
+  // toucher/dégâts posé sur CET exemplaire précis (voir le créateur d'objets,
+  // onglet "Objets") — jamais sur le type de base lui-même.
+  rows.forEach(r => {
+    const it = resolveItem(r[3]);
+    if(!it) return;
+    let w = r[0];
+    if(it.name) w = { ...w, name: it.name };
+    const atkBonus = Number(it.atkBonus)||0;
+    const dmgBonus = Number(it.dmgBonus)||0;
+    if(atkBonus) w = { ...w, atk: w.atk + atkBonus };
+    if(dmgBonus) w = { ...w, dmgText: addDmgBonus(w.dmgText, dmgBonus) };
+    r[0] = w;
+  });
+  // Les munitions équipées (carquois) peuvent elles-mêmes porter un bonus (flèches
+  // enchantées +1...) — s'ajoute à celui de l'arme à distance elle-même, jamais aux
+  // armes de mêlée (rien à voir avec les munitions).
+  const rangedRow = rows.find(r => r[2] === "ranged");
+  if(rangedRow){
+    const ammoItem = resolveItem(ch.ammoItemId);
+    if(ammoItem){
+      const ammoAtk = Number(ammoItem.atkBonus)||0;
+      const ammoDmg = Number(ammoItem.dmgBonus)||0;
+      let w = rangedRow[0];
+      if(ammoAtk) w = { ...w, atk: w.atk + ammoAtk };
+      if(ammoDmg) w = { ...w, dmgText: addDmgBonus(w.dmgText, ammoDmg) };
+      rangedRow[0] = w;
+    }
+  }
+  if(ch.classKey === "moine") rows.push([unarmedStrikeInfo(ch), "", null]);
+  else if(!rows.length) rows.push([unarmedStrikeInfo(ch), "", null]);
+  return rows;
+}
+function computeAC(ch){
+  const dexMod = abilityMod(ch, "DEX");
+  const armor = allArmors().find(a => a.key === ch.armorKey) || ARMOR_DATA[0];
+  let base;
+  if(armor.none){
+    base = 10 + dexMod;
+    if(ch.classKey === "barbare") base += abilityMod(ch, "CON");
+    if(ch.classKey === "moine" && !ch.shield) base += abilityMod(ch, "SAG");
+    // "Résilience draconique" (Ensorceleur, origine Lignée draconique) : sans
+    // armure, CA = 13 + mod. DEX.
+    const subLabel = ch.traitChoices && ch.traitChoices[SUBCLASS_TRAIT_NAME.ensorceleur];
+    if(ch.classKey === "ensorceleur" && subLabel === "Lignée draconique") base += 3;
+  }else if(armor.dexCap === 0){
+    base = armor.base;
+  }else if(armor.dexCap === null){
+    base = armor.base + dexMod;
+  }else{
+    base = armor.base + Math.min(dexMod, armor.dexCap);
+  }
+  if(ch.shield) base += 2;
+  if(!armor.none && fightingStyle(ch) === "Défense") base += 1;
+  // Bonus/malus posé sur CET exemplaire d'armure précis (armure +1, armure
+  // abîmée à -1 CA...) — retrouvé par refKey, même limite déjà existante que
+  // currentlyEquippedItem pour cette case (si 2 exemplaires du même type
+  // d'armure traînent dans l'inventaire, le premier trouvé fait foi).
+  const armorItem = (ch.inventory||[]).find(it => it.cat === "armor" && it.refKey === ch.armorKey);
+  if(armorItem && armorItem.acBonus) base += Number(armorItem.acBonus)||0;
+  // Même principe pour le bouclier (bouclier +1, bouclier abîmé...) — un seul
+  // bouclier possible à la fois, donc pas besoin d'un équivalent à ch.armorKey
+  // pour savoir LEQUEL : le premier objet cat:"shield" de l'inventaire fait foi,
+  // même convention que currentlyEquippedItem.
+  const shieldItem = ch.shield ? (ch.inventory||[]).find(it => it.cat === "shield") : null;
+  if(shieldItem && shieldItem.acBonus) base += Number(shieldItem.acBonus)||0;
+  return base;
+}
+function armorLineText(ch){
+  // Comme pour armorItem.acBonus un peu plus haut (jamais affiché ici non plus,
+  // seulement dans le résumé du catalogue) : ce bonus compte bien dans computeAC,
+  // juste pas répété sur cette ligne pour rester cohérent avec l'armure.
+  return (allArmors().find(a => a.key === ch.armorKey) || ARMOR_DATA[0]).label +
+    (ch.shield ? ' + Bouclier (+2 CA)' : '') +
+    (fightingStyle(ch) === "Défense" && ch.armorKey !== "aucune" ? ' + Style Défense (+1 CA)' : '');
+}
+// Recalcule et renvoie les 3 champs dérivés qu'il faut TOUJOURS réécrire avec
+// armorKey/shield/weaponX dès que l'un d'eux change — sinon la prochaine
+// sauvegarde d'un joueur depuis personnage (ex. montée de niveau) écraserait
+// silencieusement ce qui vient d'être équipé ici avec des valeurs obsolètes
+// encore en mémoire côté personnage.
+function recomputeEquipDerived(ch){
+  const attacks = equippedWeaponPairs(ch).map(([w,tag,hand]) => ({name:w.name, props:w.props, atk:w.atk, dmgText:w.dmgText, tag, hand}));
+  return { ac: computeAC(ch), attacks, equippedArmor: armorLineText(ch) };
+}
+
+// Les 8 emplacements accessoires — aucune règle de maîtrise (presque n'importe
+// qui peut porter un anneau/une cape/une ceinture en 5e, contrairement à
+// l'armure et aux armes) : juste un pointeur vers un objet de l'inventaire par
+// emplacement. "ring" est un cas particulier : une seule case à l'écran pour les
+// 2 doigts (ring1ItemId/ring2ItemId, voir RING_SUB_SLOTS plus bas) — pas de
+// "field" propre, elle s'ouvre sur sa propre petite modale à 2 lignes
+// (ringPickerHtml) plutôt que la liste générique d'objets compatibles.
+const ACCESSORY_SLOTS = [
+  {key:"helmet",   cat:"helmet",   field:"helmetItemId",   label:"Casque",               icon:"slot-head.png"},
+  {key:"necklace", cat:"necklace", field:"necklaceItemId", label:"Collier / Amulette",   icon:"slot-necklace.png"},
+  {key:"cloak",    cat:"cloak",    field:"cloakItemId",    label:"Cape / Manteau",       icon:"slot-cloak.png"},
+  {key:"gloves",   cat:"gloves",   field:"glovesItemId",   label:"Gants",                icon:"slot-gloves.png"},
+  {key:"belt",     cat:"belt",     field:"beltItemId",     label:"Ceinture",             icon:"slot-belt.png"},
+  {key:"boots",    cat:"boots",    field:"bootsItemId",    label:"Bottes",               icon:"slot-boots.png"},
+  {key:"ring",     cat:"ring",     field:null,             label:"Anneaux",              icon:"slot-ring.png"},
+  {key:"ammo",     cat:"ammo",     field:"ammoItemId",     label:"Munitions / Carquois", icon:"slot-ammo.png"}
+];
+// Les 2 doigts réels derrière la case "Anneaux" ci-dessus — jamais rendus comme
+// tuile à part (voir ACCESSORY_SLOTS), juste utilisés par equipAccessory/
+// unequipAccessory et par la modale dédiée (ringPickerHtml).
+const RING_SUB_SLOTS = [
+  {key:"ring1", cat:"ring", field:"ring1ItemId", label:"Anneau 1"},
+  {key:"ring2", cat:"ring", field:"ring2ItemId", label:"Anneau 2"}
+];
+// Les 4 emplacements "historiques", traités à part puisqu'ils passent par
+// equipInventoryItem/equipBlockedReason (règles de maîtrise) plutôt que par
+// equipAccessory. slotArg est ce que equipInventoryItem attend dans son
+// paramètre "slot" ("main"/"off"/"ranged"/undefined). "offHand" fusionne
+// bouclier et arme secondaire en une seule case : les deux occupent la même
+// main et ne sont jamais équipés en même temps (voir ensureEquipmentChoiceLite)
+// — son icône générique change selon ce qui y est équipé (voir equipTileIcon).
+const WEAPON_ARMOR_SLOTS = [
+  {key:"weaponMain",  cat:"weapon",  slotArg:"main",   label:"Arme (main principale)",             icon:"slot-weapon-melee.png"},
+  {key:"offHand",     cat:"offhand", slotArg:"off",    label:"Main secondaire (arme ou bouclier)", icon:"slot-shield.png"},
+  {key:"weaponRanged",cat:"weapon",  slotArg:"ranged", label:"Arme à distance",                    icon:"slot-weapon-ranged.png"},
+  {key:"armor",       cat:"armor",   slotArg:null,     label:"Armure",                             icon:"slot-armor.png"}
+];
+function equipAccessory(ch, slotKey, itemId){
+  const def = ACCESSORY_SLOTS.find(s => s.key === slotKey) || RING_SUB_SLOTS.find(s => s.key === slotKey);
+  if(!def) return;
+  // On ne peut pas porter le même anneau aux deux doigts à la fois — l'équiper
+  // dans l'un le retire automatiquement de l'autre.
+  if(def.cat === "ring"){
+    const otherKey = slotKey === "ring1" ? "ring2" : "ring1";
+    const otherField = RING_SUB_SLOTS.find(s => s.key === otherKey).field;
+    if(String(ch[otherField]) === String(itemId)) ch[otherField] = null;
+  }
+  ch[def.field] = itemId;
+}
+function unequipAccessory(ch, slotKey){
+  const def = ACCESSORY_SLOTS.find(s => s.key === slotKey) || RING_SUB_SLOTS.find(s => s.key === slotKey);
+  if(!def) return;
+  ch[def.field] = null;
+}
+// Quel emplacement (accessoire OU armure/arme/main secondaire) un objet
+// d'inventaire donné peut occuper — utilisé pour filtrer la liste de la modale.
+// (La case "Anneaux" fusionnée a sa propre modale, voir ringPickerHtml — elle ne
+// passe jamais par ici.)
+function itemMatchesSlot(ch, it, def){
+  if(["helmet","necklace","cloak","gloves","belt","boots"].includes(def.cat)) return it.cat === def.cat;
+  if(def.cat === "ammo"){
+    if(it.cat !== "ammo") return false;
+    // Exclusif au type réclamé par l'arme à distance ACTUELLEMENT équipée — pas
+    // d'arme (ou type non reconnu, ex. objet "Munitions" tout neuf) : rien à
+    // filtrer, on ne bloque pas un carquois préparé à l'avance.
+    const requiredAmmo = WEAPON_AMMO_TYPE[ch.weaponRanged];
+    if(!requiredAmmo) return true;
+    return it.name === requiredAmmo || it.refKey === requiredAmmo;
+  }
+  if(def.cat === "weapon"){
+    if(it.cat !== "weapon") return false;
+    if(equipBlockedReason(ch, it)) return false;
+    const w = allWeapons().find(x => x.name === it.refKey);
+    const isRanged = w && /Munitions/.test(w.props);
+    if(def.slotArg === "ranged") return !!isRanged;
+    return !isRanged; // main : toute arme de mêlée maîtrisée
+  }
+  if(def.cat === "offhand"){
+    if(it.cat === "shield") return !equipBlockedReason(ch, it);
+    if(it.cat === "weapon"){
+      if(equipBlockedReason(ch, it)) return false;
+      // Une arme à deux mains ne peut jamais aller en main secondaire — exclue
+      // ici (pas juste bloquée au clic) pour qu'elle n'apparaisse même pas comme
+      // un choix possible dans la liste.
+      if(isTwoHanded(it.refKey)) return false;
+      // Et si la main PRINCIPALE tient déjà une arme à deux mains, elle occupe
+      // aussi la main secondaire — rien ne peut y aller tant qu'elle y est
+      // (même logique déjà appliquée au bouclier juste au-dessus, via
+      // equipBlockedReason). Une arme polyvalente en main principale n'entre PAS
+      // dans ce cas : isTwoHanded() l'exclut exprès (voir sa définition), donc
+      // ajouter un bouclier/une arme libère volontairement cette main-là.
+      if(isTwoHanded(ch.weapon1)) return false;
+      const w = allWeapons().find(x => x.name === it.refKey);
+      return !(w && /Munitions/.test(w.props)); // toute arme de mêlée maîtrisée, pas les armes à distance
+    }
+    return false;
+  }
+  if(def.cat === "armor") return it.cat === def.cat && !equipBlockedReason(ch, it);
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// Formulaire d'ajout d'objet, partagé entre l'inventaire d'un personnage (ajout
+// direct) et l'écran "Préparer des objets" (modèle réutilisable, sans personnage).
+// ---------------------------------------------------------------------------
+// Mêmes libellés que WEAPON_ARMOR_SLOTS/ACCESSORY_SLOTS pour les emplacements
+// équipables, + bouclier et objet libre qui n'ont pas de case dédiée.
+const ITEM_CATEGORIES = [
+  {cat:"weapon", label:"Arme"},
+  {cat:"armor", label:"Armure"},
+  {cat:"shield", label:"Bouclier"},
+  {cat:"helmet", label:"Casque"},
+  {cat:"necklace", label:"Collier / Amulette"},
+  {cat:"cloak", label:"Cape / Manteau"},
+  {cat:"gloves", label:"Gants"},
+  {cat:"belt", label:"Ceinture"},
+  {cat:"boots", label:"Bottes"},
+  {cat:"ring", label:"Anneau"},
+  {cat:"ammo", label:"Munitions / Carquois"},
+  {cat:"other", label:"Autre / Objet libre"}
+];
+// Enregistre (ou retrouve) un modèle réutilisable — dédoublonné sur {cat,name,refKey}
+// pour qu'ajouter deux fois "Gourdin" en Arme ne crée pas deux fiches identiques.
+async function upsertItemCatalogEntry(entry){
+  const existing = itemCatalog.find(t => t.cat === entry.cat && t.name === entry.name && (t.refKey||null) === (entry.refKey||null) && !!t.isBase === !!entry.isBase);
+  if(existing) return existing.id;
+  const ref = doc(itemCatalogCol);
+  await setDoc(ref, {
+    name:entry.name, cat:entry.cat, refKey:entry.refKey||null, stats:entry.stats||null,
+    icon:entry.icon||null, isBase:!!entry.isBase, glowColor:entry.glowColor||null,
+    atkBonus:entry.atkBonus||0, dmgBonus:entry.dmgBonus||0, acBonus:entry.acBonus||0,
+    ignoreClassProf:!!entry.ignoreClassProf, ignoreStrReq:!!entry.ignoreStrReq,
+    validated:!!entry.validated, createdAt:Date.now()
+  });
+  return ref.id;
 }
 // The gold bandeau's medallion shows a bag/coffer whose fullness reflects the
 // character's current gold — ordered poorest to richest, each entry's "max"
@@ -1428,7 +2590,9 @@ function setZoom(v){
 
 try{ isMJ = localStorage.getItem("valbois-role-mj") === "1"; }catch(e){}
 chkMJ.checked = isMJ;
+try{ document.body.classList.toggle("left-collapsed", localStorage.getItem("valbois-left-collapsed") === "1"); }catch(e){}
 applyRole();
+openLaunchMenu();
 
 // A password stops a player from just ticking this box out of curiosity — it's a
 // speed bump, not real security (this file's source, and the password in it, is as
@@ -1474,7 +2638,48 @@ document.getElementById("mj-password-backdrop").addEventListener("click", closeM
 document.getElementById("btn-mj-password-submit").addEventListener("click", submitMjPassword);
 document.getElementById("f-mj-password").addEventListener("keydown", (e) => { if(e.key === "Enter") submitMjPassword(); });
 
+// Replaces the old always-visible topbar (title, connection pill, role toggle, export):
+// one menu, shown once at launch and reopenable any time via the gear button above the
+// map, holding the same three actions the topbar used to expose directly.
+function openLaunchMenu(){
+  document.getElementById("launch-menu-toggle-mj").textContent = isMJ ? "Quitter le rôle MJ" : "Devenir MJ";
+  document.getElementById("launch-menu-modal").hidden = false;
+}
+function closeLaunchMenu(){
+  document.getElementById("launch-menu-modal").hidden = true;
+}
+document.getElementById("btn-open-launch-menu").addEventListener("click", openLaunchMenu);
+document.getElementById("launch-menu-close").addEventListener("click", closeLaunchMenu);
+document.getElementById("launch-menu-backdrop").addEventListener("click", closeLaunchMenu);
+document.getElementById("launch-menu-switch-char").addEventListener("click", () => {
+  closeLaunchMenu();
+  openWhoAreYouModal();
+});
+document.getElementById("launch-menu-toggle-mj").addEventListener("click", () => {
+  closeLaunchMenu();
+  if(isMJ){
+    isMJ = false;
+    chkMJ.checked = false;
+    try{ localStorage.setItem("valbois-role-mj", "0"); }catch(e){}
+    applyRole();
+  }else{
+    openMjPasswordModal();
+  }
+});
+document.getElementById("launch-menu-export").addEventListener("click", () => {
+  closeLaunchMenu();
+  document.getElementById("btn-export-backup").click();
+});
+// Collapsing the left panel frees its grid column — renderBoard() re-measures the
+// now-wider column and .center-panel's own flex centering does the actual "recentre".
+// No separate toggle button — this map badge (collapsed) or the portrait inside the
+// full sheet (expanded) is the fold/unfold control, see toggleLeftPanel().
+document.getElementById("my-portrait-badge").addEventListener("click", toggleLeftPanel);
+
 function applyRole(){
+  // Player view only: the right "Sélection" column is replaced by a compact card
+  // right on the map (see renderSelection) — the MJ keeps the full panel.
+  document.body.classList.toggle("player-view", !isMJ);
   mjMapControls.hidden = !isMJ;
   mjMoodControls.hidden = !isMJ;
   // Only the MJ picks which ambiance image everyone sees — players get no button or
@@ -1615,6 +2820,284 @@ async function placeCharacterPickingPortrait(ch, pos){
   else await placeCharacterAsToken(ch, pos);
 }
 
+// Which inventory item (if any) currently occupies a given slot — used both to
+// grey/color the tile and, on "Déséquiper", to hand the real item object back to
+// unequipInventoryItem/unequipAccessory instead of a synthetic stand-in.
+function currentlyEquippedItem(ch, def){
+  const inv = ch.inventory || [];
+  if(def.field) return inv.find(it => String(it.id) === String(ch[def.field])) || null;
+  if(def.key === "armor") return inv.find(it => it.cat === "armor" && it.refKey === ch.armorKey) || null;
+  // Main secondaire fusionnée : bouclier (booléen, pas d'itemId — même limite que
+  // l'ancien résumé en lecture seule) OU arme secondaire, jamais les deux à la fois.
+  if(def.key === "offHand"){
+    if(ch.shield) return (inv.find(it => it.cat === "shield")) || {cat:"shield", name:"Bouclier"};
+    return inv.find(it => String(it.id) === String(ch.weapon2ItemId)) || null;
+  }
+  if(def.key === "weaponMain") return inv.find(it => String(it.id) === String(ch.weapon1ItemId)) || null;
+  if(def.key === "weaponRanged") return inv.find(it => String(it.id) === String(ch.weaponRangedItemId)) || null;
+  // Case "Anneaux" fusionnée : juste de quoi dire "occupée" (un doigt rempli ou
+  // les deux) à equipGridHtml — le détail des 2 doigts vient de ringPickerHtml.
+  if(def.key === "ring"){
+    return inv.find(it => String(it.id) === String(ch.ring1ItemId)) || inv.find(it => String(it.id) === String(ch.ring2ItemId)) || null;
+  }
+  return null;
+}
+let pendingEquipSlot = null; // { ch, def }
+// Modale dédiée pour la case "Anneaux" fusionnée — 2 lignes (un doigt chacune),
+// chacune avec son propre objet équipé/bouton, plutôt que la liste générique à
+// une seule entrée des autres cases (voir le point 3 de la discussion avec André :
+// une case à l'écran, mais les 2 emplacements réels restent gérés séparément).
+function ringPickerHtml(ch){
+  const inv = ch.inventory || [];
+  const ringItems = inv.filter(it => it.cat === "ring");
+  return RING_SUB_SLOTS.map((def, idx) => {
+    const current = inv.find(it => String(it.id) === String(ch[def.field])) || null;
+    const otherField = RING_SUB_SLOTS[idx === 0 ? 1 : 0].field;
+    const available = ringItems.filter(it => String(it.id) !== String(ch[otherField]) && (!current || String(it.id) !== String(current.id)));
+    const rows = [];
+    if(current){
+      const curIcon = resolveItemIcon(current);
+      rows.push('<button type="button" class="equip-picker-row equip-picker-unequip" data-ring-action="unequip" data-ring-slot="' + def.key + '">' +
+        (curIcon ? ('<img class="equip-picker-row-icon" src="' + curIcon + '" alt="">') : '') +
+        'Déséquiper ("' + (current.name||"").replace(/"/g,"&quot;") + '")</button>');
+    }
+    available.forEach(it => {
+      const icon = resolveItemIcon(it);
+      rows.push('<button type="button" class="equip-picker-row" data-ring-slot="' + def.key + '" data-item-id="' + it.id + '">' +
+        (icon ? ('<img class="equip-picker-row-icon" src="' + icon + '" alt="">') : '') +
+        (it.name||"") + (it.qty>1?(" ×"+it.qty):"") + '</button>');
+    });
+    if(!current && !available.length){
+      rows.push('<p class="hint" style="margin:4px 0 0;">Aucun anneau disponible.</p>');
+    }
+    return '<p class="hint" style="margin:' + (idx?"10px":"0") + ' 0 2px;font-weight:700;">' + def.label + '</p>' + rows.join("");
+  }).join("");
+}
+function openEquipPicker(ch, def){
+  pendingEquipSlot = { ch, def };
+  document.getElementById("equip-picker-title").textContent = def.label;
+  if(def.key === "ring"){
+    document.getElementById("equip-picker-list").innerHTML = ringPickerHtml(ch);
+    document.getElementById("equip-picker-modal").hidden = false;
+    return;
+  }
+  const inv = ch.inventory || [];
+  const needsProfCheck = def.cat === "weapon" || def.cat === "armor" || def.cat === "offhand";
+  const candidates = inv.filter(it => itemMatchesSlot(ch, it, def));
+  const current = currentlyEquippedItem(ch, def);
+  const rows = [];
+  if(current){
+    const curIcon = resolveItemIcon(current);
+    rows.push('<button type="button" class="equip-picker-row equip-picker-unequip" data-action="unequip">' +
+      (curIcon ? ('<img class="equip-picker-row-icon" src="' + curIcon + '" alt="">') : '') +
+      'Déséquiper' + (current.name ? (' ("' + current.name + '")') : '') + '</button>');
+  }
+  if(candidates.length){
+    candidates.forEach(it => {
+      const isCurrent = current && String(current.id) === String(it.id);
+      if(isCurrent) return; // already shown as "Déséquiper" above
+      const blocked = needsProfCheck ? equipBlockedReason(ch, it) : null;
+      // Pas un blocage (règle 2014 : ça réduit juste la vitesse, voir effectiveSpeed) —
+      // juste un avertissement affiché sans désactiver le bouton.
+      const speedWarn = (it.cat === "armor" && !blocked) ? armorSpeedPenaltyHint(ch, it) : null;
+      const icon = resolveItemIcon(it);
+      rows.push(
+        '<button type="button" class="equip-picker-row"' + (blocked ? ' disabled title="' + blocked.replace(/"/g,"&quot;") + '"' : '') + ' data-item-id="' + it.id + '">' +
+        (icon ? ('<img class="equip-picker-row-icon" src="' + icon + '" alt=""' + glowStyleAttr(it) + '>') : '') +
+        (it.name||"") + (it.qty>1?(" ×"+it.qty):"") +
+        (blocked ? ('<span class="hint" style="display:block;margin:0;font-size:.68rem;">' + blocked + '</span>') : '') +
+        (speedWarn ? ('<span class="hint" style="display:block;margin:0;font-size:.68rem;">' + speedWarn + '</span>') : '') +
+        '</button>'
+      );
+    });
+  }
+  if(!current && !candidates.length){
+    rows.push('<p class="hint" style="margin:8px 0 0;">Aucun objet compatible dans l\'inventaire.</p>');
+  }
+  document.getElementById("equip-picker-list").innerHTML = rows.join("");
+  document.getElementById("equip-picker-modal").hidden = false;
+}
+function closeEquipPicker(){
+  document.getElementById("equip-picker-modal").hidden = true;
+  pendingEquipSlot = null;
+}
+document.getElementById("equip-picker-list").addEventListener("click", async (e) => {
+  if(!pendingEquipSlot) return;
+  const { ch, def } = pendingEquipSlot;
+  const ringBtn = e.target.closest("button[data-ring-slot]");
+  if(ringBtn){
+    if(ringBtn.dataset.ringAction === "unequip") unequipAccessory(ch, ringBtn.dataset.ringSlot);
+    else equipAccessory(ch, ringBtn.dataset.ringSlot, ringBtn.dataset.itemId);
+    // Reste ouvert sur la même modale (rafraîchie) au lieu de fermer — gérer les
+    // 2 doigts d'affilée sans rouvrir la fenêtre à chaque fois.
+    document.getElementById("equip-picker-list").innerHTML = ringPickerHtml(ch);
+    await writeEquipChange(ch, def);
+    return;
+  }
+  const btn = e.target.closest("button[data-action], button[data-item-id]");
+  if(!btn || btn.disabled) return;
+  if(btn.dataset.action === "unequip"){
+    const current = currentlyEquippedItem(ch, def);
+    if(def.field) unequipAccessory(ch, def.key);
+    else if(current) unequipInventoryItem(ch, current);
+  }else{
+    const it = (ch.inventory||[]).find(x => String(x.id) === String(btn.dataset.itemId));
+    if(!it) return;
+    if(def.field){
+      equipAccessory(ch, def.key, it.id);
+    }else{
+      // equipInventoryItem renvoie un message si le clic n'a rien fait (ex. une
+      // arme à deux mains déjà en main) — on le montre sur la carte plutôt que de
+      // fermer la modale en silence, pour que ça ne ressemble jamais à un bug.
+      const blocked = equipInventoryItem(ch, it, def.slotArg);
+      if(blocked){ showActionNotice(blocked); return; }
+    }
+  }
+  closeEquipPicker();
+  await writeEquipChange(ch, def);
+});
+document.getElementById("equip-picker-close").addEventListener("click", closeEquipPicker);
+document.getElementById("equip-picker-backdrop").addEventListener("click", closeEquipPicker);
+// Armor/weapon changes always recompute+write ac/attacks/equippedArmor alongside
+// the raw fields — otherwise the next time the player saves from personnage
+// (e.g. a level-up), its own stale in-memory derived values would silently
+// overwrite whatever was just equipped here. Accessory slots (rings included)
+// don't feed any derived stat yet, so they only ever touch their own field(s).
+async function writeEquipChange(ch, def){
+  let fields;
+  if(def.key === "ring"){
+    fields = { ring1ItemId: ch.ring1ItemId, ring2ItemId: ch.ring2ItemId };
+  }else if(def.field){
+    fields = { [def.field]: ch[def.field] };
+  }else{
+    const derived = recomputeEquipDerived(ch);
+    ch.ac = derived.ac; ch.attacks = derived.attacks; ch.equippedArmor = derived.equippedArmor;
+    fields = {
+      armorKey: ch.armorKey, shield: ch.shield,
+      weapon1: ch.weapon1, weapon1ItemId: ch.weapon1ItemId,
+      weapon2: ch.weapon2, weapon2ItemId: ch.weapon2ItemId,
+      weaponRanged: ch.weaponRanged, weaponRangedItemId: ch.weaponRangedItemId,
+      ac: ch.ac, attacks: ch.attacks, equippedArmor: ch.equippedArmor
+    };
+  }
+  await patchCharacter(ch.id, fields);
+  // Broad refresh (both panels) rather than a targeted DOM patch — equipping a
+  // two-handed weapon can change the main-secondaire tile too, and the weapon
+  // attack-roll rows need their to-hit numbers refreshed either way.
+  renderBoard();
+  renderMyCharacterPanel();
+}
+// L'icône générique de la case main-secondaire dépend de ce qui y est équipé
+// (bouclier ou arme) — toutes les autres cases gardent leur icône fixe.
+// L'icône spécifique de l'objet réellement équipé (voir itemCatalog/.icon) remplace
+// l'icône générique de l'emplacement dès qu'elle existe — pour l'instant toujours
+// absente (aucune image encore découpée/rattachée), donc ça ne change rien tant
+// qu'André n'aura pas fourni d'illustrations à découper pour des objets précis.
+// Une arme Deux mains, ou une arme Polyvalente utilisée à deux mains (main
+// secondaire libre — même condition que le bonus de dégâts dans weaponInfo),
+// occupe aussi la main secondaire : renvoie l'objet d'inventaire en main
+// principale dans ce cas, pour que son icône s'affiche (en fondu) dans la case
+// main secondaire au lieu de la laisser passer pour vraiment libre/disponible.
+function mainHandTwoHandedItem(ch){
+  if(ch.shield || ch.weapon2 || !ch.weapon1) return null;
+  const w = allWeapons().find(x => x.name === ch.weapon1);
+  if(!w) return null;
+  if(isTwoHanded(ch.weapon1) || /polyvalente/i.test(w.props)){
+    return (ch.inventory||[]).find(it => String(it.id) === String(ch.weapon1ItemId)) || null;
+  }
+  return null;
+}
+function equipTileIcon(ch, def){
+  if(def.key === "offHand"){
+    const ghost = mainHandTwoHandedItem(ch);
+    const ghostIcon = ghost && resolveItemIcon(ghost);
+    if(ghostIcon) return ghostIcon;
+  }
+  const specific = resolveItemIcon(currentlyEquippedItem(ch, def));
+  if(specific) return specific;
+  if(def.key === "offHand") return "assets/icons/slots/" + (ch.shield ? "slot-shield.png" : (ch.weapon2 ? "slot-weapon-melee.png" : "slot-shield.png"));
+  return "assets/icons/slots/" + def.icon;
+}
+// Contenu de l'infobulle au survol d'une case — même principe que la liste des
+// sorts (nom, puis tout le détail utile : bonus au toucher, dégâts, CA, ou
+// simplement le nom de l'objet pour un accessoire sans effet mécanique). Évite
+// d'avoir à la fois l'icône ET une ligne de texte qui répète la même info.
+function equipTileTooltipHtml(ch, def){
+  const esc = s => (s||"").replace(/</g,"&lt;");
+  const weaponTip = (hand) => {
+    const a = (ch.attacks||[]).find(x => x.hand === hand);
+    if(!a) return '<strong>' + esc(def.label) + '</strong>Rien d\'équipé ici.';
+    // En grand, et vraiment survolables maintenant que cette info-bulle (voir
+    // .equip-slot-tile > .info-tooltip) reste ouverte tant qu'on est dessus — un
+    // badge précis ouvre sa propre explication par-dessus, sans faire disparaître
+    // celle-ci. Le NOM des propriétés (ex. "Finesse") n'est plus répété ici : les
+    // badges ci-dessous disent déjà la même chose. Mais leurs CHIFFRES précis à
+    // cette arme (portée, dé à deux mains...) ne sont écrits nulle part ailleurs
+    // — ceux-là restent sur cette ligne.
+    const extraDetail = weaponPropsExtraDetail(a.props);
+    const badgesRow = a.props ? ('<div style="margin-top:5px;">' + propertyBadgesHtml(a.props) + '</div>') : '';
+    return '<strong>' + esc(a.name) + '</strong>' + fmtSigned(a.atk) + ' au toucher · ' + esc(a.dmgText) + (extraDetail ? (' · ' + esc(extraDetail)) : '') + (a.tag ? esc(a.tag) : '') + badgesRow;
+  };
+  let body;
+  if(def.key === "weaponMain") body = weaponTip("main");
+  else if(def.key === "weaponRanged") body = weaponTip("ranged");
+  else if(def.key === "offHand"){
+    const ghost = mainHandTwoHandedItem(ch);
+    body = ch.shield ? '<strong>Bouclier</strong>+2 CA.' : (ghost ? ('<strong>Main occupée</strong>' + esc(ghost.name||"") + ' se tient à deux mains.') : weaponTip("off"));
+  }
+  else if(def.key === "armor") body = '<strong>Armure</strong>' + esc(armorLineText(ch)) + ' — CA totale ' + ch.ac + '.';
+  else if(def.key === "ring"){
+    const inv = ch.inventory || [];
+    const r1 = inv.find(it => String(it.id) === String(ch.ring1ItemId));
+    const r2 = inv.find(it => String(it.id) === String(ch.ring2ItemId));
+    body = (!r1 && !r2) ? '<strong>Anneaux</strong>Aucun anneau équipé.' : ('<strong>Anneaux</strong>Anneau 1 : ' + (r1 ? esc(r1.name) : '—') + '<br>Anneau 2 : ' + (r2 ? esc(r2.name) : '—'));
+  }else if(def.key === "ammo"){
+    const it = currentlyEquippedItem(ch, def);
+    body = '<strong>' + esc(def.label) + '</strong>' + (it ? (esc(it.name||"") + ' — ' + (it.qty||0) + ' restante' + ((it.qty||0)===1?"":"s")) : 'Rien d\'équipé ici.');
+  }else{
+    const it = currentlyEquippedItem(ch, def);
+    body = '<strong>' + esc(def.label) + '</strong>' + (it ? esc(it.name||"") : 'Rien d\'équipé ici.');
+  }
+  // L'image en grand dans l'infobulle, au-dessus du texte — "pour que les joueurs
+  // puissent vraiment apprécier chaque asset" (demande d'André) — la petite icône
+  // sur la case elle-même reste minuscule, c'est ici qu'on la voit vraiment.
+  const equippedIt = (def.key === "offHand" && !ch.shield && mainHandTwoHandedItem(ch)) || currentlyEquippedItem(ch, def);
+  const icon = resolveItemIcon(equippedIt);
+  const imgHtml = icon ? ('<img class="info-tooltip-icon" src="' + icon + '" alt=""' + glowStyleAttr(equippedIt) + '>') : '';
+  return imgHtml + body;
+}
+// One tile per slot (see ACCESSORY_SLOTS/WEAPON_ARMOR_SLOTS) — the frame is the
+// project's existing frame-square.png (border-image, see .equip-slot-tile), the
+// icon is the slot's own generic silhouette, greyed while nothing fills it. All
+// the detail (name, bonus, dégâts, CA...) lives in a hover tooltip, same as the
+// spell list — no separate line below the grid, to avoid repeating the same
+// item twice on screen.
+function equipGridHtml(ch){
+  const slots = WEAPON_ARMOR_SLOTS.concat(ACCESSORY_SLOTS);
+  return '<div class="equip-slot-grid">' + slots.map(def => {
+    const equippedIt = currentlyEquippedItem(ch, def);
+    const occupied = !!equippedIt;
+    // Main secondaire prise par une arme à deux mains (ou polyvalente utilisée à
+    // deux mains) — pas "vraiment" équipée ici (pas de bouton Déséquiper dédié,
+    // ça reste la main principale), juste visuellement fondue pour montrer que
+    // cette main est prise, plutôt que de la laisser passer pour libre/disponible.
+    const isGhosted = def.key === "offHand" && !ch.shield && !!mainHandTwoHandedItem(ch);
+    const ringBadge = (def.key === "ring" && ch.ring1ItemId && ch.ring2ItemId) ? '<span class="token-cond-count">2</span>' : '';
+    // Combien il reste de munitions, directement sur la case — sans ça, à 0 on ne
+    // le voit qu'en ouvrant l'inventaire, trop tard pour anticiper avant de tirer.
+    const ammoBadge = (def.key === "ammo" && equippedIt) ? ('<span class="ammo-qty-badge">' + (equippedIt.qty||0) + '</span>') : '';
+    // Les badges de propriété d'arme ne vivent plus ici : posés sur la case elle-
+    // même ils étaient trop petits pour être lisibles et cachaient le skin de
+    // l'objet — ils sont maintenant dans l'info-bulle au survol, en grand (voir
+    // equipTileTooltipHtml), que l'on peut désormais survoler elle-même.
+    return '<button type="button" class="equip-slot-tile hover-reveal' + (occupied?"":(isGhosted?" is-ghosted":" is-empty")) + '" data-slot-key="' + def.key + '">' +
+      '<img class="equip-slot-icon" src="' + equipTileIcon(ch, def) + '" alt="' + def.label + '"' + glowStyleAttr(equippedIt) + '>' +
+      ringBadge + ammoBadge +
+      '<span class="info-tooltip">' + equipTileTooltipHtml(ch, def) + '</span>' +
+    '</button>';
+  }).join("") + '</div>';
+}
+
 // A pion placed directly onto a still-fogged cell joins combat only once actually
 // revealed (see insertRevealedTokensIntoInitiative); one dropped in plain sight
 // should roll and join right away, same as any other reinforcement.
@@ -1644,38 +3127,36 @@ function cellFromEvent(e){
   return { col, row };
 }
 
-// Measured once and cached — how many CSS pixels a scrollbar actually takes on this
-// browser/OS (~17px on Windows' classic scrollbars, 0 on macOS' overlay ones). Reading
-// boardWrap.clientWidth to size the board, then having .board-wrap grow a vertical
-// scrollbar because the resulting height (via aspect-ratio) just barely exceeds its
-// max-height, narrows the wrapper's content box a few px AFTER that width was already
-// fixed — leaving a persistent sliver of horizontal scroll alongside it. Reserving
-// the scrollbar's width up front (only when a vertical one is actually about to
-// appear) avoids that without ever shrinking the map in the common case.
-function getScrollbarWidth(){
-  if(getScrollbarWidth._cached != null) return getScrollbarWidth._cached;
-  const outer = document.createElement("div");
-  outer.style.cssText = "visibility:hidden;overflow:scroll;position:absolute;top:-9999px;width:100px;height:100px;";
-  document.body.appendChild(outer);
-  const inner = document.createElement("div");
-  inner.style.width = "100%";
-  outer.appendChild(inner);
-  getScrollbarWidth._cached = outer.offsetWidth - inner.offsetWidth;
-  document.body.removeChild(outer);
-  return getScrollbarWidth._cached;
-}
-
 // A fixed "75vh"-style budget is always either too stingy (wastes width on a wide map
 // when the MJ controls above happen to be short) or still too tight (a 16:9 map at
 // 30 cols can easily need more height than even a generous fixed % allows, on an
-// ordinary window). Measuring the ACTUAL leftover room — assuming the page is
-// scrolled so the map's own toolbar row sits at the very top — uses every real pixel
-// instead of a guessed fraction: once the MJ scrolls the setup controls out of the
-// way, the map is sized to fill the rest of the window exactly.
+// ordinary window). Measuring board-wrap's ACTUAL top position covers every pixel of
+// real chrome above it (body padding, the panel's own border/padding, the zoom row,
+// the MJ prep panel when open...) without having to hand-add each one up — and,
+// crucially, keeps the map's OWN scrollbar budget independent of whatever the side
+// panel is doing: a page-level scrollbar should only ever appear because the panel
+// itself grew taller than the viewport (all its sections expanded), never because
+// this guessed wrong about the map and made the whole page a sliver too tall.
+// getBoundingClientRect().top is relative to the current scroll position, so
+// window.scrollY is added back to get board-wrap's fixed position in the document —
+// otherwise, if the page happened to already be scrolled (precisely because the
+// panel is tall), this would measure a shifted number and compound the problem.
 function computeAvailableBoardHeight(){
-  const zoomRowH = zoomRowEl ? zoomRowEl.offsetHeight + 8 : 0; // + its own margin-bottom
-  const pageBottomMargin = 16; // a little breathing room below the map
-  return Math.max(200, window.innerHeight - zoomRowH - pageBottomMargin);
+  const topOffset = boardWrap.getBoundingClientRect().top + window.scrollY;
+  // The real chrome BELOW board-wrap too, down to the page's own bottom edge — a flat
+  // guessed margin here used to under-reserve by however much #panel-map's own
+  // bottom border+padding and the body's own bottom padding actually added up to,
+  // which was consistently a few pixels taller than the budget this function handed
+  // out, forcing a second (page-level) scrollbar for that sliver even though nothing
+  // about the panel itself was actually too tall.
+  const panelMapEl = document.getElementById("panel-map");
+  const panelMapStyle = getComputedStyle(panelMapEl);
+  const bottomChrome =
+    parseFloat(panelMapStyle.borderBottomWidth || 0) +
+    parseFloat(panelMapStyle.paddingBottom || 0) +
+    parseFloat(getComputedStyle(document.body).paddingBottom || 0) +
+    2; // tiny safety margin for rounding, not a guessed budget
+  return Math.max(200, window.innerHeight - topOffset - bottomChrome);
 }
 
 function renderBoard(){
@@ -1689,24 +3170,40 @@ function renderBoard(){
   // token directly (see onTokenPointerMove), and a final renderBoard() always follows
   // right after the drag ends (onTokenPointerUp), picking up anything missed.
   if(dragState) return;
+  // Cleared BEFORE any width measurement below — leftover tokens from the PREVIOUS
+  // render are absolutely positioned using that render's (possibly much larger,
+  // e.g. a different zoom level) coordinates, so leaving them in place even briefly
+  // stretches board-wrap's own scrollHeight/clientWidth far beyond what the board's
+  // real, current size needs — corrupting the very measurements the sizing logic
+  // below depends on to decide whether a scrollbar is actually needed.
+  board.querySelectorAll(".token, .cell-effect, .fog-tile").forEach(el => el.remove());
+  // The wrapper's real max-height, set here instead of left as a guessed CSS
+  // max-height:96vh — that static guess used to disagree with this exact budget and
+  // leave a stray gap on the right, or make the whole PAGE grow a second, redundant
+  // scrollbar alongside this one's (André: only the map's own internal scrollbar
+  // should ever appear from the map being tall — a page-level one is only for the
+  // side panel growing taller than the viewport, a separate, independent concern).
+  boardWrap.style.maxHeight = computeAvailableBoardHeight() + "px";
   // clientWidth already excludes the wrapper's own border/padding — it's the exact
   // content-box width available to the board, unlike getBoundingClientRect() (which
   // is the border-box and would need the border subtracted back out to match).
+  // Always fill the available WIDTH at 100% zoom, even if that makes the map taller
+  // than the viewport — a tall/narrow grid then just scrolls vertically (.board-wrap
+  // already has overflow:auto) instead of shrinking to also fit the height budget,
+  // which used to leave an ugly empty margin down one side whenever the grid's shape
+  // didn't match the window's (André's call: width-fill + scroll beats that gap).
   const availWidth = boardWrap.clientWidth || BASE_BOARD_WIDTH;
-  const wrapBorderY = parseFloat(getComputedStyle(boardWrap).borderTopWidth||0) + parseFloat(getComputedStyle(boardWrap).borderBottomWidth||0);
-  const maxWrapHeight = computeAvailableBoardHeight() - wrapBorderY;
-  // Fit the map's real aspect ratio inside BOTH the width AND height budgets at 100%
-  // zoom — like object-fit:contain — instead of always filling the full width and
-  // letting a wide/short image (e.g. a 16:9 map) blow past the height budget and force
-  // a vertical scrollbar. A landscape map ends up a little narrower at 100% zoom so
-  // the whole thing is visible with no scrollbar at all; zooming in past 100% still
-  // scrolls, same as before — that's the point of zoom.
-  const widthFromHeight = maxWrapHeight * (boardData.cols / boardData.rows);
-  const fitWidth = Math.min(availWidth, widthFromHeight);
-  let targetWidth = fitWidth * zoomLevel;
-  const naturalHeight = targetWidth * (boardData.rows / boardData.cols);
-  if(naturalHeight > maxWrapHeight) targetWidth -= getScrollbarWidth();
-  board.style.width = Math.floor(targetWidth) + "px";
+  board.style.width = Math.floor(availWidth * zoomLevel) + "px";
+  // A vertical scrollbar appearing (or disappearing) narrows (or widens) board-wrap's
+  // own content box AFTER the width above was already set from its PRE-change value —
+  // whichever way it moves leaves a stray gap, or clips the board, by exactly that
+  // scrollbar's width. Rather than predict whether one is about to appear (a guess
+  // that was repeatedly wrong), just check the real, current clientWidth again right
+  // after and correct for whatever actually changed — this can never be wrong, since
+  // it isn't guessing at all.
+  if(boardWrap.clientWidth !== availWidth){
+    board.style.width = Math.floor(boardWrap.clientWidth * zoomLevel) + "px";
+  }
   board.style.setProperty("--cols", boardData.cols);
   board.style.setProperty("--rows", boardData.rows);
   // Grid lines are listed FIRST (top layer) so they stay visible drawn over the map image,
@@ -1725,7 +3222,6 @@ function renderBoard(){
   // of inside a cell.
   board.style.backgroundPosition = "0 0";
 
-  board.querySelectorAll(".token, .token-hpbar, .cell-effect, .fog-tile").forEach(el => el.remove());
   const { w, h } = cellSize();
   const pad = Math.max(2, Math.min(w, h) * 0.1);
   const tokenSize = Math.min(w, h) - pad*2;
@@ -1778,34 +3274,32 @@ function renderBoard(){
     el.style.top = (posRow * h + h/2 - tokenSize/2) + "px";
     el.style.zIndex = 6 + (id === selectedTokenId ? 1 : 0);
     const image = resolveTokenImage(t);
+    // The artwork/color fill and its damage overlay both live on this inner .token-face
+    // child (circular, overflow:hidden) instead of directly on .token — the token's OWN
+    // box stays unclipped so the skull overlay, condition badges (deliberately poking
+    // out past its edge) and the floating damage numbers (which rise well above it)
+    // keep rendering exactly as before.
+    const face = document.createElement("div");
+    face.className = "token-face";
+    el.appendChild(face);
     if(image){
-      el.style.backgroundImage = "url('" + image.replace(/'/g,"%27") + "')";
-      // Stretch to exactly fill the token circle — a cropping "cover" fit would zoom into
-      // empty/transparent margins on a cut-out PNG instead of showing the whole artwork.
-      el.style.backgroundSize = "100% 100%";
-      el.style.backgroundPosition = "center";
+      face.style.backgroundImage = "url('" + image.replace(/'/g,"%27") + "')";
       el.style.border = "2px solid " + (factionColor || t.color);
     }else{
-      el.style.background = t.color;
+      face.style.backgroundColor = t.color;
       if(factionColor) el.style.border = "2px solid " + factionColor;
-      el.textContent = t.label;
+      face.textContent = t.label;
     }
     el.title = t.label;
     el.dataset.id = id;
-    // A thin health bar under the pion itself — same PV everyone already sees in the
-    // side panels, just visible without having to click each combatant in turn. It's
-    // a CHILD of the token (not a separate sibling positioned to match) specifically
-    // so it rides along for free while the token is being dragged — dragging only
-    // repositions el.style.left/top directly, it never re-runs this whole render.
+    // PV shown as a red flood rising from the bottom of the pion's own artwork,
+    // proportional to PV LOST — same treatment as the two map badges (applyDamageOverlay)
+    // instead of a separate thin bar, so a glance at the board already shows roughly how
+    // hurt everyone is without needing a dedicated strip under each pion.
     const ch = tokenCh;
     if(ch && ch.hpMax != null){
       const hpCur = resolveInstanceHp(ch, id);
-      const pct = Math.max(0, Math.min(100, Math.round((hpCur / ch.hpMax) * 100)));
-      const color = pct > 50 ? "#4c7c3f" : pct > 25 ? "#a8862f" : "#8a3b2b";
-      const bar = document.createElement("div");
-      bar.className = "token-hpbar";
-      bar.innerHTML = '<div class="token-hpbar-fill" style="width:' + pct + '%;background:' + color + ';"></div>';
-      el.appendChild(bar);
+      applyDamageOverlay(face, hpCur, ch.hpMax);
       el.classList.toggle("downed", hpCur <= 0);
       // A PJ at 0 PV is unconscious, not dead — the skull is for "actually dead" (3
       // failed death saves), while the greyed-out "downed" look above already covers
@@ -1821,41 +3315,11 @@ function renderBoard(){
       }
     }
     // A quick glance at the board should be enough to notice "this one's affected by
-    // something" without clicking through to the character card — up to 4 active
-    // conditions each get their own small badge spread around the pion's edge (not
-    // stacked in one spot), each with a hover tooltip naming it. Past 4 there's no
-    // room to keep them legible, so a single count badge replaces them all, with the
-    // full list only on hover.
-    if(ch){
-      // Concentration folded into the same array as the real conditions — same
-      // slots, same overflow counter — instead of a separate ring treatment.
-      const conditions = resolveInstanceConditions(ch, id).concat(ch.concentratingOn ? ["Concentration"] : []);
-      if(conditions.length){
-        if(conditions.length > 4){
-          const count = document.createElement("div");
-          count.className = "token-cond-count hover-reveal";
-          count.innerHTML = conditions.length + '<span class="info-tooltip"><strong>États actifs</strong>' + conditions.join(", ") + '</span>';
-          el.appendChild(count);
-        }else{
-          const slots = ["token-cond-slot-a","token-cond-slot-b","token-cond-slot-c","token-cond-slot-d"];
-          conditions.forEach((n, i) => {
-            const wrap = document.createElement("div");
-            wrap.className = "token-cond-icon-wrap hover-reveal " + slots[i];
-            const tip = n === "Concentration" ? ("Concentration : " + ch.concentratingOn.replace(/</g,"&lt;")) : n;
-            wrap.innerHTML = '<img class="token-cond-icon" src="assets/icons/' + (CONDITION_ICONS[n] || "") + '" alt=""><span class="info-tooltip">' + tip + '</span>';
-            el.appendChild(wrap);
-          });
-        }
-      }
-      // The ring is a purely visual "this one is concentrating" cue around the
-      // whole pion — kept alongside the icon (which still carries the spell name
-      // on hover and competes for a slot like any other condition).
-      if(ch.concentratingOn){
-        const concRing = document.createElement("div");
-        concRing.className = "token-concentration-ring";
-        el.appendChild(concRing);
-      }
-    }
+    // something" without clicking through to the character card — applyIconConditions
+    // spreads up to 4 active conditions around the pion's edge (a count badge past
+    // that), plus the concentration ring; shared with the selection card and the
+    // player's own portrait so an effect reads the same wherever that icon appears.
+    applyIconConditions(el, ch, id);
     el.addEventListener("pointerdown", onTokenPointerDown);
     el.addEventListener("contextmenu", onTokenContextMenu);
     board.appendChild(el);
@@ -1872,19 +3336,156 @@ function renderBoard(){
     el.style.width = w + "px";
     el.style.height = h + "px";
     if(!isMJ){
-      // One texture stretched across the whole board, each tile just a window onto
+      // One texture spread across the whole board, each tile just a window onto
       // it (background-position offset by its own cell) — so neighbouring fog tiles
       // show continuous smoke instead of the same small image stamped per cell.
+      // Sized like "cover" (fills the board, cropped as needed) rather than
+      // stretched to the board's exact width/height, so the texture's own aspect
+      // ratio is never deformed.
+      const boardW = board.clientWidth, boardH = board.clientHeight;
+      let renderW = boardW, renderH = boardH, offX = 0, offY = 0;
+      if(fogTextureNaturalSize && fogTextureNaturalSize.w > 0 && fogTextureNaturalSize.h > 0){
+        const imgRatio = fogTextureNaturalSize.w / fogTextureNaturalSize.h;
+        const boardRatio = boardW / boardH;
+        if(imgRatio > boardRatio){
+          renderH = boardH;
+          renderW = boardH * imgRatio;
+        } else {
+          renderW = boardW;
+          renderH = boardW / imgRatio;
+        }
+        offX = (boardW - renderW) / 2;
+        offY = (boardH - renderH) / 2;
+      }
       el.style.backgroundImage = "url('assets/ui/fog-texture.jpg')";
-      el.style.backgroundSize = board.clientWidth + "px " + board.clientHeight + "px";
-      el.style.backgroundPosition = (-(col*w)) + "px " + (-(row*h)) + "px";
+      el.style.backgroundSize = renderW + "px " + renderH + "px";
+      el.style.backgroundPosition = (offX - col*w) + "px " + (offY - row*h) + "px";
     }
     board.appendChild(el);
   });
 
   if(selectedTokenId && boardData.tokens[selectedTokenId]) renderSelection(selectedTokenId);
+  // La taille réelle de la carte vient d'être (re)calculée ci-dessus — c'est
+  // seulement maintenant qu'on sait s'il reste des bords à découvrir.
+  updateBoardFogEdges();
 }
 
+// Compact "who's selected" card shown right on the map in player view, replacing the
+// full Sélection column there (see body.player-view rules). Reuses whatever
+// renderSelection already resolved (t/ch/image) instead of recomputing any of it.
+// Same percent/colour formula characterCardHtml already uses for its own HP bar —
+// factored out so the compact map card and the collapsed-panel mini card can show a
+// real bar too, instead of duplicating the formula a third time. HP bars are always
+// red (the standard game convention) — no green/gold/red-by-percentage here anymore.
+function hpBarHtml(hpCur, hpMax, opts){
+  opts = opts || {};
+  const hpPct = Math.max(0, Math.min(100, Math.round((hpCur / hpMax) * 100)));
+  const label = opts.noLabel ? "" : '<span class="hp-bar-label"><span class="hp-value">' + hpCur + '</span> / ' + hpMax + '</span>';
+  return '<div class="hp-bar"><div class="hp-bar-fill" style="width:' + hpPct + '%;background:#8a3b2b;"></div>' + label + '</div>';
+}
+// Map badges show PV as a red "flood" rising from the bottom of the portrait itself
+// — proportional to PV LOST, not remaining — instead of a bar (bars stay useful only
+// in the side panel, per André: "plus besoin de barre de vie intempestive [sur la
+// carte]"). Shared by the self badge and the selection card so the maths lives once.
+function applyDamageOverlay(iconEl, hpCur, hpMax){
+  let overlay = iconEl.querySelector(".damage-overlay");
+  if(!overlay){
+    overlay = document.createElement("div");
+    overlay.className = "damage-overlay";
+    iconEl.appendChild(overlay);
+  }
+  if(hpMax == null || hpMax <= 0){ overlay.style.height = "0"; return; }
+  const lostPct = Math.max(0, Math.min(100, Math.round((1 - (hpCur||0) / hpMax) * 100)));
+  overlay.style.height = lostPct + "%";
+}
+// Mirrors the board pion's own 0-PV treatment (see renderBoard): greyed-out/dimmed
+// at 0 PV, plus a skull once it's "actually dead" (NPC, or a PJ past 3 failed death
+// saves) rather than just down. Shared by both map badges so a character reads the
+// same way whether you're looking at the selection card or your own portrait.
+function applyIconDeathState(iconEl, ch, hpCur){
+  if(!ch || ch.hpMax == null){
+    iconEl.classList.remove("downed");
+    const sk = iconEl.querySelector(".skull-overlay");
+    if(sk) sk.remove();
+    return;
+  }
+  const downed = hpCur <= 0;
+  iconEl.classList.toggle("downed", downed);
+  const isDead = downed && (ch.kind === "npc" || (ch.deathSaveFailures||0) >= 3);
+  let skull = iconEl.querySelector(".skull-overlay");
+  if(isDead && !skull){
+    skull = document.createElement("div");
+    skull.className = "skull-overlay";
+    // The shared .skull-overlay rule's own font-size (40px) assumes a board pion-sized
+    // icon — on this fixed 48px badge icon that rendered nearly as big as the icon
+    // itself. Scaled to the icon's own real size instead, same ratio renderBoard
+    // already uses for the map pion's skull (~48% of its box).
+    skull.style.fontSize = (iconEl.clientWidth * 0.48) + "px";
+    skull.textContent = SKULL_HTML;
+    iconEl.appendChild(skull);
+  }else if(!isDead && skull){
+    skull.remove();
+  }
+}
+// Mirrors the board pion's own condition badges (see renderBoard) — up to 4 spread
+// around the icon's edge, or a single count badge past that, plus the concentration
+// ring — so an active effect reads the same on a character's icon wherever it shows
+// up (the pion on the map, the selection card, your own portrait), not just on the
+// map. `container` must be position:relative WITHOUT overflow:hidden (the badges and
+// ring deliberately poke out past the icon's own circle) — the icon itself, being
+// clipped to its circle, can't host them.
+function applyIconConditions(container, ch, id){
+  container.querySelectorAll(".token-cond-icon-wrap, .token-cond-count, .token-concentration-ring").forEach(el => el.remove());
+  if(!ch) return;
+  const conditions = resolveInstanceConditions(ch, id).concat(ch.concentratingOn ? ["Concentration"] : []);
+  if(conditions.length){
+    if(conditions.length > 4){
+      const count = document.createElement("div");
+      count.className = "token-cond-count hover-reveal";
+      count.innerHTML = conditions.length + '<span class="info-tooltip"><strong>États actifs</strong>' + conditions.join(", ") + '</span>';
+      container.appendChild(count);
+    }else{
+      const slots = ["token-cond-slot-a","token-cond-slot-b","token-cond-slot-c","token-cond-slot-d"];
+      conditions.forEach((n, i) => {
+        const wrap = document.createElement("div");
+        wrap.className = "token-cond-icon-wrap hover-reveal " + slots[i];
+        const tip = n === "Concentration" ? ("Concentration : " + ch.concentratingOn.replace(/</g,"&lt;")) : n;
+        wrap.innerHTML = '<img class="token-cond-icon" src="assets/icons/' + (CONDITION_ICONS[n] || "") + '" alt=""><span class="info-tooltip">' + tip + '</span>';
+        container.appendChild(wrap);
+      });
+    }
+  }
+  if(ch.concentratingOn){
+    const concRing = document.createElement("div");
+    concRing.className = "token-concentration-ring";
+    container.appendChild(concRing);
+  }
+}
+function renderTargetInfoCard(id, t, ch, image){
+  const card = document.getElementById("target-info-card");
+  if(!t){ card.hidden = true; return; }
+  card.hidden = false;
+  const icon = card.querySelector(".target-info-icon");
+  // Longhands only — assigning the `background` SHORTHAND (even to "") clears every
+  // longhand it covers, including backgroundImage set just above, which is why the
+  // icon never actually showed up before.
+  icon.style.backgroundImage = image ? ("url('"+image.replace(/'/g,"%27")+"')") : "none";
+  icon.style.backgroundColor = image ? "" : (t.color || "");
+  card.querySelector(".target-info-name").textContent = ch ? (ch.name||"Sans nom") : t.label;
+  if(ch && ch.hpMax != null){
+    // resolveInstanceHp, NOT ch.hpCurrent directly — an NPC token's real HP lives on
+    // the TOKEN instance (several pions can share one NPC template, each with their
+    // own HP), same source the board pion itself already reads. Reading ch.hpCurrent
+    // here was the bug: a pion at 0 PV on the map still looked healthy in this card.
+    const hpCur = resolveInstanceHp(ch, id);
+    applyDamageOverlay(icon, hpCur, ch.hpMax);
+    applyIconDeathState(icon, ch, hpCur);
+  }else{
+    applyDamageOverlay(icon, null, null);
+    applyIconDeathState(icon, null, null);
+  }
+  applyIconConditions(card.querySelector(".target-info-icon-wrap"), ch, id);
+}
 function renderSelection(id){
   renderInitiativeBar(); // reflect the new selection (highlighted chip) right away
   // Also covers "the target (or the attacker's own pion) just moved" — renderBoard()
@@ -1895,12 +3496,14 @@ function renderSelection(id){
   if(!t){
     selectionInfo.innerHTML = '<p class="hint">Glisse un pion pour le déplacer sur la carte.</p>';
     document.getElementById("btn-delete-token").hidden = true;
+    renderTargetInfoCard(id, null);
     return;
   }
   const image = resolveTokenImage(t);
   const swatch = image ? ("background-image:url('"+image.replace(/'/g,"%27")+"');background-size:cover;") : ("background:"+t.color+";");
   const escaped = (t.sheet||"").replace(/</g,"&lt;");
   const ch = t.characterId ? characters.find(c => c.id === t.characterId) : null;
+  renderTargetInfoCard(id, t, ch, image);
   const canManage = isMJ || (ch && ch.id === myCharacterId);
   const charBlock = ch ? (characterCardHtml(ch, canManage, id) + (canManage ? openSheetButtonHtml : "")) : "";
   // A real character already carries its own name + portrait header (bigger swatch,
@@ -2121,16 +3724,17 @@ async function onTokenPointerUp(e){
   // same exemption as isPcTurnGated().
   let initEntryToSave = null;
   if(!isMJ && ch && ch.kind !== "npc" && initData.entries.length && ch.speed != null){
+    const spd = effectiveSpeed(ch);
     const entry = initData.entries.find(en => en.characterId === ch.id);
     if(entry){
       const already = entry.movedThisTurn || 0;
-      const remainingM = Math.max(0, ch.speed - already);
+      const remainingM = Math.max(0, spd - already);
       const remainingCells = Math.floor(remainingM / METERS_PER_CELL + 1e-9);
       const dCol = col - startCol, dRow = row - startRow;
       const requestedCells = Math.max(Math.abs(dCol), Math.abs(dRow));
       if(requestedCells > remainingCells){
         if(remainingCells <= 0){
-          showActionNotice("Plus de déplacement disponible ce tour-ci (vitesse " + fmtMetersFr(ch.speed) + " déjà utilisée).");
+          showActionNotice("Plus de déplacement disponible ce tour-ci (vitesse " + fmtMetersFr(spd) + " déjà utilisée).");
           renderBoard();
           return;
         }
@@ -2152,9 +3756,37 @@ async function onTokenPointerUp(e){
   if(initEntryToSave) await saveInit(initEntryToSave);
 }
 
+// Dimensions réelles de la texture de brouillard, chargées une seule fois — pour
+// l'étaler en mode "cover" (remplir sans jamais déformer son ratio d'origine)
+// plutôt qu'en l'étirant exactement aux dimensions du plateau.
+let fogTextureNaturalSize = null;
+(function preloadFogTextureSize(){
+  const img = new Image();
+  img.onload = () => { fogTextureNaturalSize = { w: img.naturalWidth, h: img.naturalHeight }; };
+  img.src = "assets/ui/fog-texture.jpg";
+})();
+
 let panState = null;
 let suppressNextClick = false;
 const PAN_THRESHOLD = 4;
+// Un bord s'allume seulement s'il reste vraiment de la carte à découvrir dans
+// cette direction — jamais visible sur une carte qui tient déjà en entier dans
+// le cadre. Appelée après chaque renderBoard() (la taille de la carte peut avoir
+// changé) et en direct pendant un glisser (voir le pointermove du pan plus bas).
+function updateBoardFogEdges(){
+  const stage = board.closest(".board-stage");
+  if(!stage) return;
+  const tol = 1;
+  const canLeft = boardWrap.scrollLeft > tol;
+  const canRight = boardWrap.scrollLeft < boardWrap.scrollWidth - boardWrap.clientWidth - tol;
+  const canUp = boardWrap.scrollTop > tol;
+  const canDown = boardWrap.scrollTop < boardWrap.scrollHeight - boardWrap.clientHeight - tol;
+  const set = (cls, on) => { const el = stage.querySelector(cls); if(el) el.style.opacity = on ? "1" : "0"; };
+  set(".board-fog-top", canUp);
+  set(".board-fog-bottom", canDown);
+  set(".board-fog-left", canLeft);
+  set(".board-fog-right", canRight);
+}
 
 // Fog of war brush: clicking cell-by-cell was too tedious for the MJ to manage during
 // play, so dragging now paints a square brush of adjustable size across many cells in
@@ -2289,6 +3921,7 @@ board.addEventListener("pointermove", (e) => {
   if(panState.moved){
     boardWrap.scrollLeft = panState.startScrollLeft - dx;
     boardWrap.scrollTop = panState.startScrollTop - dy;
+    updateBoardFogEdges();
   }
 });
 
@@ -2930,6 +4563,550 @@ document.getElementById("npc-picker-backdrop").addEventListener("click", () => {
   document.getElementById("npc-picker-modal").hidden = true;
 });
 
+// ---------------------------------------------------------------------------
+// Créateur d'objets — deux onglets :
+// - "Objets de base" : les fondations (image + vraies stats arme/armure). Un
+//   objet de base commence en BROUILLON (modifiable/supprimable librement) —
+//   une fois "Validé" (geste délibéré, confirmation forte), il devient
+//   définitivement verrouillé : plus aucun bouton, par design (demande
+//   explicite d'André — "non modifiable une fois validé").
+// - "Objets" : ce qu'on donne vraiment aux PJ/PNJ — s'appuie sur un objet de
+//   base pour le skin ET les stats (refKey pointe vers le nom de la base,
+//   généralisé à toutes les catégories), avec un nom perso, une lueur de
+//   couleur optionnelle, une icône de remplacement optionnelle (pour un objet
+//   unique créé en cours de campagne, ex. une épée légendaire avec son propre
+//   skin), et — pour une arme/armure — un bonus de toucher/dégâts/CA qui
+//   s'additionne aux stats de l'objet de base (ex. une épée +1, une armure
+//   abîmée à -1 CA). Toujours librement modifiable/supprimable, contrairement
+//   aux objets de base validés.
+// Plus aucun objet ne se crée depuis l'inventaire d'un personnage — tout part
+// d'ici maintenant (voir aussi la suppression du formulaire dans wireCharacterCard).
+// ---------------------------------------------------------------------------
+let itemCatalogSearch = "";
+let itemCatalogBaseSearch = "";
+let itemCatalogGiveSearch = "";
+let itemCatalogGiveCatFilter = "";
+let editingBaseId = null;
+let editingItemId = null;
+function itemCatalogStatSummary(t){
+  if(t.cat === "weapon"){
+    const w = allWeapons().find(x => x.name === t.refKey) || (t.stats && {damage:t.stats.damage, props:t.stats.props});
+    let s = w ? (w.damage + (w.props ? (" · " + w.props) : "")) : "";
+    const extras = [];
+    if(t.atkBonus) extras.push(fmtSigned(Number(t.atkBonus)) + " au toucher");
+    if(t.dmgBonus) extras.push(fmtSigned(Number(t.dmgBonus)) + " aux dégâts");
+    if(t.ignoreClassProf) extras.push("maîtrise ignorée");
+    if(extras.length) s += (s ? " · " : "") + extras.join(", ");
+    return s;
+  }
+  if(t.cat === "armor"){
+    const a = allArmors().find(x => x.key === t.refKey) || (t.stats && {base:t.stats.base, dexCap:t.stats.dexCap});
+    let s = a ? ("CA " + a.base + (a.dexCap === 0 ? "" : a.dexCap == null ? " + mod. DEX" : " + mod. DEX (max " + a.dexCap + ")")) : "";
+    const extras = [];
+    if(t.acBonus) extras.push(fmtSigned(Number(t.acBonus)) + " CA");
+    if(t.ignoreClassProf) extras.push("maîtrise ignorée");
+    if(t.ignoreStrReq) extras.push("prérequis Force ignoré");
+    if(extras.length) s += (s ? " · " : "") + extras.join(", ");
+    return s;
+  }
+  if(t.cat === "shield"){
+    // Le bouclier donne toujours +2 CA de base (voir computeAC) — jamais stocké
+    // nulle part, donc affiché ici en dur, comme une vraie caractéristique du
+    // type plutôt qu'un simple bonus d'objet personnalisé.
+    let s = "CA +2";
+    if(t.acBonus) s += " · " + fmtSigned(Number(t.acBonus)) + " CA";
+    return s;
+  }
+  if(t.cat === "ammo"){
+    // Une munition se consomme à chaque tir avec une arme à Munitions (voir
+    // performAttack) — pas de dégâts propres, mais un bonus magique éventuel
+    // (flèches +1...) s'ajoute à l'arme tant qu'elle est dans l'emplacement dédié.
+    let s = "Se consomme à chaque tir";
+    const extras = [];
+    if(t.atkBonus) extras.push(fmtSigned(Number(t.atkBonus)) + " au toucher");
+    if(t.dmgBonus) extras.push(fmtSigned(Number(t.dmgBonus)) + " aux dégâts");
+    if(extras.length) s += " · " + extras.join(", ");
+    return s;
+  }
+  return "";
+}
+function itemCatalogCatLabel(cat){ return (ITEM_CATEGORIES.find(c => c.cat === cat) || {}).label || cat; }
+// Regroupe une liste de fiches par catégorie (ordre de ITEM_CATEGORIES), rend
+// chaque groupe via renderRow — partagé par les deux onglets.
+function groupedCatalogHtml(rows, renderRow){
+  const byCat = {};
+  rows.forEach(t => { (byCat[t.cat] = byCat[t.cat] || []).push(t); });
+  return ITEM_CATEGORIES.filter(c => byCat[c.cat] && byCat[c.cat].length).map(c => {
+    const items = byCat[c.cat].slice().sort((a,b) => a.name.localeCompare(b.name, "fr"));
+    return '<div class="item-catalog-group">' +
+      '<h4 class="item-catalog-group-title">' + c.label + '</h4>' +
+      items.map(renderRow).join("") +
+    '</div>';
+  }).join("");
+}
+// PJ d'abord (toujours tous), puis seulement les PNJ qui ont réellement un pion
+// posé sur la carte en ce moment (findTokenForCharacter) — inutile de proposer
+// les dizaines de PNJ du bestiaire qui ne sont pas en jeu cette séance.
+function giveToCharacterOptions(){
+  const pcs = characters.filter(c => c.kind !== "npc").slice().sort((a,b) => (a.name||"").localeCompare(b.name||"", "fr"));
+  const npcsOnBoard = characters.filter(c => c.kind === "npc" && findTokenForCharacter(c.id)).slice().sort((a,b) => (a.name||"").localeCompare(b.name||"", "fr"));
+  return pcs.map(c => '<option value="' + c.id + '">' + (c.name||"Sans nom") + '</option>').join("") +
+    npcsOnBoard.map(c => '<option value="' + c.id + '">PNJ · ' + (c.name||"Sans nom") + '</option>').join("");
+}
+// Donne qty exemplaires de tpl à ch — les munitions DU MÊME TYPE déjà dans
+// l'inventaire (même nom, même bonus magique éventuel) se cumulent dans le
+// MÊME emplacement (qty += qty) plutôt que de créer un doublon : donner 5
+// flèches alors qu'il en reste 10 fait un seul tas de 15, pas deux lignes.
+// Tout le reste (armes, armures, divers...) crée toujours un nouvel objet —
+// deux épées, même identiques, restent deux objets distincts, pas une pile.
+function giveItemToCharacter(ch, tpl, qty){
+  const inv = ch.inventory || [];
+  if(tpl.cat === "ammo"){
+    const existing = inv.find(it => it.cat === "ammo" && it.name === tpl.name &&
+      (Number(it.atkBonus)||0) === (Number(tpl.atkBonus)||0) && (Number(it.dmgBonus)||0) === (Number(tpl.dmgBonus)||0));
+    if(existing) return inv.map(it => it === existing ? { ...it, qty: (Number(it.qty)||0) + qty } : it);
+  }
+  const nextId = inv.reduce((m,it)=>Math.max(m, Number(it.id)||0), 0) + 1;
+  const newItem = {
+    id: nextId, name: tpl.name, qty, cat: tpl.cat, refKey: tpl.refKey||null,
+    icon: tpl.icon||null, glowColor: tpl.glowColor||null,
+    atkBonus: tpl.atkBonus||0, dmgBonus: tpl.dmgBonus||0, acBonus: tpl.acBonus||0,
+    ignoreClassProf: !!tpl.ignoreClassProf, ignoreStrReq: !!tpl.ignoreStrReq
+  };
+  return inv.concat([newItem]);
+}
+
+// --- Onglet "Objets de base" ---
+// Le catalogue complet des objets D&D — chaque fiche garde son skin ET ses
+// vraies règles. Pour arme/armure, PAS de "type personnalisé" ici : un objet de
+// base s'appuie TOUJOURS sur un type officiel (son refKey est celui de
+// WEAPON_DATA/ARMOR_DATA tel quel) — déroger aux règles D&D est une décision
+// consciente qui se prend à l'étage du dessus, sur un objet personnalisé
+// précis (cases à cocher dans l'onglet "Objets personnalisés"), jamais ici.
+function officialTypeOptionsHtml(cat){
+  if(cat === "weapon"){
+    const opt = w => '<option value="' + w.name + '">' + w.name + ' (' + w.damage + ')</option>';
+    return '<optgroup label="Armes simples">' + WEAPON_DATA.filter(w=>w.tier==="simple").map(opt).join("") + '</optgroup>' +
+      '<optgroup label="Armes de guerre">' + WEAPON_DATA.filter(w=>w.tier==="martiale").map(opt).join("") + '</optgroup>';
+  }
+  if(cat === "armor"){
+    return ARMOR_DATA.filter(a => !a.none).map(a => '<option value="' + a.key + '">' + a.label + '</option>').join("");
+  }
+  return "";
+}
+function itemBaseFormHtml(editing){
+  const catOptions = ITEM_CATEGORIES.map(c => '<option value="' + c.cat + '">' + c.label + '</option>').join("");
+  const iconOptions = AVAILABLE_ITEM_ICONS.map(i => '<option value="' + i.name + '">' + i.name + '</option>').join("");
+  return (
+    '<div class="item-base-form">' +
+      '<div class="field-row" style="gap:6px;margin-bottom:4px;">' +
+        '<select class="base-cat" style="flex:1;font-size:.78rem;padding:4px 6px;">' + catOptions + '</select>' +
+      '</div>' +
+      '<div class="base-official-row field-row" style="gap:6px;margin-bottom:4px;" hidden>' +
+        '<select class="base-official-type" style="flex:1;font-size:.78rem;padding:4px 6px;"></select>' +
+      '</div>' +
+      '<div class="field-row" style="gap:6px;margin-bottom:4px;align-items:center;">' +
+        '<select class="base-icon" style="flex:1;font-size:.78rem;padding:4px 6px;">' + iconOptions + '</select>' +
+        '<img class="base-icon-preview" alt="" style="width:32px;height:32px;object-fit:contain;flex:none;">' +
+      '</div>' +
+      '<div class="field-row" style="gap:6px;margin-bottom:6px;">' +
+        '<input type="text" class="base-name" placeholder="Nom de l\'objet de base (ex : Épée longue, ou le nom du skin si plusieurs : Hache de bûcheron)" style="flex:1;min-width:90px;font-size:.78rem;padding:4px 6px;">' +
+      '</div>' +
+      '<div class="field-row" style="gap:6px;">' +
+        '<button type="button" class="ghost btn-sm base-submit" style="padding:4px 8px;">' + (editing ? "Enregistrer les modifications" : "Créer l'objet de base") + '</button>' +
+        (editing ? '<button type="button" class="ghost btn-sm base-cancel-edit" style="padding:4px 8px;">Annuler</button>' : '') +
+      '</div>' +
+    '</div>'
+  );
+}
+function wireItemBaseForm(container, editing){
+  const catEl = container.querySelector(".base-cat");
+  const officialRow = container.querySelector(".base-official-row");
+  const officialEl = container.querySelector(".base-official-type");
+  const iconEl = container.querySelector(".base-icon");
+  const preview = container.querySelector(".base-icon-preview");
+  const nameEl = container.querySelector(".base-name");
+  function syncPreview(){ preview.src = "assets/icons/items/" + iconEl.value + ".png"; }
+  function syncCat(){
+    const cat = catEl.value;
+    const isWeaponOrArmor = cat === "weapon" || cat === "armor";
+    officialRow.hidden = !isWeaponOrArmor;
+    if(isWeaponOrArmor) officialEl.innerHTML = officialTypeOptionsHtml(cat);
+  }
+  catEl.addEventListener("change", syncCat);
+  iconEl.addEventListener("change", syncPreview);
+  if(editing){
+    catEl.value = editing.cat;
+    nameEl.value = editing.name;
+    const iconName = (editing.icon||"").split("/").pop().replace(/\.png$/, "");
+    if(iconName) iconEl.value = iconName;
+    syncCat();
+    if(editing.refKey) officialEl.value = editing.refKey;
+  }
+  syncCat(); syncPreview();
+}
+function renderItemCatalogBaseForm(){
+  const wrap = document.getElementById("item-catalog-base-form");
+  const editing = itemCatalog.find(t => t.id === editingBaseId);
+  wrap.innerHTML = itemBaseFormHtml(editing);
+  const formEl = wrap.querySelector(".item-base-form");
+  wireItemBaseForm(formEl, editing);
+  const cancelBtn = formEl.querySelector(".base-cancel-edit");
+  if(cancelBtn) cancelBtn.addEventListener("click", () => { editingBaseId = null; renderItemCatalogBaseForm(); });
+  formEl.querySelector(".base-submit").addEventListener("click", async () => {
+    const name = (formEl.querySelector(".base-name").value||"").trim();
+    if(!name) return;
+    const cat = formEl.querySelector(".base-cat").value;
+    const iconName = formEl.querySelector(".base-icon").value;
+    const refKey = (cat === "weapon" || cat === "armor") ? formEl.querySelector(".base-official-type").value : null;
+    const entry = { name, cat, refKey, stats:null, icon:"assets/icons/items/"+iconName+".png", isBase:true };
+    if(editing){
+      await setDoc(doc(itemCatalogCol, editing.id), { ...entry, validated:!!editing.validated, createdAt: editing.createdAt||Date.now() });
+    }else{
+      await upsertItemCatalogEntry(entry);
+    }
+    editingBaseId = null;
+    renderItemCatalogBaseForm();
+    renderItemCatalogBaseList();
+  });
+}
+function renderBaseRow(t){
+  const summary = itemCatalogStatSummary(t);
+  const icon = resolveItemIcon(t);
+  const nameBlock = '<span class="item-catalog-row-name">' + (t.name||"") + '<span class="hint">' + (summary||"Pas d'effet mécanique") + (t.validated?"":" · brouillon") + '</span></span>';
+  const iconBlock = icon ? ('<img src="' + icon + '" class="item-catalog-row-icon" alt="">') : '';
+  if(t.validated){
+    // Verrouillé pour de bon — aucun bouton, par design : "non modifiable une
+    // fois validé" (demande explicite d'André, pour ne jamais perdre une
+    // fondation sur laquelle d'autres objets s'appuient déjà).
+    return '<div class="item-catalog-row">' + iconBlock + nameBlock + '<span class="item-catalog-validated-badge">✓ Validé</span></div>';
+  }
+  return '<div class="item-catalog-row" data-tpl-id="' + t.id + '">' + iconBlock + nameBlock +
+    '<button type="button" class="ghost btn-sm base-row-edit">Modifier</button>' +
+    '<button type="button" class="ghost btn-sm base-row-validate">Valider</button>' +
+    '<button type="button" class="ghost btn-sm base-row-del">✕</button>' +
+  '</div>';
+}
+function renderItemCatalogBaseList(){
+  const list = document.getElementById("item-catalog-base-list");
+  const q = itemCatalogBaseSearch.trim().toLowerCase();
+  const all = itemCatalog.filter(t => t.isBase);
+  const bases = all.filter(t => !q || t.name.toLowerCase().includes(q));
+  list.innerHTML = bases.length ? groupedCatalogHtml(bases, renderBaseRow) : ('<p class="hint">' + (all.length ? "Aucun objet de base ne correspond à la recherche." : "Aucun objet de base créé pour l'instant.") + '</p>');
+  list.querySelectorAll(".base-row-edit").forEach(btn => {
+    btn.addEventListener("click", () => {
+      editingBaseId = btn.closest(".item-catalog-row").dataset.tplId;
+      renderItemCatalogBaseForm();
+    });
+  });
+  list.querySelectorAll(".base-row-validate").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.closest(".item-catalog-row").dataset.tplId;
+      const t = itemCatalog.find(x => x.id === id);
+      if(!t) return;
+      if(!confirm('Valider définitivement "' + t.name + '" ? Il ne pourra plus jamais être modifié ni supprimé ensuite.')) return;
+      await setDoc(doc(itemCatalogCol, id), { ...t, validated:true });
+    });
+  });
+  list.querySelectorAll(".base-row-del").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.closest(".item-catalog-row").dataset.tplId;
+      if(!confirm("Supprimer ce brouillon d'objet de base ?")) return;
+      await deleteDoc(doc(itemCatalogCol, id));
+    });
+  });
+}
+
+// --- Onglet "Objets" ---
+function itemItemFormHtml(editing){
+  const bases = itemCatalog.filter(t => t.isBase && t.cat !== "other").slice().sort((a,b) => a.name.localeCompare(b.name, "fr"));
+  const baseOptions = bases.map(b => '<option value="' + b.id + '">' + b.name + ' (' + itemCatalogCatLabel(b.cat) + ')</option>').join("");
+  const iconOptions = '<option value="">Hérité de l\'objet de base</option>' + AVAILABLE_ITEM_ICONS.map(i => '<option value="' + i.path + '">' + i.name + '</option>').join("");
+  return (
+    '<div class="item-item-form">' +
+      '<div class="field-row" style="gap:6px;margin-bottom:4px;">' +
+        '<select class="item-base-select" style="flex:1;font-size:.78rem;padding:4px 6px;">' + (baseOptions || '<option value="">Crée d\'abord un objet de base</option>') + '</select>' +
+      '</div>' +
+      '<div class="field-row" style="gap:6px;margin-bottom:4px;align-items:center;">' +
+        '<input type="text" class="item-name" placeholder="Nom de l\'objet" style="flex:1;min-width:90px;font-size:.78rem;padding:4px 6px;">' +
+        '<label class="hint item-glow-label"><input type="checkbox" class="item-glow-toggle">Lueur</label>' +
+        '<input type="color" class="item-glow-color" value="#8a5cff" hidden>' +
+      '</div>' +
+      '<div class="field-row" style="gap:6px;margin-bottom:4px;">' +
+        '<select class="item-icon-override" style="flex:1;font-size:.78rem;padding:4px 6px;" title="Pour un objet unique avec son propre skin (ex : une épée légendaire)">' + iconOptions + '</select>' +
+      '</div>' +
+      '<div class="item-bonus-row field-row" style="gap:6px;margin-bottom:2px;" hidden>' +
+        '<input type="number" class="item-bonus-f1" placeholder="Bonus au toucher (ex : 1 ou -1, vide = aucun)" style="flex:1;min-width:120px;font-size:.78rem;padding:4px 6px;">' +
+        '<input type="number" class="item-bonus-f2" placeholder="Bonus aux dégâts (vide = aucun)" style="flex:1;min-width:120px;font-size:.78rem;padding:4px 6px;">' +
+      '</div>' +
+      '<div class="item-ignore-weapon-row" hidden>' +
+        '<label class="hint item-ignore-label"><input type="checkbox" class="item-ignore-prof">Ignorer la maîtrise de classe requise (utilisable par tout le monde)</label>' +
+      '</div>' +
+      '<div class="item-bonus-armor-row field-row" style="gap:6px;margin-bottom:2px;" hidden>' +
+        '<input type="number" class="item-bonus-ac" placeholder="Bonus de CA (ex : 1 pour +1, -1 pour abîmée)" style="flex:1;min-width:120px;font-size:.78rem;padding:4px 6px;">' +
+      '</div>' +
+      '<div class="item-ignore-armor-row" hidden>' +
+        '<label class="hint item-ignore-label"><input type="checkbox" class="item-ignore-prof">Ignorer la maîtrise de classe requise (utilisable par tout le monde)</label>' +
+        '<label class="hint item-ignore-label"><input type="checkbox" class="item-ignore-req">Ignorer le prérequis de Force requise</label>' +
+      '</div>' +
+      '<div class="field-row" style="gap:6px;margin-top:4px;">' +
+        '<button type="button" class="ghost btn-sm item-submit" style="padding:4px 8px;">' + (editing ? "Enregistrer les modifications" : "Créer l'objet") + '</button>' +
+        (editing ? '<button type="button" class="ghost btn-sm item-cancel-edit" style="padding:4px 8px;">Annuler</button>' : '') +
+      '</div>' +
+    '</div>'
+  );
+}
+function renderItemCatalogItemForm(){
+  const wrap = document.getElementById("item-catalog-item-form");
+  const editing = itemCatalog.find(t => t.id === editingItemId);
+  wrap.innerHTML = itemItemFormHtml(editing);
+  const formEl = wrap.querySelector(".item-item-form");
+  const baseSelect = formEl.querySelector(".item-base-select");
+  const nameEl = formEl.querySelector(".item-name");
+  const glowToggle = formEl.querySelector(".item-glow-toggle");
+  const glowColor = formEl.querySelector(".item-glow-color");
+  const iconOverride = formEl.querySelector(".item-icon-override");
+  const bonusRow = formEl.querySelector(".item-bonus-row");
+  const bonusArmorRow = formEl.querySelector(".item-bonus-armor-row");
+  const ignoreWeaponRow = formEl.querySelector(".item-ignore-weapon-row");
+  const ignoreArmorRow = formEl.querySelector(".item-ignore-armor-row");
+  const f1 = formEl.querySelector(".item-bonus-f1");
+  const f2 = formEl.querySelector(".item-bonus-f2");
+  const fAc = formEl.querySelector(".item-bonus-ac");
+  const ignoreProfEls = formEl.querySelectorAll(".item-ignore-prof"); // un par ligne (arme/armure), un seul visible à la fois
+  const ignoreReqEl = formEl.querySelector(".item-ignore-req");
+  function syncBonusRows(){
+    const base = itemCatalog.find(t => String(t.id) === baseSelect.value);
+    const isWeapon = !!(base && base.cat === "weapon");
+    const isAmmo = !!(base && base.cat === "ammo");
+    const isArmor = !!(base && base.cat === "armor");
+    const isShield = !!(base && base.cat === "shield");
+    // Le bonus au toucher/dégâts concerne aussi des munitions enchantées (flèches
+    // +1...) — même champ que pour une arme, appliqué à l'arme à distance en cours
+    // tant que ces munitions sont dans l'emplacement dédié (voir equippedWeaponPairs).
+    // "Maîtrise ignorée" reste arme uniquement : les munitions n'ont pas de maîtrise.
+    bonusRow.hidden = !(isWeapon || isAmmo);
+    ignoreWeaponRow.hidden = !isWeapon;
+    // Le bonus de CA concerne autant un bouclier (+2 fixe, voir computeAC) qu'une
+    // armure — même champ, même input. "Maîtrise/Force ignorée" reste armure
+    // uniquement : un bouclier n'a pas de prérequis de Force, et sa maîtrise de
+    // classe se gère déjà au niveau classe (shieldProf), pas demandé ici.
+    bonusArmorRow.hidden = !(isArmor || isShield);
+    ignoreArmorRow.hidden = !isArmor;
+  }
+  baseSelect.addEventListener("change", () => {
+    const base = itemCatalog.find(t => String(t.id) === baseSelect.value);
+    if(base && !editing) nameEl.value = base.name;
+    syncBonusRows();
+  });
+  glowToggle.addEventListener("change", () => { glowColor.hidden = !glowToggle.checked; });
+  if(editing){
+    // Le refKey de l'objet peut être soit le nom d'une base auto-référencée
+    // (type tout neuf), soit le refKey officiel que CETTE base réutilise elle-même
+    // (ex. "cuir" pour "Armure matelassée") — on cherche les deux.
+    const base = itemCatalog.find(b => b.isBase && (b.refKey || b.name) === editing.refKey);
+    if(base) baseSelect.value = base.id;
+    nameEl.value = editing.name;
+    if(editing.glowColor){ glowToggle.checked = true; glowColor.hidden = false; glowColor.value = editing.glowColor; }
+    if(editing.icon) iconOverride.value = editing.icon;
+    if(editing.atkBonus) f1.value = editing.atkBonus;
+    if(editing.dmgBonus) f2.value = editing.dmgBonus;
+    if(editing.acBonus) fAc.value = editing.acBonus;
+    ignoreProfEls.forEach(el => { el.checked = !!editing.ignoreClassProf; });
+    if(ignoreReqEl) ignoreReqEl.checked = !!editing.ignoreStrReq;
+  }
+  syncBonusRows();
+  const cancelBtn = formEl.querySelector(".item-cancel-edit");
+  if(cancelBtn) cancelBtn.addEventListener("click", () => { editingItemId = null; renderItemCatalogItemForm(); });
+  formEl.querySelector(".item-submit").addEventListener("click", async () => {
+    const base = itemCatalog.find(t => String(t.id) === baseSelect.value);
+    const name = (nameEl.value||"").trim();
+    if(!base || !name) return;
+    // ignoreProfEls a 2 cases à cocher identiques (une par ligne arme/armure, une
+    // seule visible selon la catégorie) — seule celle visible compte vraiment.
+    const visibleIgnoreProf = Array.from(ignoreProfEls).find(el => !el.closest(".item-ignore-weapon-row, .item-ignore-armor-row").hidden);
+    const entry = {
+      // refKey : celui de la BASE si elle pointe elle-même vers un type officiel
+      // (ex. "Armure matelassée" → "cuir") — sinon le nom de la base elle-même
+      // (type tout neuf, auto-référencé). C'est ce refKey, pas le nom affiché, qui
+      // décide des règles de maîtrise/prérequis — un objet qui s'appuie sur un
+      // type officiel garde donc exactement les mêmes règles D&D que l'original,
+      // SAUF si les cases ci-dessous décochent sciemment une de ces règles.
+      name, cat: base.cat, refKey: base.refKey || base.name, isBase:false,
+      glowColor: glowToggle.checked ? glowColor.value : null,
+      // L'icône se fige ici (copie de celle de la base au moment de la création),
+      // plutôt que recalculée dynamiquement par la suite — indépendant du refKey
+      // ci-dessus, qui lui ne sert plus qu'aux règles, jamais au skin.
+      icon: iconOverride.value || base.icon || null,
+      atkBonus: (base.cat === "weapon" || base.cat === "ammo") ? (Number(f1.value)||0) : 0,
+      dmgBonus: (base.cat === "weapon" || base.cat === "ammo") ? (Number(f2.value)||0) : 0,
+      acBonus: (base.cat === "armor" || base.cat === "shield") ? (Number(fAc.value)||0) : 0,
+      ignoreClassProf: !!(visibleIgnoreProf && visibleIgnoreProf.checked),
+      ignoreStrReq: !!(base.cat === "armor" && ignoreReqEl && ignoreReqEl.checked)
+    };
+    if(editing){
+      await setDoc(doc(itemCatalogCol, editing.id), { ...entry, createdAt: editing.createdAt||Date.now() });
+    }else{
+      await upsertItemCatalogEntry(entry);
+    }
+    editingItemId = null;
+    renderItemCatalogItemForm();
+    renderItemCatalogList();
+  });
+}
+function renderItemRow(t){
+  const summary = itemCatalogStatSummary(t);
+  const icon = resolveItemIcon(t);
+  const charOptions = giveToCharacterOptions();
+  return '<div class="item-catalog-row" data-tpl-id="' + t.id + '">' +
+    (icon ? ('<img src="' + icon + '" class="item-catalog-row-icon" alt=""' + glowStyleAttr(t) + '>') : '') +
+    '<span class="item-catalog-row-name">' + (t.name||"") + (summary ? ('<span class="hint">' + summary + '</span>') : '') + '</span>' +
+    (charOptions ? (
+      '<input type="number" class="item-catalog-give-qty" min="1" value="1" title="Quantité" style="width:42px;font-size:.74rem;padding:2px 4px;">' +
+      '<select class="item-catalog-give-pc">' + charOptions + '</select>' +
+      '<button type="button" class="ghost btn-sm item-catalog-give">Donner</button>'
+    ) : '') +
+    '<button type="button" class="ghost btn-sm item-catalog-edit">Modifier</button>' +
+    '<button type="button" class="ghost btn-sm item-catalog-del" title="Supprimer cet objet">✕</button>' +
+  '</div>';
+}
+function renderItemCatalogList(){
+  const list = document.getElementById("item-catalog-list");
+  const q = itemCatalogSearch.trim().toLowerCase();
+  const all = itemCatalog.filter(t => !t.isBase && t.cat !== "other");
+  const rows = all.filter(t => !q || t.name.toLowerCase().includes(q));
+  const anyItems = all.length > 0;
+  if(!rows.length){
+    list.innerHTML = '<p class="hint">' + (anyItems ? "Aucun objet ne correspond à la recherche." : "Aucun objet créé pour l'instant — utilise le formulaire ci-dessus.") + '</p>';
+    return;
+  }
+  list.innerHTML = groupedCatalogHtml(rows, renderItemRow);
+  list.querySelectorAll(".item-catalog-give").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const row = btn.closest(".item-catalog-row");
+      const tpl = itemCatalog.find(x => String(x.id) === row.dataset.tplId);
+      const charId = row.querySelector(".item-catalog-give-pc").value;
+      const qty = Math.max(1, parseInt(row.querySelector(".item-catalog-give-qty").value, 10) || 1);
+      const ch = characters.find(c => c.id === charId);
+      if(!tpl || !ch) return;
+      const nextInv = giveItemToCharacter(ch, tpl, qty);
+      await patchCharacter(ch.id, { inventory: nextInv });
+      showActionNotice('"' + tpl.name + '"' + (qty>1?(' ×'+qty):'') + ' donné à ' + (ch.name||"ce personnage") + '.');
+    });
+  });
+  list.querySelectorAll(".item-catalog-edit").forEach(btn => {
+    btn.addEventListener("click", () => {
+      editingItemId = btn.closest(".item-catalog-row").dataset.tplId;
+      renderItemCatalogItemForm();
+    });
+  });
+  list.querySelectorAll(".item-catalog-del").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const row = btn.closest(".item-catalog-row");
+      if(!confirm("Supprimer cet objet ? (les exemplaires déjà donnés aux joueurs ne sont pas affectés)")) return;
+      await deleteDoc(doc(itemCatalogCol, row.dataset.tplId));
+    });
+  });
+}
+
+
+// --- Onglet "Donner un objet" --- recherche unifiée sur TOUT le catalogue (base
+// + personnalisé + divers), par mot-clé et/ou par type d'objet.
+function renderItemCatalogGiveList(){
+  const list = document.getElementById("item-catalog-give-list");
+  const q = itemCatalogGiveSearch.trim().toLowerCase();
+  const catFilter = itemCatalogGiveCatFilter;
+  const rows = itemCatalog.filter(t =>
+    (!q || t.name.toLowerCase().includes(q)) && (!catFilter || t.cat === catFilter)
+  );
+  if(!rows.length){
+    list.innerHTML = '<p class="hint">Aucun objet ne correspond.</p>';
+    return;
+  }
+  list.innerHTML = groupedCatalogHtml(rows, (t) => {
+    const summary = itemCatalogStatSummary(t);
+    const icon = resolveItemIcon(t);
+    const charOptions = giveToCharacterOptions();
+    return '<div class="item-catalog-row" data-tpl-id="' + t.id + '">' +
+      (icon ? ('<img src="' + icon + '" class="item-catalog-row-icon" alt=""' + glowStyleAttr(t) + '>') : '') +
+      '<span class="item-catalog-row-name">' + (t.name||"") + (summary ? ('<span class="hint">' + summary + '</span>') : '') + '</span>' +
+      (charOptions ? (
+        '<input type="number" class="item-catalog-give-qty" min="1" value="1" title="Quantité" style="width:42px;font-size:.74rem;padding:2px 4px;">' +
+        '<select class="item-catalog-give-pc">' + charOptions + '</select>' +
+        '<button type="button" class="ghost btn-sm give-row-give">Donner</button>'
+      ) : '') +
+    '</div>';
+  });
+  list.querySelectorAll(".give-row-give").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const row = btn.closest(".item-catalog-row");
+      const tpl = itemCatalog.find(x => String(x.id) === row.dataset.tplId);
+      const charId = row.querySelector(".item-catalog-give-pc").value;
+      const qty = Math.max(1, parseInt(row.querySelector(".item-catalog-give-qty").value, 10) || 1);
+      const ch = characters.find(c => c.id === charId);
+      if(!tpl || !ch) return;
+      const nextInv = giveItemToCharacter(ch, tpl, qty);
+      await patchCharacter(ch.id, { inventory: nextInv });
+      showActionNotice('"' + tpl.name + '"' + (qty>1?(' ×'+qty):'') + ' donné à ' + (ch.name||"ce personnage") + '.');
+    });
+  });
+}
+
+function renderItemCatalogScreen(){
+  if(document.getElementById("item-catalog-modal").hidden) return;
+  renderItemCatalogBaseList();
+  renderItemCatalogList();
+  renderItemCatalogGiveList();
+}
+document.getElementById("btn-item-catalog").addEventListener("click", () => {
+  editingBaseId = null; editingItemId = null;
+  renderItemCatalogBaseForm();
+  renderItemCatalogBaseList();
+  renderItemCatalogItemForm();
+  renderItemCatalogList();
+  const catFilterEl = document.getElementById("item-catalog-give-cat-filter");
+  catFilterEl.innerHTML = '<option value="">Tous les types</option>' + ITEM_CATEGORIES.map(c => '<option value="'+c.cat+'">'+c.label+'</option>').join("");
+  renderItemCatalogGiveList();
+  document.getElementById("item-catalog-modal").hidden = false;
+});
+document.getElementById("item-catalog-close").addEventListener("click", () => {
+  document.getElementById("item-catalog-modal").hidden = true;
+});
+document.getElementById("item-catalog-backdrop").addEventListener("click", () => {
+  document.getElementById("item-catalog-modal").hidden = true;
+});
+document.getElementById("item-catalog-search").addEventListener("input", (e) => {
+  itemCatalogSearch = e.target.value;
+  renderItemCatalogList();
+});
+document.getElementById("item-catalog-base-search").addEventListener("input", (e) => {
+  itemCatalogBaseSearch = e.target.value;
+  renderItemCatalogBaseList();
+});
+document.getElementById("item-catalog-give-search").addEventListener("input", (e) => {
+  itemCatalogGiveSearch = e.target.value;
+  renderItemCatalogGiveList();
+});
+document.getElementById("item-catalog-give-cat-filter").addEventListener("change", (e) => {
+  itemCatalogGiveCatFilter = e.target.value;
+  renderItemCatalogGiveList();
+});
+document.querySelectorAll(".item-catalog-tab").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".item-catalog-tab").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    const tab = btn.dataset.tab;
+    document.getElementById("item-catalog-tab-base").hidden = tab !== "base";
+    document.getElementById("item-catalog-tab-items").hidden = tab !== "items";
+    document.getElementById("item-catalog-tab-give").hidden = tab !== "give";
+    // Chaque onglet liste les objets de base dans son propre formulaire/filtre —
+    // toujours à jour au moment où on bascule dessus, au cas où un objet de base
+    // vient d'être créé pendant que cet onglet n'était pas affiché.
+    if(tab === "items") renderItemCatalogItemForm();
+    if(tab === "give") renderItemCatalogGiveList();
+  });
+});
+
 function personnageUrl(docId){
   const isLocalDev = location.hostname === "localhost" && location.port === "8981";
   // On the live site, table-de-jeu is served as the repo's own root index.html (not
@@ -3125,7 +5302,7 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
   const condOpen = !!cardTogglesOpen[toggleKey(ch,"cond")];
   const hpPct = (typeof hpMax === "number" && hpMax > 0 && typeof hpCur === "number")
     ? Math.max(0, Math.min(100, Math.round((hpCur / hpMax) * 100))) : 100;
-  const hpColor = hpPct > 50 ? "#4c7c3f" : hpPct > 25 ? "#a8862f" : "#8a3b2b";
+  const hpColor = "#8a3b2b"; // HP bars are always red — the standard game convention
   const hpBar = publicView
     ? '<div class="hp-bar"><div class="hp-bar-fill" style="width:' + hpPct + '%;background:' + hpColor + ';"></div></div>'
     : '<div class="hp-bar"><div class="hp-bar-fill" style="width:' + hpPct + '%;background:' + hpColor + ';"></div>'+
@@ -3174,7 +5351,11 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
     const rangeState = isAttacker ? attackRangeState(ch, a) : null;
     const rangeClass = rangeState === "out" ? " range-out" : rangeState === "long" ? " range-long" : "";
     const rangeDisabled = rangeState === "out" ? " disabled" : "";
-    const fullHead = '<span>' + a.name + '</span><span class="mono">' + fmtSigned(a.atk) + ' · ' + a.dmgText + '</span>';
+    // Même badges que sur la case d'équipement (voir equipTileTooltipHtml) — en
+    // <img> simples avec title natif, pas en hover-reveal imbriqué : ce bouton a
+    // déjà SA propre info-bulle native (propsAttr) et son propre survol de ligne.
+    const badgesInline = a.props ? propertyBadgesInlineHtml(a.props) : '';
+    const fullHead = '<span>' + a.name + (badgesInline ? (' ' + badgesInline) : '') + '</span><span class="mono">' + fmtSigned(a.atk) + ' · ' + a.dmgText + '</span>';
     const simpleHead = '<span>' + a.name + '</span>';
     if(isAttacker){
       const attrs = (turnGated?" turn-gated":"") + rangeClass + '" data-attack-idx="' + i + '"' + rangeDisabled + propsAttr;
@@ -3193,19 +5374,7 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
   const combatAttackRows = combatRowsArr.length ? combatRowsArr.join(itemDivider) : noWeaponsHtml;
   // Everything actually equipped, not just weapons — armor/shield come straight
   // from the inventory the same way Inventaire's own "(équipé)" tag does (see
-  // invRows below), read-only here since (un)equipping only happens in the
-  // character tool itself.
-  const equippedArmorShieldArr = (ch.inventory || []).filter(it =>
-    (it.cat === "armor" && ch.armorKey != null && ch.armorKey === it.refKey) ||
-    (it.cat === "shield" && !!ch.shield)
-  ).map(it => {
-    // The item's own name ("Armure de cuir") already says it's armor — only a
-    // shield (whose name alone wouldn't carry any CA info) still gets a label.
-    const tag = it.cat === "shield" ? "Bouclier" : armorInfoText(it.refKey);
-    return '<div class="atk-weapon-row"><span>' + (it.name||"") + '</span><span class="hint" style="margin:0;">' + tag + '</span></div>';
-  });
-  const equipAllRowsArr = weaponRowsArr.concat(equippedArmorShieldArr);
-
+  // invRows below).
   let managedBlock = "";
   if(canManage){
     // Skills: PCs get a real computed bonus per skill (synced from the character
@@ -3219,11 +5388,20 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
     // quick panel further down (see combatQuickHtml) — same buttons, same
     // wiring, just reachable without opening this dropdown mid-fight.
     const equipOpen = !!cardTogglesOpen[toggleKey(ch,"equip")];
+    // Grid of 12 square tiles — clicking a tile opens the equip/unequip picker
+    // (openEquipPicker); all the detail (bonus, dégâts, CA...) lives in a hover
+    // tooltip on the tile itself (equipTileTooltipHtml), not a list underneath,
+    // to avoid showing the same equipped item twice on screen. Attacking is no
+    // longer done from here — only from the "Attaques" quick panel below, which
+    // only appears once initiative is actually running (see combatQuickHtml).
+    // NPCs have no inventory/equip-slot system at all (free-text stat block
+    // only), so they keep the old attack-roll list instead of the grid — it's
+    // their only attack UI, since combatQuickHtml deliberately excludes NPCs.
     const equipBlock =
       panelDivider +
       '<button type="button" class="ghost btn-sm icon-toggle-btn equip-toggle">' + toggleBtnLabel(equipOpen,"icon-helmet-open.png","icon-helmet-closed.png","Équipement") + '</button>'+
       '<div class="atk-block equip-block"' + (equipOpen?"":" hidden") + '>' +
-        (equipAllRowsArr.length ? equipAllRowsArr.join(itemDivider) : '<p class="hint" style="margin:0 0 6px;">Rien d\'équipé.</p>') +
+        (isNpc ? attackRows : equipGridHtml(ch)) +
       '</div>';
     let skillsBlock = "";
     if(ch.skillBonuses){
@@ -3279,7 +5457,20 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
             const isEquipped = (it.cat === "weapon" && equippedWeaponIds.has(String(it.id)))
               || (it.cat === "armor" && ch.armorKey != null && ch.armorKey === it.refKey)
               || (it.cat === "shield" && !!ch.shield);
-            return '<li class="inv-item' + (isEquipped?" equipped":"") + '" data-inv-id="' + it.id + '">' + (it.name||"") + (it.qty>1?(" ×"+it.qty):"") +
+            const resolvedIcon = resolveItemIcon(it);
+            return '<li class="inv-item' + (isEquipped?" equipped":"") + '" data-inv-id="' + it.id + '">' +
+              (resolvedIcon ? ('<img class="inv-item-icon" src="' + resolvedIcon + '" alt=""' + glowStyleAttr(it) + '>') : '') +
+              (it.name||"") + ' ' +
+              // Le stepper (−/+) ne sert vraiment que pour les munitions (recharger
+              // après un combat, suivre ce qu'il reste — tout le reste de
+              // l'inventaire se gère très bien avec juste "Donner"/Supprimer).
+              // Le compteur à jour pour les munitions vit surtout sur la case
+              // d'équipement elle-même (voir equipGridHtml) — ici juste un rappel.
+              ((canManage && it.cat === "ammo")
+                ? ('<span class="inv-item-qty" data-inv-id="' + it.id + '">×' + (it.qty||0) + '</span>' +
+                   '<button type="button" class="ghost inv-item-qty-dec" data-inv-id="' + it.id + '" title="Retirer une unité" style="padding:0 4px;font-size:.68rem;">−</button>' +
+                   '<button type="button" class="ghost inv-item-qty-inc" data-inv-id="' + it.id + '" title="Ajouter une unité" style="padding:0 4px;font-size:.68rem;">+</button>')
+                : (it.qty>1?("×"+it.qty):"")) +
               (isEquipped ? ' <span class="hint" style="margin:0;font-size:.66rem;">(équipé)</span>' : '') +
               (canManage ? ' <button type="button" class="ghost inv-item-del" data-inv-id="' + it.id + '" title="Retirer cet objet" style="padding:0 5px;font-size:.72rem;float:right;">✕</button>' : '') +
             '</li>';
@@ -3305,13 +5496,10 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
         '</div>'+
         '</div>'
       ) : (ch.gold!=null ? ('<p class="hint" style="margin:6px 0 2px;">Or : ' + fmtGold(ch.gold) + ' po</p>') : '');
-      const invAddRow = canManage ? (
-        '<div class="field-row" style="margin-top:6px;gap:6px;">'+
-        '<input type="text" class="inv-add-name" placeholder="Nom de l\'objet" style="flex:1;min-width:90px;font-size:.78rem;padding:4px 6px;">'+
-        '<input type="number" class="inv-add-qty" value="1" min="1" style="width:46px;font-size:.78rem;padding:4px 6px;">'+
-        '<button type="button" class="ghost btn-sm inv-add-btn" style="padding:4px 8px;">Ajouter</button>'+
-        '</div>'
-      ) : '';
+      // Les objets se créent désormais exclusivement depuis le créateur d'objets
+      // (bouton "Préparation" → "Créateur d'objets") puis se donnent au personnage
+      // depuis là-bas — plus de formulaire d'ajout direct ici (demande d'André).
+      const invAddRow = canManage ? '<p class="hint" style="margin-top:6px;">Pour ajouter du matériel, utilise le Créateur d\'objets (menu Préparation).</p>' : '';
       // Precomputed in personnage.html (computeSpellDisplay) — this tool has no spell
       // database or slot-math of its own, same reason "attacks" is precomputed too.
       // Lets a lanceur de sorts' slots be tracked right from the board instead of
@@ -3401,7 +5589,7 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
   // once initiative is running (outside combat, movement is free/untracked).
   const myInitEntry = (!isNpc && initData.entries.length) ? initData.entries.find(en => en.characterId === ch.id) : null;
   const moveTrackerHtml = (isAttacker && myInitEntry && ch.speed != null)
-    ? ('<p class="hint" style="margin:0 0 6px;">Déplacement ce tour : ' + fmtMetersFr(myInitEntry.movedThisTurn || 0) + ' / ' + fmtMetersFr(ch.speed) + '</p>')
+    ? ('<p class="hint" style="margin:0 0 6px;">Déplacement ce tour : ' + fmtMetersFr(myInitEntry.movedThisTurn || 0) + ' / ' + fmtMetersFr(effectiveSpeed(ch)) + '</p>')
     : '';
   // Same attackRows as the Équipement dropdown (same buttons, same wiring) but
   // always unfolded and only shown once initiative is actually running for this
@@ -3448,7 +5636,12 @@ function characterCardHtml(ch, canManage, tokenId, isAttacker){
     '<span class="' + portraitClass + ' hover-reveal"' + portraitDataAttrs + ' style="width:64px;height:64px;border-radius:50%;display:inline-block;flex:none;border:1px solid rgba(0,0,0,.2);' + swatchStyle + '">' + portraitSkullHtml + '<span class="icon-label">' + portraitTooltip + '</span></span>'+
     '<div class="stat-chip-col">'+
     (ch.ac!=null ? ('<span class="stat-chip"' + (ch.equippedArmor?(' title="'+ch.equippedArmor.replace(/"/g,"&quot;")+'"'):'') + '><img src="assets/icons/icon-shield.png" class="stat-chip-icon" alt="">CA ' + ch.ac + '</span>') : '') +
-    (ch.speed!=null ? ('<span class="stat-chip" title="Vitesse"><img src="assets/icons/icon-boot.png" class="stat-chip-icon" alt="">Vit. ' + ch.speed + ' m</span>') : '') +
+    (ch.speed!=null ? (() => {
+      const spd = effectiveSpeed(ch);
+      const penalized = spd < ch.speed;
+      const title = penalized ? ('Vitesse réduite (armure trop lourde pour votre Force, normalement ' + ch.speed + ' m)') : "Vitesse";
+      return '<span class="stat-chip" title="' + title + '"><img src="assets/icons/icon-boot.png" class="stat-chip-icon" alt="">Vit. ' + spd + ' m' + (penalized ? ' ⚠' : '') + '</span>';
+    })() : '') +
     '<span class="stat-chip" title="Perception passive"><img src="assets/icons/icon-eye.png" class="stat-chip-icon" alt="">PP ' + passivePerception + '</span>'+
     '</div>'+
     '</div>'+
@@ -3545,52 +5738,32 @@ function wireCharacterCard(container, ch, tokenId, isAttacker){
       const itemId = btn.dataset.invId;
       const nextInv = (ch.inventory||[]).filter(it => String(it.id) !== String(itemId));
       ch.inventory = nextInv;
-      const li = container.querySelector('[data-inv-id="' + itemId + '"]');
+      const li = container.querySelector('.inv-item[data-inv-id="' + itemId + '"]');
       if(li) li.remove();
       patchCharacter(ch.id, { inventory: nextInv });
     });
   });
-
-  const invAddBtn = container.querySelector(".inv-add-btn");
-  if(invAddBtn){
-    invAddBtn.addEventListener("click", () => {
-      const nameEl = container.querySelector(".inv-add-name");
-      const qtyEl = container.querySelector(".inv-add-qty");
-      const name = (nameEl.value||"").trim();
-      if(!name) return;
-      const qty = Math.max(1, Number(qtyEl.value)||1);
-      const nextId = (ch.inventory||[]).reduce((m,it)=>Math.max(m, Number(it.id)||0), 0) + 1;
-      const newItem = { id: nextId, name, qty, cat: "other", refKey: null };
-      const nextInv = (ch.inventory||[]).concat([newItem]);
-      ch.inventory = nextInv;
-      nameEl.value = "";
-      qtyEl.value = "1";
-      const list = container.querySelector(".my-inventory-list");
-      if(list){
-        const emptyHint = list.querySelector(".hint");
-        if(emptyHint) emptyHint.closest("li").remove();
-        const li = document.createElement("li");
-        li.dataset.invId = nextId;
-        li.appendChild(document.createTextNode(newItem.name + (newItem.qty>1?(" ×"+newItem.qty):"")));
-        const delBtn = document.createElement("button");
-        delBtn.type = "button";
-        delBtn.className = "ghost inv-item-del";
-        delBtn.dataset.invId = nextId;
-        delBtn.title = "Retirer cet objet";
-        delBtn.style.cssText = "padding:0 5px;font-size:.72rem;float:right;";
-        delBtn.textContent = "✕";
-        delBtn.addEventListener("click", () => {
-          const nextInv2 = (ch.inventory||[]).filter(it => String(it.id) !== String(nextId));
-          ch.inventory = nextInv2;
-          li.remove();
-          patchCharacter(ch.id, { inventory: nextInv2 });
-        });
-        li.appendChild(delBtn);
-        list.appendChild(li);
-      }
-      patchCharacter(ch.id, { inventory: nextInv });
+  // Recharger/réduire une pile (munitions, torches...) sans repasser par "Donner" —
+  // met à jour l'affichage tout de suite, la synchro Firestore suit derrière.
+  function bumpInvQty(itemId, delta){
+    let newQty = 0;
+    const nextInv = (ch.inventory||[]).map(it => {
+      if(String(it.id) !== String(itemId)) return it;
+      newQty = Math.max(0, (it.qty||1) + delta);
+      return { ...it, qty: newQty };
     });
+    ch.inventory = nextInv;
+    const span = container.querySelector('.inv-item-qty[data-inv-id="' + itemId + '"]');
+    if(span) span.textContent = "×" + newQty;
+    patchCharacter(ch.id, { inventory: nextInv });
   }
+  container.querySelectorAll(".inv-item-qty-dec").forEach(btn => {
+    btn.addEventListener("click", () => bumpInvQty(btn.dataset.invId, -1));
+  });
+  container.querySelectorAll(".inv-item-qty-inc").forEach(btn => {
+    btn.addEventListener("click", () => bumpInvQty(btn.dataset.invId, 1));
+  });
+
   const detailsToggle = container.querySelector(".npc-details-toggle");
   if(detailsToggle){
     detailsToggle.addEventListener("click", () => {
@@ -3654,6 +5827,12 @@ function wireCharacterCard(container, ch, tokenId, isAttacker){
       equipToggle.innerHTML = toggleBtnLabel(willShow,"icon-helmet-open.png","icon-helmet-closed.png","Équipement");
     });
   }
+  container.querySelectorAll(".equip-slot-tile").forEach(tile => {
+    tile.addEventListener("click", () => {
+      const def = WEAPON_ARMOR_SLOTS.concat(ACCESSORY_SLOTS).find(s => s.key === tile.dataset.slotKey);
+      if(def) openEquipPicker(ch, def);
+    });
+  });
   const applySlotDelta = (level, delta) => {
     const sd = ch.spellDisplay;
     if(!sd) return;
@@ -3727,16 +5906,56 @@ function getRightPanelCharacter(){
   return null;
 }
 
+// Shown instead of the full sheet when the left panel is collapsed (player view) —
+// just enough to recognize yourself and check your HP at a glance.
+function renderMyPortraitBadge(ch, tokenId){
+  // The only "while collapsed" view of yourself left — see CSS; once expanded, the
+  // portrait inside the full sheet takes over as the fold/unfold target instead
+  // (wired below in renderMyCharacterPanel).
+  const badge = document.getElementById("my-portrait-badge");
+  const badgeIcon = badge.querySelector(".my-portrait-icon");
+  if(!ch){
+    badge.hidden = true;
+    return;
+  }
+  badgeIcon.style.backgroundImage = ch.portrait ? ("url('"+ch.portrait.replace(/'/g,"%27")+"')") : "none";
+  badge.querySelector(".my-portrait-name").textContent = ch.name || "Sans nom";
+  let hpCur = null;
+  if(ch.hpMax != null){
+    hpCur = resolveInstanceHp(ch, tokenId);
+    applyDamageOverlay(badgeIcon, hpCur, ch.hpMax);
+    applyIconDeathState(badgeIcon, ch, hpCur);
+  }else{
+    applyDamageOverlay(badgeIcon, null, null);
+    applyIconDeathState(badgeIcon, null, null);
+  }
+  applyIconConditions(badge.querySelector(".my-portrait-icon-wrap"), ch, tokenId);
+  badge.hidden = false;
+}
+// Shared by the map badge AND the portrait inside the full sheet — whichever of the
+// two is currently visible is the fold/unfold control (never both at once).
+function toggleLeftPanel(){
+  const collapsed = document.body.classList.toggle("left-collapsed");
+  try{ localStorage.setItem("valbois-left-collapsed", collapsed ? "1" : "0"); }catch(e){}
+  renderBoard();
+}
 function renderMyCharacterPanel(){
   const ch = getLeftPanelCharacter();
+  const tokenId = getLeftPanelTokenId();
+  renderMyPortraitBadge(ch, tokenId);
   if(!ch){
     myCharacterPanel.innerHTML = '<p class="hint">Choisis ton personnage dans la liste, ou (MJ) clique un pion sur la carte, pour voir sa fiche ici.</p>';
     return;
   }
-  const tokenId = getLeftPanelTokenId();
   myCharacterPanel.innerHTML = characterCardHtml(ch, true, tokenId, true) + openSheetButtonHtml;
   wireCharacterCard(myCharacterPanel, ch, tokenId, true);
   wireOpenSheetButton(myCharacterPanel, ch);
+  const portraitEl = myCharacterPanel.querySelector(".portrait-swatch");
+  if(portraitEl){
+    portraitEl.style.cursor = "pointer";
+    portraitEl.title = "Replier ta fiche";
+    portraitEl.addEventListener("click", toggleLeftPanel);
+  }
 }
 
 // Shared by the MJ's dropdown (a quick-switch utility) and the player's "Qui es-tu ?"
@@ -4310,6 +6529,26 @@ async function performAttack(weaponIdx){
     return;
   }
 
+  // Une arme à Munitions consomme une munition à CHAQUE attaque, touchée ou non
+  // (règle 2014) — retrouvée via l'emplacement dédié (ammoItemId). Le type est
+  // retrouvé via ch.weaponRanged (le vrai type officiel), jamais weapon.name qui
+  // peut être un nom perso ("Arc elfique de Sasha") — sécurité en plus du filtre
+  // déjà posé sur la modale d'équipement (itemMatchesSlot), pour le cas où l'arme
+  // a changé après coup sans repasser par cette modale.
+  const usesAmmo = /Munitions/.test(weapon.props||"");
+  const ammoItem = usesAmmo ? (attacker.inventory||[]).find(it => String(it.id) === String(attacker.ammoItemId)) : null;
+  if(usesAmmo){
+    if(!ammoItem || (ammoItem.qty||0) <= 0){
+      showActionNotice("Plus de munitions — équipe des munitions dans l'emplacement dédié avant de tirer.");
+      return;
+    }
+    const requiredAmmo = WEAPON_AMMO_TYPE[attacker.weaponRanged];
+    if(requiredAmmo && ammoItem.name !== requiredAmmo && ammoItem.refKey !== requiredAmmo){
+      showActionNotice('"' + ammoItem.name + '" ne correspond pas à cette arme (il faut : ' + requiredAmmo + ').');
+      return;
+    }
+  }
+
   // Firing into a ranged weapon's long-range band is disadvantage per the rules,
   // not just a visual hint on the button — combines with whatever the player had
   // already chosen (advantage + this disadvantage cancel out to a flat roll, same
@@ -4367,6 +6606,13 @@ async function performAttack(weaponIdx){
   const entries = [entry, ...combatLogData.entries].slice(0, 30);
   combatLogData = { entries };
   await saveCombatLog(combatLogData);
+  if(usesAmmo && ammoItem){
+    const nextInv = (attacker.inventory||[]).map(it =>
+      String(it.id) === String(ammoItem.id) ? { ...it, qty: Math.max(0, (it.qty||1) - 1) } : it
+    );
+    attacker.inventory = nextInv;
+    await patchCharacter(attacker.id, { inventory: nextInv });
+  }
   // Avantage/désavantage is a one-shot choice for the next roll, not a standing
   // mode — reset so the following roll defaults back to normal instead of silently
   // re-applying it. Checked against the player's own chosen mode, not advModeUsed:
@@ -4818,6 +7064,13 @@ async function init(){
     renderMyCharacterPanel();
     renderBoard();
     maybeAutoOpenWhoAreYou();
+  });
+
+  onSnapshot(itemCatalogCol, (snap) => {
+    itemCatalog = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    recomputeCustomEquipTypes();
+    renderMyCharacterPanel();
+    renderItemCatalogScreen();
   });
 }
 
